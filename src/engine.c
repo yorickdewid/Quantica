@@ -16,9 +16,24 @@ struct chunk {
 	uint64_t offset;
 	uint64_t len;
 };
-#include <unistd.h>
+
+static int in_allocator = 0;
+static int delete_larger = 0;
 static struct chunk free_queue[FREE_QUEUE_LEN];
 static size_t free_queue_len = 0;
+
+static void flush_super(struct btree *btree);
+static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
+static uint64_t remove_table(struct btree *btree, struct btree_table *table,
+							size_t i, uint8_t *sha1);
+static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
+                             uint8_t *sha1);
+static uint64_t lookup(struct btree *btree, uint64_t table_offset,
+                       const uint8_t *sha1);
+uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
+                         uint8_t *sha1, const void *data, size_t len);
+
+static uint64_t collapse(struct btree *btree, uint64_t table_offset);
 
 static int file_exists(const char *path)
 {
@@ -110,8 +125,6 @@ static int btree_open(struct btree *btree, const char *idxname,const char *dbnam
 	return 0;
 }
 
-static void flush_super(struct btree *btree);
-
 static int btree_create(struct btree *btree, const char *idxname, const char* dbname, const char* walname)
 {
 	memset(btree, 0, sizeof *btree);
@@ -165,14 +178,6 @@ void btree_purge(const char* fname)
 	unlink(walname);
 }
 
-static int in_allocator = 0;
-static int delete_larger = 0;
-
-static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
-                             uint8_t *sha1);
-
-static uint64_t collapse(struct btree *btree, uint64_t table_offset);
-
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
 static size_t round_power2(size_t val)
 {
@@ -181,8 +186,6 @@ static size_t round_power2(size_t val)
 		i <<= 1;
 	return i;
 }
-
-static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
 
 /* Allocate a chunk from the index file */
 static uint64_t alloc_chunk(struct btree *btree, size_t len)
@@ -211,11 +214,6 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 	btree->db_alloc = offset + len;
 	return offset;
 }
-
-static uint64_t lookup(struct btree *btree, uint64_t table_offset,
-                       const uint8_t *sha1);
-uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-                         uint8_t *sha1, const void *data, size_t len);
 
 /* Mark a chunk as unused in the database file */
 static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
@@ -338,9 +336,6 @@ static uint64_t collapse(struct btree *btree, uint64_t table_offset)
 	put_table(btree, table, table_offset);
 	return table_offset;
 }
-
-static uint64_t remove_table(struct btree *btree, struct btree_table *table,
-                             size_t i, uint8_t *sha1);
 
 /* Find and remove the smallest item from the given table. The key of the item
    is stored to 'sha1'. Returns offset to the item */
@@ -489,15 +484,6 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 	flush_table(btree, table, table_offset);
 	return ret;
 }
-
-#if 0
-static void dump_sha1(const uint8_t *sha1)
-{
-	size_t i;
-	for (i = 0; i < SHA1_LENGTH; i++)
-		printf("%02x", sha1[i]);
-}
-#endif
 
 /*
  * Remove a item with key 'sha1' from the given table. The offset to the
