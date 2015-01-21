@@ -179,7 +179,7 @@ void btree_purge(const char* fname)
 }
 
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
-static size_t round_power2(size_t val)
+static size_t page_align(size_t val)
 {
 	size_t i = 1;
 	while (i < val)
@@ -192,7 +192,7 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
 
-	len = round_power2(len);
+	len = page_align(len);
 
 	uint64_t offset= btree->alloc;
 	/* this is important to performance */
@@ -208,7 +208,7 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
 
-	len = round_power2(len);
+	len = page_align(len);
 
 	uint64_t offset= btree->db_alloc;
 	btree->db_alloc = offset + len;
@@ -220,7 +220,7 @@ static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
 {
 	assert(len > 0);
 	assert(offset != 0);
-	len = round_power2(len);
+	len = page_align(len);
 	assert((offset & (len - 1)) == 0);
 
 	if (in_allocator) {
