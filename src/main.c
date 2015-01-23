@@ -187,28 +187,41 @@ void db_read_random_test()
 	       ,cost);
 }
 
-void db_delete_test()
+void db_delete_random_test()
 {
 	uint8_t key[KEYSIZE];
-	int i;
-	for(i=0; i<10; ++i) {
-		sprintf((char *)key, "%dkey", i);
-		btree_delete(&btree, key);
-	}
-
-	for(i=0; i<10; ++i) {
-		sprintf((char *)key, "%dkey", i);
+	int all=0,i;
+	int start=NUM/2;
+	int end=start+R_NUM;
+	start_timer();
+	for (i = start; i <end ; ++i) {
+		memset(key,0,sizeof(key));
+		sprintf((char *)key, "%dkey", rand()%(i+1));
 
 		size_t len;
+		btree_delete(&btree, key);
 		void *data = btree_get(&btree, key, &len);
-		if(data!=NULL) {
-			printf("Found:%s\n", key);
+		if(data==NULL) {
+			all++;
 		} else {
-			printf("not found:%s\n", key);
+			printf("found:%s\n", key);
 		}
 
 		free(data);
+
+		if((i%10000)==0) {
+			fprintf(stderr,"finished %d ops%30s\r",i,"");
+			fflush(stderr);
+		}
 	}
+	printf(LINE);
+	double cost = get_timer();
+	printf("|deleterandom	(delete:%d): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.6f(sec)\n"
+	       ,R_NUM
+	       ,(double)(cost/R_NUM)
+	       ,(double)(R_NUM/cost)
+	       ,(_query_size/cost)
+	       ,cost);
 }
 
 void db_tests()
@@ -216,7 +229,7 @@ void db_tests()
 	db_write_test();
 	db_read_seq_test();
 	db_read_random_test();
-	db_delete_test();
+	db_delete_random_test();
 	printf(LINE);
 }
 
@@ -236,7 +249,7 @@ int main(int argc, char **argv)
 	db_tests();
 
 	btree_close(&btree);
-	//btree_purge(DBNAME);
+	btree_purge(DBNAME);
 
 	return 0;
 }

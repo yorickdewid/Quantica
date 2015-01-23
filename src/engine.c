@@ -616,6 +616,8 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
+	if (offset == 0)
+		return NULL;
 
 	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
@@ -647,9 +649,9 @@ int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 	btree->top = collapse(btree, btree->top);
 	flush_super(btree);
 
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
-	if (read(btree->fd, &info, sizeof info) != sizeof info)
+	if (read(btree->db_fd, &info, sizeof info) != sizeof info)
 		return 0;
 
 	free_chunk(btree, offset, sizeof info + from_be32(info.len));
