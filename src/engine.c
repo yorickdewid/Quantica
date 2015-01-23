@@ -616,14 +616,13 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 void *btree_get(struct btree *btree, const uint8_t *sha1, size_t *len)
 {
 	uint64_t offset = lookup(btree, btree->top, sha1);
-	if (offset == 0)
-		return NULL;
 
 	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
 	*len = from_be32(info.len);
+	assert(*len > 0);
 
 	void *data = malloc(*len);
 	if (data == NULL)
