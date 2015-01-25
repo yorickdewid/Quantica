@@ -120,3 +120,7 @@ void get_current_time(cuuid_time_t *timestamp) {
 	*timestamp = time_now + ids_this_tick;
 }
 
+int quidcmp(const void *a, const void *b)
+{
+	return memcmp(a, b, sizeof(struct quid));
+}
