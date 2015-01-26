@@ -23,5 +23,6 @@ typedef unsigned long long int cuuid_time_t;
  * Create new QUID
  */
 void quid_create(struct quid *);
+int quidcmp(const void *a, const void *b);
 
 #endif // QUID_H_INCLUDED

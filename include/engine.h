@@ -7,8 +7,7 @@
 #include "bswap.h"
 
 #define SHA1_LENGTH	20
-
-#define CACHE_SLOTS	23 /* prime */
+#define CACHE_SLOTS	23
 
 struct btree_item {
      uint8_t sha1[SHA1_LENGTH];

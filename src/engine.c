@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "bswap.h"
+#include "quid.h"
 #include "engine.h"
 
 #define DBEXT	".db"
@@ -45,10 +46,9 @@ static int file_exists(const char *path)
 	return 0;
 }
 
-/* 15 times faster than gcc's memcmp on x86-64 */
 static int cmp_sha1(const uint8_t *a, const uint8_t *b)
 {
-	return strcmp((const char*)a,(const char*)b);
+	return strncmp((const char*)a, (const char*)b, sizeof(struct quid));
 }
 
 static struct btree_table *alloc_table() {
@@ -658,4 +658,3 @@ int btree_delete(struct btree *btree, const uint8_t *c_sha1)
 	flush_super(btree);
 	return 0;
 }
-
