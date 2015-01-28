@@ -121,6 +121,6 @@ void get_current_time(cuuid_time_t *timestamp) {
 }
 
 /* Compare two identifiers */
-int quidcmp(const void *a, const void *b) {
-	return memcmp(a, b, sizeof(struct quid));
+int quidcmp(const struct quid *a, const struct quid *b) {
+	return strncmp((char*)a, (char*)b, sizeof(struct quid));
 }
