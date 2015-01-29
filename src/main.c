@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "config.h"
+#include "track.h"
 #include "quid.h"
 #include "engine.h"
 
@@ -31,6 +32,7 @@ static double get_timer()
 	return seconds + (double) nseconds / 1.0e9;
 }
 
+extern struct etrace error;
 static char val[VALSIZE+1] = {'\0'};
 double _file_size=((double)(KEYSIZE+8*6)*NUM)/1048576.0+((double)(VALSIZE+8*3)*NUM)/1048576.0;
 double _query_size=(double)((double)(KEYSIZE+VALSIZE+8*4)*R_NUM)/1048576.0;
@@ -87,7 +89,8 @@ void db_write_test()
 	for(i=0; i<NUM; ++i) {
 		memset(&key, 0, sizeof(struct quid));
 		quid_create(&key);
-		btree_insert(&btree, &key, val, v_len);
+		if (btree_insert(&btree, &key, val, v_len)<0)
+			abort();
 		memcpy(&quidr[i], &key, sizeof(struct quid));
 		if(!(i%10000)) {
 			fprintf(stderr,"finished %d ops%30s\r", i, "");
@@ -113,7 +116,6 @@ void db_read_seq_test()
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=start; i<end; ++i) {
-		memset(&key, 0, sizeof(struct quid));
 		memcpy(&key, &quidr[i], sizeof(struct quid));
 
 		size_t len;
@@ -151,7 +153,6 @@ void db_read_random_test()
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=start; i<end; ++i) {
-		memset(&key, 0, sizeof(struct quid));
 		memcpy(&key, &quidr[i], sizeof(struct quid));
 
 		size_t len;
@@ -180,6 +181,43 @@ void db_read_random_test()
 	       ,cost);
 }
 
+void db_read_bounds_test()
+{
+	struct quid key;
+	int all=0,i;
+	//int start=NUM/2;
+	int end=NUM/2000;
+	char squid[35] = {'\0'};
+	start_timer();
+	for(i=0; i<end; ++i) {
+		memcpy(&key, &quidr[i], sizeof(struct quid));
+
+		size_t len;
+		void *data = btree_get(&btree, &key, &len);
+		if(data!=NULL) {
+			all++;
+		} else {
+			quidtostr(squid, &key);
+			printf("not found: %s\n", squid);
+		}
+
+		free(data);
+
+		if((i%10000)==0) {
+			fprintf(stderr,"finished %d ops%30s\r",i,"");
+			fflush(stderr);
+		}
+	}
+	printf(LINE);
+	double cost = get_timer();
+	printf("|readbounds	(found:%d): %.6f sec/op; %.1f reads /sec(estimated); %.1f MB/sec; cost:%.6f(sec)\n"
+	       ,all
+	       ,(double)(cost/R_NUM)
+	       ,(double)(R_NUM/cost)
+	       ,(_query_size/cost)
+	       ,cost);
+}
+
 void db_delete_random_test()
 {
 	struct quid key;
@@ -193,7 +231,8 @@ void db_delete_random_test()
 		memcpy(&key, &quidr[i], sizeof(struct quid));
 
 		size_t len;
-		btree_delete(&btree, &key);
+		if(btree_delete(&btree, &key)<0)
+			abort();
 		void *data = btree_get(&btree, &key, &len);
 		if(data==NULL) {
 			all++;
@@ -224,10 +263,10 @@ void db_tests()
 	db_write_test();
 	db_read_seq_test();
 	db_read_random_test();
+	db_read_bounds_test();
 	db_delete_random_test();
 	printf(LINE);
 }
-
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char **argv)
 {
