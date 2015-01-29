@@ -64,7 +64,7 @@ void btree_purge(const char *fname);
  * Insert a new item with key 'quid' with the contents in 'data' to the
  * database file.
  */
-void btree_insert(struct btree *btree, const struct quid *quid, const void *data,
+int btree_insert(struct btree *btree, const struct quid *quid, const void *data,
                   size_t len);
 
 /*

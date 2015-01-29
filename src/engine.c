@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "bswap.h"
+#include "track.h"
 #include "quid.h"
 #include "engine.h"
 
@@ -22,6 +23,7 @@ static int in_allocator = 0;
 static int delete_larger = 0;
 static struct chunk free_queue[FREE_QUEUE_LEN];
 static size_t free_queue_len = 0;
+struct etrace error;
 
 static void flush_super(struct btree *btree);
 static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
@@ -276,8 +278,10 @@ static void flush_super(struct btree *btree)
 
 static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 {
-	if (data == NULL)
+	if (data == NULL || len == 0) {
+		error.code = VAL_EMPTY;
 		return len;
+	}
 
 	struct blob_info info;
 	memset(&info, 0, sizeof info);
@@ -437,6 +441,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 			/* already in the table */
 			uint64_t ret = from_be64(table->items[i].offset);
 			put_table(btree, table, table_offset);
+			error.code = QUID_EXIST;
 			return ret;
 		}
 		if (cmp < 0)
@@ -568,15 +573,25 @@ uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-void btree_insert(struct btree *btree, const struct quid *c_quid, const void *data,
+int btree_insert(struct btree *btree, const struct quid *c_quid, const void *data,
                   size_t len)
 {
 	/* SHA-1 must be in writable memory */
 	struct quid quid;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
-	insert_toplevel(btree, &btree->top, &quid, data, len);
+	uint64_t offset = insert_toplevel(btree, &btree->top, &quid, data, len);
 	flush_super(btree);
+	if (error.code == QUID_EXIST || error.code == VAL_EMPTY)
+		return -1;
+
+	lseek64(btree->db_fd, offset, SEEK_SET);
+	struct blob_info info;
+	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
+		return 1;
+	size_t dlen = from_be32(info.len);
+	assert(len == dlen);
+	return 0;
 }
 
 /*
@@ -603,17 +618,18 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 			else
 				left = i + 1;
 		}
-		uint64_t  child = from_be64(table->items[left].child);
+		uint64_t child = from_be64(table->items[left].child);
 		put_table(btree, table, table_offset);
 		table_offset = child;
 	}
+	error.code = QUID_NOTFOUND;
 	return 0;
 }
 
 void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 {
 	uint64_t offset = lookup(btree, btree->top, quid);
-	if (offset == 0)
+	if (error.code == QUID_NOTFOUND)
 		return NULL;
 
 	lseek64(btree->db_fd, offset, SEEK_SET);
@@ -635,7 +651,6 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 
 int btree_delete(struct btree *btree, const struct quid *c_quid)
 {
-	/* SHA-1 must be in writable memory */
 	struct quid quid;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
@@ -649,7 +664,7 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	lseek64(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != sizeof info)
-		return 0;
+		return -1;
 
 	free_chunk(btree, offset, sizeof info + from_be32(info.len));
 	flush_super(btree);
