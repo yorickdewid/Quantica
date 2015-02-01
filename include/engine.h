@@ -27,11 +27,16 @@ struct btree_cache {
 
 struct blob_info {
      __be32 len;
-};
+	uint8_t free;
+} __attribute__((packed));
 
 struct btree_super {
      __be64 top;
      __be64 free_top;
+} __attribute__((packed));
+
+struct btree_dbsuper {
+     char signature[8];
 } __attribute__((packed));
 
 struct btree {
@@ -78,5 +83,10 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
  * Remove item with the given key 'quid' from the database file.
  */
 int btree_delete(struct btree *btree, const struct quid *quid);
+
+/*
+ * Descent into the database index
+ */
+void btree_traversal(struct btree *btree, uint64_t offset);
 
 #endif // ENGINE_H_INCLUDED

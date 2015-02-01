@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "bswap.h"
 #include "track.h"
 #include "quid.h"
@@ -23,10 +24,12 @@ static int in_allocator = 0;
 static int delete_larger = 0;
 static struct chunk free_queue[FREE_QUEUE_LEN];
 static size_t free_queue_len = 0;
-struct etrace error;
+struct etrace error = { .code = NO_ERROR};
 
 static void flush_super(struct btree *btree);
+static void create_dbsuper(struct btree *btree);
 static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
+static void free_dbchunk(struct btree *btree, uint64_t offset);
 static uint64_t remove_table(struct btree *btree, struct btree_table *table,
 							size_t i, struct quid *quid);
 static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
@@ -134,10 +137,11 @@ static int btree_create(struct btree *btree, const char *idxname,
 		return -1;
 
 	flush_super(btree);
+	create_dbsuper(btree);
 
 	btree->alloc = sizeof(struct btree_super);
-	btree->db_alloc =0;
-	//int end=lseek64(btree->fd, 0, SEEK_END);
+	btree->db_alloc = sizeof(struct btree_dbsuper);
+
 	return 0;
 }
 
@@ -254,15 +258,32 @@ static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
 	in_allocator = 0;
 }
 
+static void free_dbchunk(struct btree *btree, uint64_t offset)
+{
+	lseek64(btree->db_fd, offset, SEEK_SET);
+	struct blob_info info;
+	if (read(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
+		fprintf(stderr, "btree: I/O error\n");
+		abort();
+	}
+
+	info.free = 1;
+	lseek64(btree->db_fd, offset, SEEK_SET);//
+	if (write(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
+		fprintf(stderr, "btree: I/O error\n");
+		abort();
+	}
+}
+
 static void flush_super(struct btree *btree)
 {
 	/* free queued chunks */
-	size_t i;
-	for (i = 0; i < free_queue_len; ++i) {
-		struct chunk *chunk = &free_queue[i];
-		free_chunk(btree, chunk->offset, chunk->len);
-	}
-	free_queue_len = 0;
+	//size_t i;
+	//for (i = 0; i < free_queue_len; ++i) {
+	//	struct chunk *chunk = &free_queue[i];
+	//	free_chunk(btree, chunk->offset, chunk->len);
+	//}
+	//free_queue_len = 0;
 
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
@@ -271,6 +292,19 @@ static void flush_super(struct btree *btree)
 
 	lseek64(btree->fd, 0, SEEK_SET);
 	if (write(btree->fd, &super, sizeof super) != sizeof super) {
+		fprintf(stderr, "btree: I/O error\n");
+		abort();
+	}
+}
+
+static void create_dbsuper(struct btree *btree)
+{
+	struct btree_dbsuper dbsuper;
+	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
+	strcpy(dbsuper.signature, IDXVERSION);
+
+	lseek64(btree->db_fd, 0, SEEK_SET);
+	if (write(btree->db_fd, &dbsuper, sizeof(struct btree_dbsuper)) != sizeof(struct btree_dbsuper)) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
 	}
@@ -286,6 +320,7 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 	struct blob_info info;
 	memset(&info, 0, sizeof info);
 	info.len = to_be32(len);
+	info.free = 0;
 
 	uint64_t offset = alloc_dbchunk(btree, sizeof info + len);
 
@@ -330,7 +365,7 @@ static uint64_t collapse(struct btree *btree, uint64_t table_offset)
 	struct btree_table *table = get_table(btree, table_offset);
 	if (table->size == 0) {
 		uint64_t ret = from_be64(table->items[0].child);
-		free_chunk(btree, table_offset, sizeof *table);
+		//free_chunk(btree, table_offset, sizeof *table);
 		put_table(btree, table, table_offset);
 		return ret;
 	}
@@ -374,8 +409,7 @@ static uint64_t take_largest(struct btree *btree, uint64_t table_offset,
 	} else {
 		/* recursion */
 		offset = take_largest(btree, child, quid);
-		table->items[table->size].child =
-		    to_be64(collapse(btree, child));
+		table->items[table->size].child = to_be64(collapse(btree, child));
 	}
 	flush_table(btree, table, table_offset);
 	return offset;
@@ -388,7 +422,7 @@ static uint64_t remove_table(struct btree *btree, struct btree_table *table,
 {
 	assert(i < table->size);
 
-	if (quid) //TODO
+	if (quid)
 		memcpy(quid, &table->items[i].quid, sizeof(struct quid));
 
 	uint64_t offset = from_be64(table->items[i].offset);
@@ -417,10 +451,11 @@ static uint64_t remove_table(struct btree *btree, struct btree_table *table,
 		        (table->size - i) * sizeof(struct btree_item));
 		table->size--;
 
-		if (left_child != 0)
+		if (left_child != 0) {
 			table->items[i].child = to_be64(left_child);
-		else
+		} else {
 			table->items[i].child = to_be64(right_child);
+		}
 	}
 	return offset;
 }
@@ -495,8 +530,10 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
                              struct quid *quid)
 {
-	if (table_offset == 0)
+	if (table_offset == 0) {
+		error.code = DB_EMPTY; //TODO this may not be always the case
 		return 0;
+	}
 	struct btree_table *table = get_table(btree, table_offset);
 
 	size_t left = 0, right = table->size;
@@ -509,10 +546,11 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 			flush_table(btree, table, table_offset);
 			return ret;
 		}
-		if (cmp < 0)
+		if (cmp < 0) {
 			right = i;
-		else
+		} else {
 			left = i + 1;
+		}
 	}
 
 	/* not found - recursion */
@@ -613,10 +651,11 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 				put_table(btree, table, table_offset);
 				return ret;
 			}
-			if (cmp < 0)
+			if (cmp < 0) {
 				right = i;
-			else
+			} else {
 				left = i + 1;
+			}
 		}
 		uint64_t child = from_be64(table->items[left].child);
 		put_table(btree, table, table_offset);
@@ -655,18 +694,41 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
 	uint64_t offset = delete_table(btree, btree->top, &quid);
-	if (offset == 0)
-		return -1;
-
 	btree->top = collapse(btree, btree->top);
-	flush_super(btree);
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
-	struct blob_info info;
-	if (read(btree->db_fd, &info, sizeof info) != sizeof info)
-		return -1;
-
-	free_chunk(btree, offset, sizeof info + from_be32(info.len));
+	//free_chunk(btree, offset, sizeof info + from_be32(info.len));
+	free_dbchunk(btree, offset);
 	flush_super(btree);
 	return 0;
+}
+
+void btree_traversal(struct btree *btree, uint64_t offset)
+{
+	if (offset == 0)
+		return;
+
+	struct btree_table *table = get_table(btree, offset);
+	printf("table offset %ld\n", offset);
+	printf("table items %d\n", table->size);
+	size_t i = table->size;
+	while(i){
+		printf("table item[%ld]\n", --i);
+		uint64_t dboffset = from_be64(table->items[i].offset);
+		uint64_t child = from_be64(table->items[i].child);
+		uint64_t right = from_be64(table->items[i+1].child);
+		printf("table item[%ld] dboffset %ld\n", i, dboffset);
+		printf("table item[%ld] child %ld\n", i, child);
+		printf("table item[%ld] right %ld\n", i+1, right);
+
+		lseek64(btree->db_fd, dboffset, SEEK_SET);
+		struct blob_info info;
+		if (read(btree->db_fd, &info, sizeof info) != sizeof info) {
+			fprintf(stderr, "btree: I/O error\n");
+			abort();
+		}
+		printf("blob %ld - %d free: %d\n", dboffset, from_be32(info.len), info.free);
+
+		btree_traversal(btree, child);
+		btree_traversal(btree, right);
+	}
 }
