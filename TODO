@@ -1,0 +1,6 @@
+## TODO
+
+- Atomic operations (insert, delete)
+- Vacuum on X I/O operations
+- WebAPI
+- Split database intp zones
