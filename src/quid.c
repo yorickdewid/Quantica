@@ -124,3 +124,20 @@ void get_current_time(cuuid_time_t *timestamp) {
 int quidcmp(const struct quid *a, const struct quid *b) {
 	return memcmp(a, b, sizeof(struct quid));
 }
+
+/* Print QUID to string */
+void quidtostr(char *s, struct quid *u)
+{
+	sprintf(s, "{%.8x-%.4x-%.4x%x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
+			, (unsigned int)u->time_low
+			, u->time_mid
+			, u->time_hi_and_version
+			, u->clock_seq_hi_and_reserved
+			, u->clock_seq_low
+			, u->node[0]
+			, u->node[1]
+			, u->node[2]
+			, u->node[3]
+			, u->node[4]
+			, u->node[5]);
+}

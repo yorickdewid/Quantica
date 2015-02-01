@@ -24,5 +24,6 @@ typedef unsigned long long int cuuid_time_t;
  */
 void quid_create(struct quid *);
 int quidcmp(const struct quid *a, const struct quid *b);
+void quidtostr(char *s, struct quid *u);
 
 #endif // QUID_H_INCLUDED
