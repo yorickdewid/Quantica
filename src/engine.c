@@ -13,22 +13,22 @@
 #define IDXEXT	".idx"
 #define LOGEXT	".log"
 
-#define FREE_QUEUE_LEN	64
+//#define FREE_QUEUE_LEN	64
 
 struct chunk {
 	uint64_t offset;
 	uint64_t len;
 };
 
-static int in_allocator = 0;
+//static int in_allocator = 0;
 static int delete_larger = 0;
-static struct chunk free_queue[FREE_QUEUE_LEN];
-static size_t free_queue_len = 0;
+//static struct chunk free_queue[FREE_QUEUE_LEN];
+//static size_t free_queue_len = 0;
 struct etrace error = { .code = NO_ERROR};
 
 static void flush_super(struct btree *btree);
-static void create_dbsuper(struct btree *btree);
-static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
+static void flush_dbsuper(struct btree *btree);
+//static void free_chunk(struct btree *btree, uint64_t offset, size_t len);
 static void free_dbchunk(struct btree *btree, uint64_t offset);
 static uint64_t remove_table(struct btree *btree, struct btree_table *table,
 							size_t i, struct quid *quid);
@@ -120,6 +120,12 @@ static int btree_open(struct btree *btree, const char *idxname,
 		return -1;
 	btree->top = from_be64(super.top);
 	btree->free_top = from_be64(super.free_top);
+	assert(!strcmp(super.signature, IDXVERSION));
+
+	struct btree_dbsuper dbsuper;
+	if (read(btree->db_fd, &dbsuper, sizeof dbsuper) != (ssize_t) sizeof dbsuper)
+		return -1;
+	assert(!strcmp(dbsuper.signature, DBVERSION));
 
 	btree->alloc = lseek64(btree->fd, 0, SEEK_END);
 	btree->db_alloc = lseek64(btree->db_fd, 0, SEEK_END);
@@ -137,7 +143,7 @@ static int btree_create(struct btree *btree, const char *idxname,
 		return -1;
 
 	flush_super(btree);
-	create_dbsuper(btree);
+	flush_dbsuper(btree);
 
 	btree->alloc = sizeof(struct btree_super);
 	btree->db_alloc = sizeof(struct btree_dbsuper);
@@ -219,44 +225,44 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 }
 
 /* Mark a chunk as unused in the database file */
-static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
-{
-	assert(len > 0);
-	assert(offset != 0);
-	len = page_align(len);
-	assert((offset & (len - 1)) == 0);
-
-	if (in_allocator) {
-		/* add to queue to avoid entering the allocator again */
-		if (free_queue_len >= FREE_QUEUE_LEN) {
-			fprintf(stderr, "btree: free queue overflow\n");
-			return;
-		}
-		struct chunk *chunk = &free_queue[free_queue_len++];
-		chunk->offset = offset;
-		chunk->len = len;
-		return;
-	}
-
-	/* create fake offset SHA-1 for buddy allocation */
-	struct quid quid;
-
-	in_allocator = 1;
-
-	/* add buddy information */
-	memset(&quid, 0, sizeof(struct quid));
-	*(__be64 *) &quid = to_be64(offset);
-	insert_toplevel(btree, &btree->free_top, &quid, NULL, len);
-
-	/* add allocation information */
-	memset(&quid, 0, sizeof(struct quid));
-	*(uint32_t *) &quid = -1;
-	((__be32 *) &quid)[1] = to_be32(len);
-	((uint32_t *) &quid)[2] = rand(); /* to make SHA-1 unique */
-	((uint32_t *) &quid)[3] = rand();
-	insert_toplevel(btree, &btree->free_top, &quid, NULL, offset);
-	in_allocator = 0;
-}
+//static void free_chunk(struct btree *btree, uint64_t offset, size_t len)
+//{
+//	assert(len > 0);
+//	assert(offset != 0);
+//	len = page_align(len);
+//	assert((offset & (len - 1)) == 0);
+//
+//	if (in_allocator) {
+//		/* add to queue to avoid entering the allocator again */
+//		if (free_queue_len >= FREE_QUEUE_LEN) {
+//			fprintf(stderr, "btree: free queue overflow\n");
+//			return;
+//		}
+//		struct chunk *chunk = &free_queue[free_queue_len++];
+//		chunk->offset = offset;
+//		chunk->len = len;
+//		return;
+//	}
+//
+//	/* create fake offset SHA-1 for buddy allocation */
+//	struct quid quid;
+//
+//	in_allocator = 1;
+//
+//	/* add buddy information */
+//	memset(&quid, 0, sizeof(struct quid));
+//	*(__be64 *) &quid = to_be64(offset);
+//	insert_toplevel(btree, &btree->free_top, &quid, NULL, len);
+//
+//	/* add allocation information */
+//	memset(&quid, 0, sizeof(struct quid));
+//	*(uint32_t *) &quid = -1;
+//	((__be32 *) &quid)[1] = to_be32(len);
+//	((uint32_t *) &quid)[2] = rand(); /* to make SHA-1 unique */
+//	((uint32_t *) &quid)[3] = rand();
+//	insert_toplevel(btree, &btree->free_top, &quid, NULL, offset);
+//	in_allocator = 0;
+//}
 
 static void free_dbchunk(struct btree *btree, uint64_t offset)
 {
@@ -287,6 +293,7 @@ static void flush_super(struct btree *btree)
 
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
+	strcpy(super.signature, IDXVERSION);
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
 
@@ -297,11 +304,11 @@ static void flush_super(struct btree *btree)
 	}
 }
 
-static void create_dbsuper(struct btree *btree)
+static void flush_dbsuper(struct btree *btree)
 {
 	struct btree_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
-	strcpy(dbsuper.signature, IDXVERSION);
+	strcpy(dbsuper.signature, DBVERSION);
 
 	lseek64(btree->db_fd, 0, SEEK_SET);
 	if (write(btree->db_fd, &dbsuper, sizeof(struct btree_dbsuper)) != sizeof(struct btree_dbsuper)) {
@@ -704,6 +711,7 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 
 void btree_traversal(struct btree *btree, uint64_t offset)
 {
+	char squid[35] = {'\0'};
 	if (offset == 0)
 		return;
 
@@ -713,9 +721,11 @@ void btree_traversal(struct btree *btree, uint64_t offset)
 	size_t i = table->size;
 	while(i){
 		printf("table item[%ld]\n", --i);
+		quidtostr(squid, &table->items[i].quid);
 		uint64_t dboffset = from_be64(table->items[i].offset);
 		uint64_t child = from_be64(table->items[i].child);
 		uint64_t right = from_be64(table->items[i+1].child);
+		printf("table item[%ld] %s\n", i, squid);
 		printf("table item[%ld] dboffset %ld\n", i, dboffset);
 		printf("table item[%ld] child %ld\n", i, child);
 		printf("table item[%ld] right %ld\n", i+1, right);

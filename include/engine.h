@@ -31,6 +31,7 @@ struct blob_info {
 } __attribute__((packed));
 
 struct btree_super {
+	char signature[8];
      __be64 top;
      __be64 free_top;
 } __attribute__((packed));
