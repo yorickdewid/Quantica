@@ -7,6 +7,7 @@
 #include "bswap.h"
 
 #define CACHE_SLOTS	23
+#define DBCACHE_SLOTS	25
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 
 struct btree_item {
@@ -23,6 +24,11 @@ struct btree_table {
 struct btree_cache {
      uint64_t offset;
      struct btree_table *table;
+};
+
+struct btree_dbcache {
+	__be32 len;
+	uint64_t offset;
 };
 
 struct blob_info {
@@ -49,6 +55,7 @@ struct btree {
      int db_fd;
      int wal_fd;
      struct btree_cache cache[CACHE_SLOTS];
+     struct btree_dbcache dbcache[DBCACHE_SLOTS];
 };
 
 /*
@@ -85,9 +92,6 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
  */
 int btree_delete(struct btree *btree, const struct quid *quid);
 
-/*
- * Descent into the database index
- */
-void btree_traversal(struct btree *btree, uint64_t offset);
+void walk_dbstorage(struct btree *btree);
 
 #endif // ENGINE_H_INCLUDED
