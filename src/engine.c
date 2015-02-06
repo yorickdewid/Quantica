@@ -219,20 +219,23 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
 
-	if(btree->dbcache[DBCACHE_SLOTS-1].len) {
-		int i;
-		for(i=0; i<DBCACHE_SLOTS; ++i) {
-			struct btree_dbcache *slot = &btree->dbcache[i];
-			if (len <= slot->len) {
-				int diff = (((double)(len)/(double)slot->len)*100);
-				if (diff >= DBCACHE_DENSITY) {
-					slot->len = 0;
-					return slot->offset;
-				}
+	if(!btree->dbcache[DBCACHE_SLOTS-1].len)
+		goto new_block;
+
+	int i;
+	for(i=0; i<DBCACHE_SLOTS; ++i) {
+		printf("woei\n");
+		struct btree_dbcache *slot = &btree->dbcache[i];
+		if (len <= slot->len) {
+			int diff = (((double)(len)/(double)slot->len)*100);
+			if (diff >= DBCACHE_DENSITY) {
+				slot->len = 0;
+				return slot->offset;
 			}
 		}
 	}
 
+new_block:
 	len = page_align(sizeof(struct blob_info) + len);
 
 	uint64_t offset = btree->db_alloc;
