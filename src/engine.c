@@ -97,11 +97,12 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 }
 
 static int btree_open(struct btree *btree, const char *idxname,
-					const char *dbname)
+					const char *dbname, const char* walname)
 {
 	memset(btree, 0, sizeof *btree);
 	btree->fd = open64(idxname, O_RDWR | O_BINARY);
 	btree->db_fd = open64(dbname, O_RDWR | O_BINARY);
+	btree->wal_fd = open64(walname, O_RDWR | O_BINARY);
 	if (btree->fd < 0)
 		return -1;
 
@@ -148,7 +149,7 @@ void btree_init(struct btree *btree, const char *fname)
 	sprintf(dbname, "%s%s", fname, DBEXT);
 	sprintf(walname, "%s%s", fname, LOGEXT);
 	if(file_exists(idxname)) {
-		btree_open(btree, idxname, dbname);
+		btree_open(btree, idxname, dbname, walname);
 	} else {
 		btree_create(btree, idxname, dbname, walname);
 	}
@@ -156,7 +157,9 @@ void btree_init(struct btree *btree, const char *fname)
 
 void btree_close(struct btree *btree)
 {
+	flush_super(btree);
 	close(btree->fd);
+	close(btree->db_fd);
 	close(btree->wal_fd);
 
 	size_t i;
@@ -216,9 +219,23 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
 
-	len = page_align(len);
+	if(btree->dbcache[DBCACHE_SLOTS-1].len) {
+		int i;
+		for(i=0; i<DBCACHE_SLOTS; ++i) {
+			struct btree_dbcache *slot = &btree->dbcache[i];
+			if (len <= slot->len) {
+				int diff = (((double)(len)/(double)slot->len)*100);
+				if (diff >= DBCACHE_DENSITY) {
+					slot->len = 0;
+					return slot->offset;
+				}
+			}
+		}
+	}
 
-	uint64_t offset= btree->db_alloc;
+	len = page_align(sizeof(struct blob_info) + len);
+
+	uint64_t offset = btree->db_alloc;
 	btree->db_alloc = offset + len;
 	return offset;
 }
@@ -250,8 +267,26 @@ static void free_dbchunk(struct btree *btree, uint64_t offset)
 		abort();
 	}
 
+	int i, j;
 	info.free = 1;
-	lseek64(btree->db_fd, offset, SEEK_SET);//
+	struct btree_dbcache dbinfo;
+	size_t len = from_be32(info.len);
+	dbinfo.offset = offset;
+	for(i=DBCACHE_SLOTS-1; i>=0; --i) {
+		struct btree_dbcache *slot = &btree->dbcache[i];
+		if (len > slot->len) {
+			if (slot->len) {
+				for(j=0; j<i; ++j) {
+					btree->dbcache[j] = btree->dbcache[j+1];
+				}
+			}
+			dbinfo.len = len;
+			btree->dbcache[i] = dbinfo;
+			break;
+		}
+	}
+
+	lseek64(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -298,7 +333,7 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 	info.len = to_be32(len);
 	info.free = 0;
 
-	uint64_t offset = alloc_dbchunk(btree, sizeof info + len);
+	uint64_t offset = alloc_dbchunk(btree, len);
 
 	lseek64(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
@@ -594,17 +629,11 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 	struct quid quid;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
-	uint64_t offset = insert_toplevel(btree, &btree->top, &quid, data, len);
+	insert_toplevel(btree, &btree->top, &quid, data, len);
 	flush_super(btree);
 	if (error.code == QUID_EXIST || error.code == VAL_EMPTY)
 		return -1;
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
-	struct blob_info info;
-	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
-		return 1;
-	size_t dlen = from_be32(info.len);
-	assert(len == dlen);
 	return 0;
 }
 

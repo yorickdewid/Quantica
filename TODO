@@ -1,5 +1,7 @@
 ## TODO
 
+- Test for caches [both]
+- Test for write after delete
 - Atomic operations (insert, delete)
 - Vacuum on X I/O operations
 - WebAPI
