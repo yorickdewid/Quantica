@@ -12,6 +12,12 @@
 #define DBEXT	".db"
 #define IDXEXT	".idx"
 #define LOGEXT	".log"
+#define CDBEXT	"._db"
+#define CIDXEXT	"._idx"
+#define CLOGEXT	"._log"
+#define BDBEXT	".db1"
+#define BIDXEXT	".idx1"
+#define BLOGEXT	".log1"
 
 static int delete_larger = 0;
 static struct etrace error = { .code = NO_ERROR};
@@ -96,6 +102,36 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 	put_table(btree, table, offset);
 }
 
+static void create_backup(const char *fname)
+{
+	char ddbname[1024], didxname[1024], dwalname[1024];
+	char sdbname[1024], sidxname[1024], swalname[1024];
+	sprintf(sidxname, "%s%s", fname, IDXEXT);
+	sprintf(sdbname, "%s%s", fname, DBEXT);
+	sprintf(swalname, "%s%s", fname, LOGEXT);
+	sprintf(didxname, "%s%s", fname, BIDXEXT);
+	sprintf(ddbname, "%s%s", fname, BDBEXT);
+	sprintf(dwalname, "%s%s", fname, BLOGEXT);
+	rename(sidxname, didxname);
+	rename(sdbname, ddbname);
+	rename(swalname, dwalname);
+}
+
+static void restore_tmpdb(const char *fname)
+{
+	char ddbname[1024], didxname[1024], dwalname[1024];
+	char sdbname[1024], sidxname[1024], swalname[1024];
+	sprintf(sidxname, "%s%s", fname, CIDXEXT);
+	sprintf(sdbname, "%s%s", fname, CDBEXT);
+	sprintf(swalname, "%s%s", fname, CLOGEXT);
+	sprintf(didxname, "%s%s", fname, IDXEXT);
+	sprintf(ddbname, "%s%s", fname, DBEXT);
+	sprintf(dwalname, "%s%s", fname, LOGEXT);
+	rename(sidxname, didxname);
+	rename(sdbname, ddbname);
+	rename(swalname, dwalname);
+}
+
 static int btree_open(struct btree *btree, const char *idxname,
 					const char *dbname, const char* walname)
 {
@@ -148,7 +184,9 @@ void btree_init(struct btree *btree, const char *fname)
 	sprintf(idxname, "%s%s", fname, IDXEXT);
 	sprintf(dbname, "%s%s", fname, DBEXT);
 	sprintf(walname, "%s%s", fname, LOGEXT);
-	if(file_exists(idxname)) {
+
+	restore_tmpdb(fname);
+	if(file_exists(idxname) && file_exists(dbname)) {
 		btree_open(btree, idxname, dbname, walname);
 	} else {
 		btree_create(btree, idxname, dbname, walname);
@@ -224,7 +262,6 @@ static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 
 	int i;
 	for(i=0; i<DBCACHE_SLOTS; ++i) {
-		printf("woei\n");
 		struct btree_dbcache *slot = &btree->dbcache[i];
 		if (len <= slot->len) {
 			int diff = (((double)(len)/(double)slot->len)*100);
@@ -720,7 +757,56 @@ void walk_dbstorage(struct btree *btree)
 		if (read(btree->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
 			return;
 
-		printf("offset: %ld len: %d free: %d\n", offset, from_be32(info.len), info.free);
 		offset = offset+page_align(sizeof(struct blob_info)+from_be32(info.len));
 	}
+}
+
+void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t offset)
+{
+	int i;
+	struct btree_table *table = get_table(btree, offset);
+	size_t sz = table->size;
+	for(i=0; i<(int)sz; ++i) {
+		uint64_t child = from_be64(table->items[i].child);
+		uint64_t right = from_be64(table->items[i+1].child);
+		uint64_t dboffset = from_be64(table->items[i].offset);
+
+		lseek64(btree->db_fd, dboffset, SEEK_SET);
+		struct blob_info info;
+		if (read(btree->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
+			abort();
+		size_t len = from_be32(info.len);
+		void *data = malloc(len);
+		if (data == NULL)
+			abort();
+		if (read(btree->db_fd, data, len) != (ssize_t) len) {
+			free(data);
+			data = NULL;
+		}
+		insert_toplevel(cbtree, &cbtree->top, &table->items[i].quid, data, len);
+		free(data);
+
+		if (child) tree_traversal(btree, cbtree, child);
+		if (right) tree_traversal(btree, cbtree, right);
+	}
+}
+
+int btree_vacuum(struct btree *btree, const char *fname)
+{
+	struct btree cbtree;
+	struct btree tmp;
+	char dbname[1024], idxname[1024], walname[1024];
+	sprintf(idxname, "%s%s", fname, CIDXEXT);
+	sprintf(dbname, "%s%s", fname, CDBEXT);
+	sprintf(walname, "%s%s", fname, CLOGEXT);
+	btree_create(&cbtree, idxname, dbname, walname);
+	tree_traversal(btree, &cbtree, btree->top);
+
+	memcpy(&tmp, btree, sizeof(struct btree));
+	memcpy(btree, &cbtree, sizeof(struct btree));
+	btree_close(&tmp);
+
+	create_backup(fname);
+
+	return 0;
 }

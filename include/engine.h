@@ -94,5 +94,6 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
 int btree_delete(struct btree *btree, const struct quid *quid);
 
 void walk_dbstorage(struct btree *btree);
+int btree_vacuum(struct btree *btree, const char *fname);
 
 #endif // ENGINE_H_INCLUDED
