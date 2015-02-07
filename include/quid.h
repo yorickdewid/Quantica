@@ -23,7 +23,15 @@ typedef unsigned long long int cuuid_time_t;
  * Create new QUID
  */
 void quid_create(struct quid *);
+
+/*
+ * Compare to QUID keys
+ */
 int quidcmp(const struct quid *a, const struct quid *b);
+
+/*
+ * Convert QUID key to string
+ */
 void quidtostr(char *s, struct quid *u);
 
 #endif // QUID_H_INCLUDED
