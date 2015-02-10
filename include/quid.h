@@ -34,4 +34,9 @@ int quidcmp(const struct quid *a, const struct quid *b);
  */
 void quidtostr(char *s, struct quid *u);
 
+/*
+ * Convert string to QUID key
+ */
+void strtoquid(const char s[35], struct quid *u);
+
 #endif // QUID_H_INCLUDED
