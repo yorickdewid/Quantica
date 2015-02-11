@@ -9,9 +9,11 @@
 #define ARR_SIZE 1<<16
 
 void usage() {
-	puts("help\t\tthis help menu");
-	puts("license\t\tshow software license");
-	puts("exit\t\texit shell");
+	puts("help\t\t\tthis help menu");
+	puts("license\t\t\tshow software license");
+	puts("store <data>\t\tstore data in the database");
+	puts("request <quid>\t\tretrieve data by key");
+	puts("exit\t\t\texit shell");
 }
 
 void parse_args(char *buffer, char** args,
