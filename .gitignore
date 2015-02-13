@@ -1,4 +1,3 @@
-/NOTES
 # Object files
 *.o
 *.ko
@@ -31,7 +30,6 @@
 
 # Directories
 bin/
-obj/
 
 # Project specific
 *.cbp
