@@ -30,9 +30,8 @@ clean:
 	@rm -rf $(TESTDIR)/*.o
 
 cleandb:
-	@rm -rf $(BINDIR)/*.db
-	@rm -rf $(BINDIR)/*.idx
-	@rm -rf $(BINDIR)/*.log
+	@rm -rf $(BINDIR)/*.db* $(BINDIR)/*.idx* $(BINDIR)/*.log*
+	@rm -rf $(BINDIR)/*._db $(BINDIR)/*._idx $(BINDIR)/*._log
 
 cleandebug: clean
 	@rm -rf $(BINDIR)/$(EXECUTABLE)

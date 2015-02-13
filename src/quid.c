@@ -69,7 +69,7 @@ void quid_create(struct quid *uid) {
  * Format QUID from the timestamp, clocksequence, and node ID
  * Structure succeeds version 3
  */
-void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t timestamp){
+static void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t timestamp){
 	int i;
 
 	uid->time_low = (unsigned long)(timestamp & 0xffffffff);
@@ -90,7 +90,7 @@ void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t timest
 }
 
 /* Get current time including cpu clock */
-void get_current_time(cuuid_time_t *timestamp) {
+static void get_current_time(cuuid_time_t *timestamp) {
 	static int inited = 0;
 	static cuuid_time_t time_last;
 	static unsigned short ids_this_tick;

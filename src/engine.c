@@ -665,6 +665,8 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
                   size_t len)
 {
 	error.code = NO_ERROR;
+	if (btree->lock == LOCK)
+		return -1;
 	/* SHA-1 must be in writable memory */
 	struct quid quid;
 	memcpy(&quid, c_quid, sizeof(struct quid));
@@ -713,6 +715,8 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 {
 	error.code = NO_ERROR;
+	if (btree->lock == LOCK)
+		return NULL;
 	uint64_t offset = lookup(btree, btree->top, quid);
 	if (error.code == QUID_NOTFOUND)
 		return NULL;
@@ -737,6 +741,8 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 int btree_delete(struct btree *btree, const struct quid *c_quid)
 {
 	struct quid quid;
+	if (btree->lock == LOCK)
+		return -1;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
 	uint64_t offset = delete_table(btree, btree->top, &quid);
@@ -761,7 +767,7 @@ void walk_dbstorage(struct btree *btree)
 	}
 }
 
-void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t offset)
+static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t offset)
 {
 	int i;
 	struct btree_table *table = get_table(btree, offset);
@@ -795,6 +801,9 @@ int btree_vacuum(struct btree *btree, const char *fname)
 {
 	struct btree cbtree;
 	struct btree tmp;
+	if (btree->lock == LOCK)
+		return -1;
+	btree->lock = LOCK;
 	char dbname[1024], idxname[1024], walname[1024];
 	sprintf(idxname, "%s%s", fname, CIDXEXT);
 	sprintf(dbname, "%s%s", fname, CDBEXT);

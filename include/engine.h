@@ -11,6 +11,9 @@
 #define DBCACHE_DENSITY	75
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 
+#define NOLOCK 0x0
+#define LOCK 0x2
+
 struct btree_item {
      struct quid quid;
      __be64 offset;
@@ -55,6 +58,7 @@ struct btree {
      int fd;
      int db_fd;
      int wal_fd;
+     uint8_t lock;
      struct btree_cache cache[CACHE_SLOTS];
      struct btree_dbcache dbcache[DBCACHE_SLOTS];
 };
