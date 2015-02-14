@@ -40,17 +40,17 @@ inline uint16_t htons(uint16_t x)
 #endif
 }
 
-inline __be32 to_be32(uint32_t x)
+__be32 to_be32(uint32_t x)
 {
 	return (FORCE __be32) htonl(x);
 }
 
-inline __be16 to_be16(uint16_t x)
+__be16 to_be16(uint16_t x)
 {
 	return (FORCE __be16) htons(x);
 }
 
-inline __be64 to_be64(uint64_t x)
+__be64 to_be64(uint64_t x)
 {
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 	return (FORCE __be64) (((uint64_t) htonl((uint32_t) x) << 32) |
@@ -60,17 +60,17 @@ inline __be64 to_be64(uint64_t x)
 #endif
 }
 
-inline uint32_t from_be32(__be32 x)
+uint32_t from_be32(__be32 x)
 {
 	return ntohl((FORCE uint32_t) x);
 }
 
-inline uint16_t from_be16(__be16 x)
+uint16_t from_be16(__be16 x)
 {
 	return ntohs((FORCE uint16_t) x);
 }
 
-inline uint64_t from_be64(__be64 x)
+uint64_t from_be64(__be64 x)
 {
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 	return ((uint64_t) ntohl((uint32_t) (FORCE uint64_t) x) << 32) |

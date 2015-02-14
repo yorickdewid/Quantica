@@ -23,12 +23,12 @@ typedef uint64_t BITWISE __be64; /* big endian, 64 bits */
 
 uint16_t htons(uint16_t x);
 
-inline __be32 to_be32(uint32_t x);
-inline __be16 to_be16(uint16_t x);
-inline __be64 to_be64(uint64_t x);
+__be32 to_be32(uint32_t x);
+__be16 to_be16(uint16_t x);
+__be64 to_be64(uint64_t x);
 
-inline uint32_t from_be32(__be32 x);
-inline uint16_t from_be16(__be16 x);
-inline uint64_t from_be64(__be64 x);
+uint32_t from_be32(__be32 x);
+uint16_t from_be16(__be16 x);
+uint64_t from_be64(__be64 x);
 
 #endif // BSWAP_H_INCLUDED
