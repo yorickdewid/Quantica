@@ -2,7 +2,7 @@ INCLUDE=include
 SRCDIR=src
 TESTDIR=test
 BINDIR=bin
-CFLAGS=-c -g -Wall -Wextra -D_LARGEFILE64_SOURCE -DDEBUG
+CFLAGS=-c -g -Wall -Wextra -DDEBUG
 LDFLAGS=-lrt
 SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/quid.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(TESTDIR)/test-benchmark.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o
@@ -36,5 +36,5 @@ cleandb:
 cleandebug: clean
 	@rm -rf $(BINDIR)/$(EXECUTABLE)
 
-cleantest: clean cleandb
+cleantest: clean
 	@rm -rf $(BINDIR)/$(EXECUTABLETEST)

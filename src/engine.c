@@ -39,7 +39,7 @@ static uint64_t collapse(struct btree *btree, uint64_t table_offset);
 
 static int file_exists(const char *path)
 {
-	int fd = open64(path, O_RDWR);
+	int fd = open(path, O_RDWR);
 	if(fd>-1) {
 		close(fd);
 		return 1;
@@ -65,7 +65,7 @@ static struct btree_table *get_table(struct btree *btree, uint64_t offset) {
 
 	struct btree_table *table = malloc(sizeof *table);
 
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek(btree->fd, offset, SEEK_SET);
 	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -94,7 +94,7 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 {
 	assert(offset != 0);
 
-	lseek64(btree->fd, offset, SEEK_SET);
+	lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
 		fprintf(stderr, "btree: I/O error offset:%ld\n", offset);
 		abort();
@@ -136,9 +136,9 @@ static int btree_open(struct btree *btree, const char *idxname,
 					const char *dbname, const char* walname)
 {
 	memset(btree, 0, sizeof *btree);
-	btree->fd = open64(idxname, O_RDWR | O_BINARY);
-	btree->db_fd = open64(dbname, O_RDWR | O_BINARY);
-	btree->wal_fd = open64(walname, O_RDWR | O_BINARY);
+	btree->fd = open(idxname, O_RDWR | O_BINARY);
+	btree->db_fd = open(dbname, O_RDWR | O_BINARY);
+	btree->wal_fd = open(walname, O_RDWR | O_BINARY);
 	if (btree->fd < 0)
 		return -1;
 
@@ -154,8 +154,8 @@ static int btree_open(struct btree *btree, const char *idxname,
 		return -1;
 	assert(!strcmp(dbsuper.signature, DBVERSION));
 
-	btree->alloc = lseek64(btree->fd, 0, SEEK_END);
-	btree->db_alloc = lseek64(btree->db_fd, 0, SEEK_END);
+	btree->alloc = lseek(btree->fd, 0, SEEK_END);
+	btree->db_alloc = lseek(btree->db_fd, 0, SEEK_END);
 	return 0;
 }
 
@@ -163,9 +163,9 @@ static int btree_create(struct btree *btree, const char *idxname,
 						const char* dbname, const char* walname)
 {
 	memset(btree, 0, sizeof *btree);
-	btree->fd = open64(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	btree->db_fd = open64(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	btree->wal_fd = open64(walname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->fd = open(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->db_fd = open(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	btree->wal_fd = open(walname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	if (btree->fd < 0)
 		return -1;
 
@@ -300,7 +300,7 @@ static void free_chunk(struct btree *btree, uint64_t offset)
 
 static void free_dbchunk(struct btree *btree, uint64_t offset)
 {
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		fprintf(stderr, "btree: I/O error\n");
@@ -326,7 +326,7 @@ static void free_dbchunk(struct btree *btree, uint64_t offset)
 		}
 	}
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -341,7 +341,7 @@ static void flush_super(struct btree *btree)
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
 
-	lseek64(btree->fd, 0, SEEK_SET);
+	lseek(btree->fd, 0, SEEK_SET);
 	if (write(btree->fd, &super, sizeof super) != sizeof super) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -354,7 +354,7 @@ static void flush_dbsuper(struct btree *btree)
 	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
 	strcpy(dbsuper.signature, DBVERSION);
 
-	lseek64(btree->db_fd, 0, SEEK_SET);
+	lseek(btree->db_fd, 0, SEEK_SET);
 	if (write(btree->db_fd, &dbsuper, sizeof(struct btree_dbsuper)) != sizeof(struct btree_dbsuper)) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -375,7 +375,7 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 
 	uint64_t offset = alloc_dbchunk(btree, len);
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	if (write(btree->db_fd, &info, sizeof info) != sizeof info) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
@@ -721,7 +721,7 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 	if (error.code == QUID_NOTFOUND)
 		return NULL;
 
-	lseek64(btree->db_fd, offset, SEEK_SET);
+	lseek(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof info) != (ssize_t) sizeof info)
 		return NULL;
@@ -759,7 +759,7 @@ void walk_dbstorage(struct btree *btree)
 	struct blob_info info;
 
 	while(1){
-		lseek64(btree->db_fd, offset, SEEK_SET);
+		lseek(btree->db_fd, offset, SEEK_SET);
 		if (read(btree->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
 			return;
 
@@ -777,7 +777,7 @@ static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t o
 		uint64_t right = from_be64(table->items[i+1].child);
 		uint64_t dboffset = from_be64(table->items[i].offset);
 
-		lseek64(btree->db_fd, dboffset, SEEK_SET);
+		lseek(btree->db_fd, dboffset, SEEK_SET);
 		struct blob_info info;
 		if (read(btree->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
 			abort();

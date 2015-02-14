@@ -9,7 +9,7 @@
 
 #define NUM			200000
 #define R_NUM		(NUM/200)
-#define DBNAME		"_test_benchmark"
+#define DBNAME		"test_benchmark"
 #define KEYSIZE		16
 #define VALSIZE		100
 

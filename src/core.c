@@ -35,7 +35,7 @@ void *request(char *quid, size_t *len) {
 
 void detach_core() {
 	if (!ready)
-		return -1;
+		return;
 	btree_close(&btx);
 	ready = 0;
 }
