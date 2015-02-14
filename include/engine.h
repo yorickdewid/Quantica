@@ -14,8 +14,19 @@
 #define NOLOCK 0x0
 #define LOCK 0x2
 
+struct microdata {
+	uint16_t lifecycle	: 5;
+	uint16_t importance	: 4;
+	uint16_t syslock	: 1;
+	uint16_t mgtlock	: 1;
+	uint16_t freeze		: 1;
+	uint16_t error		: 1;
+	uint16_t flag		: 3;
+};
+
 struct btree_item {
      struct quid quid;
+     struct microdata meta;
      __be64 offset;
      __be64 child;
 } __attribute__((packed));

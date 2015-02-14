@@ -70,8 +70,6 @@ void quid_create(struct quid *uid) {
  * Structure succeeds version 3
  */
 static void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t timestamp){
-	int i;
-
 	uid->time_low = (unsigned long)(timestamp & 0xffffffff);
 	uid->time_mid = (unsigned short)((timestamp >> 32) & 0xffff);
 
@@ -83,6 +81,7 @@ static void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t
 	uid->clock_seq_hi_and_reserved = (clock_seq & 0x3f00) >> 8;
 	uid->clock_seq_hi_and_reserved |= 0x80;
 
+	int i;
 	for(i=0; i<4; ++i)
 		uid->node[i] = true_random();
 	uid->node[4] = (true_random() & 0xf0);

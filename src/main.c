@@ -81,8 +81,12 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			char squid[35] = {'\0'};
-			store(squid, args[1], strlen(args[1]));
-			puts(squid);
+			int rtn = store(squid, args[1], strlen(args[1]));
+			if (rtn<0) {
+				puts("Error: store failed");
+			} else {
+				puts(squid);
+			}
 		} else if (!strcmp(args[0], "request")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);
