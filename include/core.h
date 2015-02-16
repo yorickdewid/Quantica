@@ -8,6 +8,8 @@ struct stats {
 void start_core();
 int store(char *quid, const void *data, size_t len);
 void *request(char *quid, size_t *len);
+int test(char *param[]);
+int delete(char *quid);
 void detach_core();
 
 #endif // CORE_H_INCLUDED

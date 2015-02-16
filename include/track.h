@@ -10,6 +10,8 @@
 #define DB_EMPTY 0x8
 #define FILE_IDXIO 0xa
 #define FILE_DBIO 0xb
+#define QUID_INVALID 0xc
+#define QUID_LOCKED 0xd
 
 /*
  * Trace error through global structure

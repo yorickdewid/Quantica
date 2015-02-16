@@ -73,8 +73,7 @@ int main(int argc, char *argv[]) {
 			}
 		} else if (!strcmp(args[0], "test")) {
 			printf("Command '%s' args %ld\n", args[0], nargs);
-			while(nargs--)
-				puts(args[nargs]);
+			test(args);
 		} else if (!strcmp(args[0], "store")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);
@@ -100,6 +99,15 @@ int main(int argc, char *argv[]) {
 				data[len] = '\0';
 				puts(data);
 				free(data);
+			}
+		} else if (!strcmp(args[0], "delete")) {
+			if (nargs<2) {
+				printf("To few parameters for '%s'\n", args[0]);
+				continue;
+			}
+			int rtn = delete(args[1]);
+			if (rtn<0) {
+				puts("Error: delete failed");
 			}
         } else printf("Unknown command '%s'\n", args[0]);
     }

@@ -593,6 +593,10 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 		int cmp = quidcmp(quid, &table->items[i].quid);
 		if (cmp == 0) {
 			/* found */
+			if (table->items[i].meta.syslock) {
+				error.code = QUID_LOCKED;
+				return 0;
+			}
 			uint64_t ret = remove_table(btree, table, i, quid);
 			flush_table(btree, table, table_offset);
 			return ret;
@@ -676,7 +680,7 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 
 	insert_toplevel(btree, &btree->top, &quid, data, len);
 	flush_super(btree);
-	if (error.code == QUID_EXIST || error.code == VAL_EMPTY)
+	if (error.code != NO_ERROR)
 		return -1;
 
 	return 0;
@@ -697,6 +701,10 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				/* found */
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+					error.code = QUID_INVALID;
+					return 0;
+				}
 				uint64_t ret = from_be64(table->items[i].offset);
 				put_table(btree, table, table_offset);
 				return ret;
@@ -721,7 +729,7 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 	if (btree->lock == LOCK)
 		return NULL;
 	uint64_t offset = lookup(btree, btree->top, quid);
-	if (error.code == QUID_NOTFOUND)
+	if (error.code != NO_ERROR)
 		return NULL;
 
 	lseek(btree->db_fd, offset, SEEK_SET);
@@ -744,11 +752,14 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 int btree_delete(struct btree *btree, const struct quid *c_quid)
 {
 	struct quid quid;
+	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
 	uint64_t offset = delete_table(btree, btree->top, &quid);
+	if (error.code != NO_ERROR)
+		return -1;
 	btree->top = collapse(btree, btree->top);
 
 	free_dbchunk(btree, offset);
