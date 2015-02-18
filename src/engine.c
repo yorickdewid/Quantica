@@ -565,6 +565,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 	        (table->size - i) * sizeof(struct btree_item));
 	memcpy(&table->items[i].quid, quid, sizeof(struct quid));
 	table->items[i].offset = to_be64(offset);
+	memset(&table->items[i].meta, 0, sizeof(struct microdata));
 	table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
@@ -764,6 +765,51 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 
 	free_dbchunk(btree, offset);
 	flush_super(btree);
+	return 0;
+}
+
+static int set_meta(struct btree *btree, uint64_t table_offset,
+                       const struct quid *quid, const struct microdata *data)
+{
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		size_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = quidcmp(quid, &table->items[i].quid);
+			if (cmp == 0) {
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+					error.code = QUID_INVALID;
+					return -1;
+				}
+				memcpy(&table->items[i].meta, data, sizeof(struct microdata));
+				flush_table(btree, table, table_offset);
+				return 0;
+			}
+			if (cmp < 0) {
+				right = i;
+			} else {
+				left = i + 1;
+			}
+		}
+		uint64_t child = from_be64(table->items[left].child);
+		put_table(btree, table, table_offset);
+		table_offset = child;
+	}
+	error.code = QUID_NOTFOUND;
+	return -1;
+}
+
+int btree_meta(struct btree *btree, const struct quid *quid,
+			const struct microdata *data)
+{
+	error.code = NO_ERROR;
+	if (btree->lock == LOCK)
+		return -1;
+	set_meta(btree, btree->top, quid, data);
+	if (error.code != NO_ERROR)
+		return -1;
+
 	return 0;
 }
 

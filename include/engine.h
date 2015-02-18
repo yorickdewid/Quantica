@@ -140,6 +140,9 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
  */
 int btree_delete(struct btree *btree, const struct quid *quid);
 
+int btree_meta(struct btree *btree, const struct quid *quid,
+			const struct microdata *data);
+
 void walk_dbstorage(struct btree *btree);
 int btree_vacuum(struct btree *btree, const char *fname);
 
