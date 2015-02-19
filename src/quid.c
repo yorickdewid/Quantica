@@ -127,7 +127,7 @@ int quidcmp(const struct quid *a, const struct quid *b) {
 /* Print QUID to string */
 void quidtostr(char *s, struct quid *u)
 {
-	sprintf(s, "{%.8x-%.4x-%.4x%x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
+	sprintf(s, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
 			, (unsigned int)u->time_low
 			, u->time_mid
 			, u->time_hi_and_version
@@ -141,9 +141,9 @@ void quidtostr(char *s, struct quid *u)
 			, u->node[5]);
 }
 
-void strtoquid(const char s[35], struct quid *u)
+void strtoquid(const char *s, struct quid *u)
 {
-	sscanf(s, "{%8lx-%4hx-%4hx%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
+	sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
 			, &u->time_low
 			, &u->time_mid
 			, &u->time_hi_and_version
