@@ -12,4 +12,4 @@ There is no genetic data architecture, structure or storage convention but rathe
 
 ## License
 
-MIT &copy; 2015 Quantica
+BSD &copy; 2015 Quantica
