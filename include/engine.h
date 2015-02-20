@@ -87,11 +87,18 @@ struct btree_super {
 	char signature[8];
      __be64 top;
      __be64 free_top;
+     __be64 nkey;
+     __be64 nfree_table;
 } __attribute__((packed));
 
 struct btree_dbsuper {
      char signature[8];
 } __attribute__((packed));
+
+struct btree_stats {
+     uint64_t keys;
+     uint64_t free_tables;
+};
 
 struct btree {
      uint64_t top;
@@ -102,6 +109,7 @@ struct btree {
      int db_fd;
      int wal_fd;
      uint8_t lock;
+     struct btree_stats stats;
      struct btree_cache cache[CACHE_SLOTS];
      struct btree_dbcache dbcache[DBCACHE_SLOTS];
 };

@@ -147,6 +147,8 @@ static int btree_open(struct btree *btree, const char *idxname,
 		return -1;
 	btree->top = from_be64(super.top);
 	btree->free_top = from_be64(super.free_top);
+	btree->stats.keys = from_be64(super.nkey);
+	btree->stats.free_tables = from_be64(super.nfree_table);
 	assert(!strcmp(super.signature, IDXVERSION));
 
 	struct btree_dbsuper dbsuper;
@@ -237,6 +239,7 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 		uint64_t offset = btree->free_top;
 		struct btree_table *table = get_table(btree, offset);
 		btree->free_top = from_be64(table->items[0].child);
+		btree->stats.free_tables--;
 
 		return offset;
 	}
@@ -252,7 +255,7 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 	return offset;
 }
 
-/*Allocate a chunk from the database file*/
+/* Allocate a chunk from the database file */
 static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
 {
 	assert(len > 0);
@@ -296,6 +299,7 @@ static void free_chunk(struct btree *btree, uint64_t offset)
 
 	flush_table(btree, table, offset);
 	btree->free_top = offset;
+	btree->stats.free_tables++;
 }
 
 static void free_dbchunk(struct btree *btree, uint64_t offset)
@@ -340,6 +344,8 @@ static void flush_super(struct btree *btree)
 	strcpy(super.signature, IDXVERSION);
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
+	super.nkey = to_be64(btree->stats.keys);
+	super.nfree_table = to_be64(btree->stats.free_tables);
 
 	lseek(btree->fd, 0, SEEK_SET);
 	if (write(btree->fd, &super, sizeof super) != sizeof super) {
@@ -683,6 +689,7 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 	flush_super(btree);
 	if (error.code != NO_ERROR)
 		return -1;
+	btree->stats.keys++;
 
 	return 0;
 }
@@ -762,6 +769,7 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	if (error.code != NO_ERROR)
 		return -1;
 	btree->top = collapse(btree, btree->top);
+	btree->stats.keys--;
 
 	free_dbchunk(btree, offset);
 	flush_super(btree);

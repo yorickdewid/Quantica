@@ -120,6 +120,8 @@ int main(int argc, char *argv[]) {
 			if (rtn<0) {
 				puts("Error: delete failed");
 			}
+		} else if (!strcmp(args[0], "stats")) {
+			debugstats();
 		} else if (!strcmp(args[0], "update")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);

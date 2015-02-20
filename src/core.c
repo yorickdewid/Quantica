@@ -33,6 +33,7 @@ int test(char *param[]) {
 	return 0;
 }
 
+#ifdef DEBUG
 int debugkey(char *quid) {
 	if (!ready)
 		return -1;
@@ -50,6 +51,15 @@ int debugkey(char *quid) {
 	printf("flag %d\n", md.flag);
 	return 0;
 }
+
+void debugstats() {
+	printf("cardinality\t\t%ld\n", btx.stats.keys);
+	printf("cardinality free\t%ld\n", btx.stats.free_tables);
+	printf("tablecache\t\t%d\n", CACHE_SLOTS);
+	printf("datacache\t\t%d\n", DBCACHE_SLOTS);
+	printf("datacache density\t%d%%\n", DBCACHE_DENSITY);
+}
+#endif
 
 void *request(char *quid, size_t *len) {
 	if (!ready)
