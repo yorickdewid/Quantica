@@ -24,7 +24,7 @@ enum key_lifecycle {
 };
 
 enum key_importance {
-	MD_IMPORTANT_CRITICAL = 0,
+	MD_IMPORTANT_CRITICAL,
 	MD_IMPORTANT_LEVEL1,
 	MD_IMPORTANT_LEVEL2,
 	MD_IMPORTANT_LEVEL3,
@@ -50,7 +50,7 @@ struct microdata {
 	uint16_t lifecycle	: 5;
 	uint16_t importance	: 4;
 	uint16_t syslock	: 1;
-	uint16_t mgtlock	: 1;
+	uint16_t exec		: 1;
 	uint16_t freeze		: 1;
 	uint16_t error		: 1;
 	uint16_t flag		: 3;
@@ -139,6 +139,9 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
  * Remove item with the given key 'quid' from the database file.
  */
 int btree_delete(struct btree *btree, const struct quid *quid);
+
+int btree_get_meta(struct btree *btree, const struct quid *quid,
+				struct microdata *md);
 
 int btree_meta(struct btree *btree, const struct quid *quid,
 			const struct microdata *data);

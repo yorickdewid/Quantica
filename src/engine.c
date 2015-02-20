@@ -594,7 +594,7 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 		int cmp = quidcmp(quid, &table->items[i].quid);
 		if (cmp == 0) {
 			/* found */
-			if (table->items[i].meta.syslock) {
+			if (table->items[i].meta.syslock || table->items[i].meta.freeze) {
 				error.code = QUID_LOCKED;
 				return 0;
 			}
@@ -768,8 +768,51 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	return 0;
 }
 
+static struct microdata *get_meta(struct btree *btree, uint64_t table_offset,
+                       const struct quid *quid)
+{
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		size_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = quidcmp(quid, &table->items[i].quid);
+			if (cmp == 0) {
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+					error.code = QUID_INVALID;
+					return 0;
+				}
+				return &table->items[i].meta;
+			}
+			if (cmp < 0) {
+				right = i;
+			} else {
+				left = i + 1;
+			}
+		}
+		uint64_t child = from_be64(table->items[left].child);
+		put_table(btree, table, table_offset);
+		table_offset = child;
+	}
+	error.code = QUID_NOTFOUND;
+	return 0;
+}
+
+int btree_get_meta(struct btree *btree, const struct quid *quid,
+				struct microdata *md)
+{
+	error.code = NO_ERROR;
+	if (btree->lock == LOCK)
+		return -1;
+	struct microdata *umd = get_meta(btree, btree->top, quid);
+	if (error.code != NO_ERROR)
+		return -1;
+	memcpy(md, umd, sizeof(struct microdata));
+	return 0;
+}
+
 static int set_meta(struct btree *btree, uint64_t table_offset,
-                       const struct quid *quid, const struct microdata *data)
+                       const struct quid *quid, const struct microdata *md)
 {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
@@ -782,7 +825,11 @@ static int set_meta(struct btree *btree, uint64_t table_offset,
 					error.code = QUID_INVALID;
 					return -1;
 				}
-				memcpy(&table->items[i].meta, data, sizeof(struct microdata));
+				if (table->items[i].meta.syslock) {
+					error.code = QUID_LOCKED;
+					return -1;
+				}
+				memcpy(&table->items[i].meta, md, sizeof(struct microdata));
 				flush_table(btree, table, table_offset);
 				return 0;
 			}

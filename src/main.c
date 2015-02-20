@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "core.h"
+#include "engine.h"
 
 #define BUFFER_SIZE 1<<16
 #define ARR_SIZE 1<<16
@@ -74,12 +75,22 @@ int main(int argc, char *argv[]) {
 		} else if (!strcmp(args[0], "test")) {
 			printf("Command '%s' args %ld\n", args[0], nargs);
 			test(args);
+
+		} else if (!strcmp(args[0], "meta")) {
+			if (nargs<2) {
+				printf("To few parameters for '%s'\n", args[0]);
+				continue;
+			}
+			int rtn = debugkey(args[1]);
+			if (rtn<0) {
+				puts("No QUID/data found");
+			}
 		} else if (!strcmp(args[0], "store")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);
 				continue;
 			}
-			char squid[35] = {'\0'};
+			char squid[39] = {'\0'};
 			int rtn = store(squid, args[1], strlen(args[1]));
 			if (rtn<0) {
 				puts("Error: store failed");
@@ -108,6 +119,38 @@ int main(int argc, char *argv[]) {
 			int rtn = delete(args[1]);
 			if (rtn<0) {
 				puts("Error: delete failed");
+			}
+		} else if (!strcmp(args[0], "update")) {
+			if (nargs<2) {
+				printf("To few parameters for '%s'\n", args[0]);
+				continue;
+			}
+			int i;
+			struct microdata md;
+			printf("lifecycle (0-31):");
+			scanf ("%d", &i);
+			md.lifecycle = i;
+			printf("importance (0-10):");
+			scanf ("%d", &i);
+			md.importance = i;
+			printf("syslock (0-1):");
+			scanf ("%d", &i);
+			md.syslock = i;
+			printf("exec (0-1):");
+			scanf ("%d", &i);
+			md.exec = i;
+			printf("freeze (0-1):");
+			scanf ("%d", &i);
+			md.freeze = i;
+			printf("error (0-1):");
+			scanf ("%d", &i);
+			md.error = i;
+			printf("flag (0-7):");
+			scanf ("%d", &i);
+			md.flag = i;
+			int rtn = update(args[1], &md);
+			if (rtn<0) {
+				puts("Error: update failed");
 			}
         } else printf("Unknown command '%s'\n", args[0]);
     }
