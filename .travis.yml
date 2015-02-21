@@ -2,15 +2,9 @@ language: c
 compiler:
   - clang
   - gcc
-
-branches:
-  only:
-    - master
-
 before_script:
   - sudo apt-get update -q
   - mkdir bin
-
 script:
   - make test
   - ./bin/quantica_test
