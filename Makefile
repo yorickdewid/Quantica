@@ -13,12 +13,12 @@ EXECUTABLETEST=quantica_test
 debug: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $(BINDIR)/$@
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 
 test: $(EXECUTABLETEST)
 
 $(EXECUTABLETEST): $(TESTOBJECTS)
-	$(CC) $(LDFLAGS) $(TESTOBJECTS) -o $(BINDIR)/$@
+	$(CC) $(TESTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 
 .c.o:
 	$(CC) -I$(INCLUDE) $(CFLAGS) $< -o $@
