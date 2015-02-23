@@ -2,6 +2,7 @@
 #define TEST_H_INCLUDED
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "config.h"
 
@@ -74,6 +75,9 @@
 
 #define CALL_BENCHMARK(name)                                                  \
   run_benchmark_##name();                                                     \
+
+#define CALL_TEST(name)                                                       \
+  run_test_##name();                                                          \
 
 /* Reserved test exit codes. */
 enum test_status {
