@@ -1,0 +1,22 @@
+#include <time.h>
+
+#include "test.h"
+#include "test-list.h"
+
+void print_environment() {
+	LOG("Start testcases\n");
+        LOGF("Quantica: idx version %s\n", IDXVERSION);
+        LOGF("Quantica: db version %s\n", DBVERSION);
+        time_t now = time(NULL);
+        LOGF("Date:\t\t%s", (char*)ctime(&now));
+}
+
+int main(int argc, char *argv[], char *envp[]) {
+	print_environment();
+
+	CALL_TEST(quid);
+	LOG("All tests passed\n");
+	CALL_BENCHMARK(performance);
+
+	return 0;
+}

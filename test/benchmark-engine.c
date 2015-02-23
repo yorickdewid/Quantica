@@ -7,9 +7,9 @@
 #include "quid.h"
 #include "engine.h"
 
-#define NUM			200000
+#define NUM		200000
 #define R_NUM		(NUM/200)
-#define DBNAME		"test_benchmark"
+#define DBNAME		"bmark_engine"
 #define KEYSIZE		16
 #define VALSIZE		100
 
@@ -39,16 +39,9 @@ void random_value() {
 }
 
 void print_header() {
-	LOGF("Keys:		%d bytes each\n", KEYSIZE);
-	LOGF("Values:		%d bytes each\n", VALSIZE);
-	LOGF("Entries:	%d\n", NUM);
-}
-
-void print_environment() {
-	LOGF("Quantica:	idx version %s\n", IDXVERSION);
-	LOGF("Quantica:	db version %s\n", DBVERSION);
-	time_t now = time(NULL);
-	LOGF("Date:		%s", (char*)ctime(&now));
+	LOGF("Keys:\t\t%d bytes each\n", KEYSIZE);
+	LOGF("Values:\t\t%d bytes each\n", VALSIZE);
+	LOGF("Entries:\t%d\n", NUM);
 }
 
 void db_write_test() {
@@ -236,9 +229,8 @@ void db_read_test() {
 }
 
 BENCHMARK_IMPL(performance) {
-	srand(time(NULL));
 	print_header();
-	print_environment();
+	srand(time(NULL));
 	random_value();
 
 	/* Create new database */

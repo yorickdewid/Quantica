@@ -74,9 +74,13 @@
   int run_helper_##name()
 
 #define CALL_BENCHMARK(name)                                                  \
+  fprintf(stderr, "Call benchmark\n");                                        \
+  fflush(stderr);                                                             \
   run_benchmark_##name();                                                     \
 
 #define CALL_TEST(name)                                                       \
+  fprintf(stderr, "Call test\n");                                             \
+  fflush(stderr);                                                             \
   run_test_##name();                                                          \
 
 /* Reserved test exit codes. */
