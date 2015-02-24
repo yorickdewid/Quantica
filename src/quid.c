@@ -46,10 +46,11 @@ static unsigned short true_random(void) {
 		srand((unsigned int)(((time_now >> 32) ^ time_now) & 0xffffffff));
 	}
 
-	if(rnd_seed_count == rnd_seed)
+	if(rnd_seed_count == rnd_seed) {
 		rnd_seed_count = 0;
-	else
+	} else {
 		rnd_seed_count++;
+	}
 
 	return (rand()+get_tick_count());
 }
