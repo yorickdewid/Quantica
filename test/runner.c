@@ -5,10 +5,10 @@
 
 void print_environment() {
 	LOG("Start testcases\n");
-        LOGF("Quantica: idx version %s\n", IDXVERSION);
-        LOGF("Quantica: db version %s\n", DBVERSION);
-        time_t now = time(NULL);
-        LOGF("Date:\t\t%s", (char*)ctime(&now));
+	LOGF("Quantica: idx version %s\n", IDXVERSION);
+	LOGF("Quantica: db version %s\n", DBVERSION);
+	time_t now = time(NULL);
+	LOGF("Date:\t\t%s", (char*)ctime(&now));
 }
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -16,7 +16,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	CALL_TEST(quid);
 	LOG("All tests passed\n");
-	CALL_BENCHMARK(performance);
+	CALL_BENCHMARK(engine);
+	CALL_BENCHMARK(quid);
+	LOG("Benchmarks finished\n");
 
 	return 0;
 }

@@ -30,7 +30,7 @@ static double get_timer() {
 	return seconds + (double)nseconds / 1.0e9;
 }
 
-void random_value() {
+static void random_value() {
 	char salt[10] = {'1','2','3','4','5','6','7','8','a','b'};
 	int i;
 	for(i=0; i<VALSIZE; ++i) {
@@ -38,13 +38,13 @@ void random_value() {
 	}
 }
 
-void print_header() {
+static void print_header() {
 	LOGF("Keys:\t\t%d bytes each\n", KEYSIZE);
 	LOGF("Values:\t\t%d bytes each\n", VALSIZE);
 	LOGF("Entries:\t%d\n", NUM);
 }
 
-void db_write_test() {
+static void db_write_test() {
 	struct quid key;
 	int v_len = strlen(val);
 	start_timer();
@@ -67,7 +67,7 @@ void db_write_test() {
 	       ,(double)cost);
 }
 
-void db_read_seq_test() {
+static void db_read_seq_test() {
 	struct quid key;
 	int all = 0, i;
 	int start = NUM/2;
@@ -100,7 +100,7 @@ void db_read_seq_test() {
 	       ,cost);
 }
 
-void db_read_random_test() {
+static void db_read_random_test() {
 	struct quid key;
 	int all=0,i;
 	int start=NUM/2;
@@ -133,7 +133,7 @@ void db_read_random_test() {
 	       ,cost);
 }
 
-void db_read_bounds_test() {
+static void db_read_bounds_test() {
 	struct quid key;
 	int all=0,i;
 	int end=NUM/2000;
@@ -165,7 +165,7 @@ void db_read_bounds_test() {
 	       ,cost);
 }
 
-void db_delete_random_test() {
+static void db_delete_random_test() {
 	struct quid key;
 	int all=0,i;
 	int start=NUM/2;
@@ -201,7 +201,7 @@ void db_delete_random_test() {
 	       ,cost);
 }
 
-void db_read_test() {
+static void db_read_test() {
 	struct quid key;
 	start_timer();
 	int all=0,i;
@@ -228,7 +228,7 @@ void db_read_test() {
 	       ,cost);
 }
 
-BENCHMARK_IMPL(performance) {
+BENCHMARK_IMPL(engine) {
 	print_header();
 	srand(time(NULL));
 	random_value();

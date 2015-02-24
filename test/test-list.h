@@ -6,7 +6,8 @@
 /*
  * List of testunits
  */
-BENCHMARK_IMPL(performance);
 TEST_IMPL(quid);
+BENCHMARK_IMPL(engine);
+BENCHMARK_IMPL(quid);
 
 #endif // TEST-LIST_H_INCLUDED
