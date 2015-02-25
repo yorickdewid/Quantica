@@ -4,7 +4,7 @@ TESTDIR=test
 BINDIR=bin
 CFLAGS=-c -g -Wall -Wextra -DDEBUG
 LDFLAGS=-lrt
-SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/quid.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c $(TESTDIR)/benchmark-quid.c
+SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/quid.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c $(TESTDIR)/benchmark-quid.c $(TESTDIR)/test-engine.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o
 TESTOBJECTS=$(SOURCES:.c=.o) $(TESTDIR)/runner.o
 EXECUTABLE=quantica

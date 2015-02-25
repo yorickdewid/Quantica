@@ -14,6 +14,7 @@ void print_environment() {
 int main(int argc, char *argv[], char *envp[]) {
 	print_environment();
 
+	CALL_TEST(engine);
 	CALL_TEST(quid);
 	LOG("All tests passed\n");
 	CALL_BENCHMARK(engine);

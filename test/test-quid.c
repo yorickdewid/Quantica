@@ -3,7 +3,7 @@
 #include "test.h"
 #include "quid.h"
 
-void quid_compare(){
+static void quid_compare(){
 	struct quid quid1;
 	struct quid quid2;
 	quid_create(&quid1);
@@ -11,7 +11,7 @@ void quid_compare(){
 	ASSERT(!quidcmp(&quid1, &quid2));
 }
 
-void quid_generate(){
+static void quid_generate(){
 	struct quid rquid[5];
 	quid_create(&rquid[0]);
 	quid_create(&rquid[1]);
@@ -29,7 +29,7 @@ void quid_generate(){
 	}
 }
 
-void quid_sformat(){
+static void quid_sformat(){
 	char *pch;
 	int phyp, nhyp = 0;
 	struct quid quid;
@@ -51,7 +51,7 @@ void quid_sformat(){
 	ASSERT(nhyp==4);
 }
 
-void quid_convertoi(){
+static void quid_convertoi(){
 	struct quid quido;
 	struct quid quidi;
 	char squid[39] = {'\0'};
@@ -61,7 +61,7 @@ void quid_convertoi(){
 	ASSERT(!quidcmp(&quido, &quidi));
 }
 
-void quid_convertio(){
+static void quid_convertio(){
 	struct quid quid;
 	char squidi[] = "{00000000-0000-a150-8345-c649140dc096}";
 	char squido[39] = {'\0'};

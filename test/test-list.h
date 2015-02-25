@@ -6,6 +6,7 @@
 /*
  * List of testunits
  */
+TEST_IMPL(engine);
 TEST_IMPL(quid);
 BENCHMARK_IMPL(engine);
 BENCHMARK_IMPL(quid);
