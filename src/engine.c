@@ -20,7 +20,7 @@
 #define BLOGEXT	".log1"
 
 static int delete_larger = 0;
-static struct etrace error = { .code = NO_ERROR};
+static struct etrace error = {.code = NO_ERROR};
 
 static void flush_super(struct btree *btree);
 static void flush_dbsuper(struct btree *btree);
@@ -406,7 +406,6 @@ static uint64_t split_table(struct btree *btree, struct btree_table *table,
 	new_table->size = table->size - TABLE_SIZE / 2 - 1;
 
 	table->size = TABLE_SIZE / 2;
-
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1],
 	       (new_table->size + 1) * sizeof(struct btree_item));
 
@@ -535,10 +534,11 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 			error.code = QUID_EXIST;
 			return ret;
 		}
-		if (cmp < 0)
+		if (cmp < 0) {
 			right = i;
-		else
+		} else {
 			left = i + 1;
+		}
 	}
 	size_t i = left;
 
@@ -619,9 +619,8 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 	size_t i = left;
 	uint64_t child = from_be64(table->items[i].child);
 	uint64_t ret = delete_table(btree, child, quid);
-	if (ret != 0) {
+	if (ret != 0)
 		table->items[i].child = to_be64(collapse(btree, child));
-	}
 
 	if (ret == 0 && delete_larger && i < table->size) {
 		/* remove the next largest */
@@ -681,7 +680,8 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
-	/* SHA-1 must be in writable memory */
+
+	/* QUID must be in writable memory */
 	struct quid quid;
 	memcpy(&quid, c_quid, sizeof(struct quid));
 
@@ -689,8 +689,8 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 	flush_super(btree);
 	if (error.code != NO_ERROR)
 		return -1;
-	btree->stats.keys++;
 
+	btree->stats.keys++;
 	return 0;
 }
 
@@ -763,8 +763,8 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
-	memcpy(&quid, c_quid, sizeof(struct quid));
 
+	memcpy(&quid, c_quid, sizeof(struct quid));
 	uint64_t offset = delete_table(btree, btree->top, &quid);
 	if (error.code != NO_ERROR)
 		return -1;
@@ -873,7 +873,7 @@ void walk_dbstorage(struct btree *btree)
 	uint64_t offset = sizeof(struct btree_dbsuper);
 	struct blob_info info;
 
-	while(1){
+	while(1) {
 		lseek(btree->db_fd, offset, SEEK_SET);
 		if (read(btree->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
 			return;
