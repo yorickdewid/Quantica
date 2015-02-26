@@ -32,7 +32,7 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
                              struct quid *quid);
 static uint64_t lookup(struct btree *btree, uint64_t table_offset,
                        const struct quid *quid);
-uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
+static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
                          struct quid *quid, const void *data, size_t len);
 
 static uint64_t collapse(struct btree *btree, uint64_t table_offset);
@@ -635,7 +635,7 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 	return ret;
 }
 
-uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
+static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
                          struct quid *quid, const void *data, size_t len)
 {
 	uint64_t offset = 0;
