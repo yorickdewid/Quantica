@@ -14,6 +14,9 @@ void usage() {
 	puts("license\t\t\tshow software license");
 	puts("store <data>\t\tstore data in the database");
 	puts("request <quid>\t\tretrieve data by key");
+	puts("meta <quid>\t\tshow metadata from key");
+	puts("update <quid>\t\tupdate metadata from key");
+	puts("stats\t\tshow database statistics");
 	puts("exit\t\t\texit shell");
 }
 
@@ -47,6 +50,8 @@ int main(int argc, char *argv[]) {
     char buffer[BUFFER_SIZE];
     char *args[ARR_SIZE];
 
+	(void)(argc);
+	(void)(argv);
 	start_core();
 
     size_t nargs;
@@ -75,7 +80,6 @@ int main(int argc, char *argv[]) {
 		} else if (!strcmp(args[0], "test")) {
 			printf("Command '%s' args %ld\n", args[0], nargs);
 			test(args);
-
 		} else if (!strcmp(args[0], "meta")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);

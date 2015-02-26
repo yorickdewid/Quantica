@@ -918,6 +918,8 @@ int btree_vacuum(struct btree *btree, const char *fname)
 	struct btree tmp;
 	if (btree->lock == LOCK)
 		return -1;
+	if (!btree->stats.keys)
+		return -1;
 	btree->lock = LOCK;
 	char dbname[1024], idxname[1024], walname[1024];
 	sprintf(idxname, "%s%s", fname, CIDXEXT);
