@@ -8,6 +8,7 @@
  */
 TEST_IMPL(engine);
 TEST_IMPL(quid);
+TEST_IMPL(bootstrap);
 BENCHMARK_IMPL(engine);
 BENCHMARK_IMPL(quid);
 
