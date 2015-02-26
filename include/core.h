@@ -16,6 +16,7 @@ void debugstats();
 int debugkey(char *quid);
 int update(char *quid, struct microdata *nmd);
 int delete(char *quid);
+int vacuum();
 void detach_core();
 
 #endif // CORE_H_INCLUDED

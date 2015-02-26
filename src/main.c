@@ -16,7 +16,8 @@ void usage() {
 	puts("request <quid>\t\tretrieve data by key");
 	puts("meta <quid>\t\tshow metadata from key");
 	puts("update <quid>\t\tupdate metadata from key");
-	puts("stats\t\tshow database statistics");
+	puts("stats\t\t\tshow database statistics");
+	puts("vacuum\t\t\tclean the database");
 	puts("exit\t\t\texit shell");
 }
 
@@ -126,6 +127,9 @@ int main(int argc, char *argv[]) {
 			}
 		} else if (!strcmp(args[0], "stats")) {
 			debugstats();
+		} else if (!strcmp(args[0], "vacuum")) {
+			if(vacuum()<0)
+				printf("Vacuum failed");
 		} else if (!strcmp(args[0], "update")) {
 			if (nargs<2) {
 				printf("To few parameters for '%s'\n", args[0]);

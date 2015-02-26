@@ -90,6 +90,12 @@ int delete(char *quid) {
 	return 0;
 }
 
+int vacuum() {
+	if (!ready)
+		return -1;
+	return btree_vacuum(&btx, INITDB);
+}
+
 void detach_core() {
 	if (!ready)
 		return;
