@@ -4,7 +4,7 @@
 #include "test-list.h"
 
 void print_environment() {
-	LOG("Start testcases\n");
+	LOG("Start unittests\n");
 	LOGF("Quantica: idx version %s\n", IDXVERSION);
 	LOGF("Quantica: db version %s\n", DBVERSION);
 	time_t now = time(NULL);
