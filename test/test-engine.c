@@ -106,11 +106,45 @@ static void engine_vacuum(){
 	unlink_backup(fname);
 }
 
+static void engine_meta(){
+	struct btree btree;
+	const char fname[] = "test_database4";
+	struct quid quid;
+	char data[] = ".....";
+
+	btree_init(&btree, fname);
+	quid_create(&quid);
+	int r = btree_insert(&btree, &quid, data, strlen(data));
+	ASSERT(!r);
+
+	const struct microdata md = {
+		.lifecycle = MD_LIFECYCLE_NEUTRAL,
+		.importance = MD_IMPORTANT_LEVEL3,
+		.syslock = 0,
+		.exec = 1,
+		.freeze = 1,
+		.error = 0,
+		.flag = MD_FLAG_STRICT,
+	};
+	int r2 = btree_meta(&btree, &quid, &md);
+	ASSERT(!r2);
+	btree_close(&btree);
+
+	btree_init(&btree, fname);
+	struct microdata md2;
+	int r3 = btree_get_meta(&btree, &quid, &md2);
+	ASSERT(!r3);
+	ASSERT(!memcmp(&md, &md2, sizeof(struct microdata)));
+	btree_close(&btree);
+	btree_purge(fname);
+}
+
 TEST_IMPL(engine) {
 	/* Run testcase */
 	engine_create();
 	engine_crud();
 	engine_vacuum();
+	engine_meta();
 
 	RETURN_OK();
 }
