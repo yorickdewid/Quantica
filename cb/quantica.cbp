@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="quantica" />
+		<Option makefile_is_custom="1" />
+		<Option execution_dir="../../Quantica" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="debug">
+				<Option output="../bin/quantica" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../bin/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option use_console_runner="0" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-D_LARGEFILE64_SOURCE" />
+					<Add option="-DDEBUG" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add library="rt" />
+				</Linker>
+			</Target>
+			<Target title="test">
+				<Option output="../bin/quantica_test" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../bin/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wfatal-errors" />
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-g" />
+					<Add option="-D_LARGEFILE64_SOURCE" />
+					<Add option="-DTEST" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add library="rt" />
+				</Linker>
+			</Target>
+			<Target title="release">
+				<Option output="../bin/quantica" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../bin/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-D_LARGEFILE64_SOURCE" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="rt" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="../include/bootstrap.h" />
+		<Unit filename="../include/bswap.h" />
+		<Unit filename="../include/config.h" />
+		<Unit filename="../include/core.h" />
+		<Unit filename="../include/engine.h" />
+		<Unit filename="../include/quid.h" />
+		<Unit filename="../include/track.h" />
+		<Unit filename="../src/bootstrap.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/bswap.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/core.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/engine.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/quid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/benchmark-engine.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/benchmark-quid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/runner.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/test-bootstrap.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/test-engine.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/test-list.h" />
+		<Unit filename="../test/test-quid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/test.h" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

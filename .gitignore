@@ -28,10 +28,6 @@
 *.x86_64
 *.hex
 
-# Directories
-bin/
-
-# Project specific
-*.cbp
+# Workspace specific
 *.layout
 *.depend
