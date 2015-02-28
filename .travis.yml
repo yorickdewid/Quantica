@@ -6,8 +6,6 @@ notifications:
 compiler:
   - clang
   - gcc
-before_script:
-  - mkdir bin
 script:
   - make debug
   - make test
