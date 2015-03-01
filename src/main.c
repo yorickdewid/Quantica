@@ -47,12 +47,10 @@ void parse_args(char *buffer, char** args,
     args[j]=NULL;
 }
 
-int main(int argc, char *argv[]) {
+void shell() {
     char buffer[BUFFER_SIZE];
     char *args[ARR_SIZE];
 
-	(void)(argc);
-	(void)(argv);
 	start_core();
 
     size_t nargs;
@@ -67,7 +65,7 @@ int main(int argc, char *argv[]) {
 
         if ((!strcmp(args[0], "exit")) || (!strcmp(args[0], "quit"))) {
 			detach_core();
-			return 0;
+			return;
         } else if (!strcmp(args[0], "help")) usage();
         else if (!strcmp(args[0], "license")) {
 			int c;
@@ -164,5 +162,30 @@ int main(int argc, char *argv[]) {
 			}
         } else printf("Unknown command '%s'\n", args[0]);
     }
+}
+
+int main(int argc, char *argv[]) {
+	if (argc < 2)
+		shell();
+
+	int i;
+	for (i=1; i<argc; ++i) {
+		if (argv[i][0] == '-') {
+			//printf("%c\n", argv[i][1]);
+			switch(argv[i][1]) {
+				case 'D':
+				case 'd':
+					daemonize();
+					break;
+				case 's':
+				case 'S':
+					shell();
+					break;
+				default:
+					printf("Unknown option '-%c'\n", argv[i][1]);
+			}
+		}
+	}
+
     return 0;
 }

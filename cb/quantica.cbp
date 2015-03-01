@@ -14,6 +14,7 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Option use_console_runner="0" />
+				<Option parameters="-d" />
 				<Compiler>
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
@@ -85,6 +86,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/quid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/webapi.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../test/benchmark-engine.c">
