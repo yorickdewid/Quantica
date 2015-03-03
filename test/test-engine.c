@@ -124,7 +124,7 @@ static void engine_meta(){
 		.exec = 1,
 		.freeze = 1,
 		.error = 0,
-		.flag = MD_FLAG_STRICT,
+		.flag = MD_FLAG_BOOL_TRUE,
 	};
 	int r2 = btree_meta(&btree, &quid, &md);
 	ASSERT(!r2);

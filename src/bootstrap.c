@@ -25,7 +25,6 @@ void bootstrap(struct btree *btree) {
 		fprintf(stderr, "bootstrap: Insert failed\n");
 
 	md.importance = MD_IMPORTANT_CRITICAL;
-	md.flag = MD_FLAG_STRICT;
 	md.syslock = 1;
 	md.exec = 1;
 	md.freeze = 0;
@@ -40,7 +39,6 @@ void bootstrap(struct btree *btree) {
 		fprintf(stderr, "bootstrap: Insert failed\n");
 
 	md.importance = MD_IMPORTANT_LEVEL2;
-	md.flag = MD_FLAG_STRICT;
 	md.syslock = 1;
 	md.exec = 0;
 	md.freeze = 0;

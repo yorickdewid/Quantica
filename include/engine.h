@@ -38,12 +38,10 @@ enum key_importance {
 };
 
 enum key_flag {
-	MD_FLAG_PRIVATE = 0,
-	MD_FLAG_MASTER,
-	MD_FLAG_SIGN,
-	MD_FLAG_TAG,
-	MD_FLAG_STRICT,
-	MD_FLAG_SAFE
+	MD_FLAG_SIGNED,
+	MD_FLAG_BOOL_FALSE,
+	MD_FLAG_BOOL_TRUE,
+	MD_FLAG_NULL
 };
 
 struct microdata {

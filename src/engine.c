@@ -663,7 +663,6 @@ static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	memcpy(&new_table->items[0].quid, quid, sizeof(struct quid));
 	new_table->items[0].offset = to_be64(offset);
 	new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
-	new_table->items[0].meta.flag = MD_FLAG_MASTER;
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
