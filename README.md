@@ -13,3 +13,5 @@ There is no genetic data architecture, structure or storage convention but rathe
 ## License
 
 BSD &copy; 2015 Quantica
+
+[![Build Status](https://travis-ci.org/yorickdewid/Quantica.svg?branch=master)](https://travis-ci.org/yorickdewid/Quantica)
