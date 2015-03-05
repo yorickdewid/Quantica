@@ -5,6 +5,7 @@
 #include "config.h"
 #include "core.h"
 #include "engine.h"
+#include "webapi.h"
 
 #define BUFFER_SIZE 1<<16
 #define ARR_SIZE 1<<16
@@ -106,7 +107,7 @@ void shell() {
 				continue;
 			}
 			size_t len;
-			char *data = request(args[1], &len);
+			char *data = request_quid(args[1], &len);
 			if (data==NULL) {
 				puts("No QUID/data found");
 			} else{

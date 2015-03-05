@@ -6,9 +6,6 @@
 
 #include "bswap.h"
 
-#define CACHE_SLOTS	23
-#define DBCACHE_SLOTS	25
-#define DBCACHE_DENSITY	75
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 
 #define NOLOCK 0x0

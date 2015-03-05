@@ -6,4 +6,8 @@
 
 #define INITDB		"i1"
 
+#define CACHE_SLOTS	23
+#define DBCACHE_SLOTS	25
+#define DBCACHE_DENSITY	75
+
 #endif // CONFIG_H_INCLUDED

@@ -61,7 +61,21 @@ void debugstats() {
 }
 #endif
 
-void *request(char *quid, size_t *len) {
+unsigned long int stat_getkeys() {
+    return btx.stats.keys;
+}
+
+unsigned long int stat_getfreekeys() {
+    return btx.stats.free_tables;
+}
+
+void generate_quid(char *quid) {
+	struct quid key;
+	quid_create(&key);
+	quidtostr(quid, &key);
+}
+
+void *request_quid(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	struct quid key;

@@ -10,9 +10,12 @@ struct stats {
 
 void start_core();
 int store(char *quid, const void *data, size_t len);
-void *request(char *quid, size_t *len);
+void *request_quid(char *quid, size_t *len);
+unsigned long int stat_getkeys();
+unsigned long int stat_getfreekeys();
 int test(char *param[]);
 void debugstats();
+void generate_quid(char *quid);
 int debugkey(char *quid);
 int update(char *quid, struct microdata *nmd);
 int delete(char *quid);
