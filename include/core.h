@@ -17,6 +17,7 @@ int test(char *param[]);
 void debugstats();
 void generate_quid(char *quid);
 int debugkey(char *quid);
+int sha1(char *s, const char *data);
 int update(char *quid, struct microdata *nmd);
 int delete(char *quid);
 int vacuum();

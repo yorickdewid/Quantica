@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "quid.h"
+#include "sha1.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
@@ -60,6 +61,18 @@ void debugstats() {
 	printf("datacache density\t%d%%\n", DBCACHE_DENSITY);
 }
 #endif
+
+int sha1(char *s, const char *data) {
+    struct sha sha;
+    sha1_reset(&sha);
+    sha1_input(&sha, (const unsigned char *)data, strlen(data));
+
+    if (!sha1_result(&sha)) {
+        return 0;
+    }
+    sha1_strsum(s, &sha);
+    return 1;
+}
 
 unsigned long int stat_getkeys() {
     return btx.stats.keys;

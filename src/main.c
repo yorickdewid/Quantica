@@ -124,6 +124,14 @@ void shell() {
 			if (rtn<0) {
 				puts("Error: delete failed");
 			}
+		} else if (!strcmp(args[0], "sha")) {
+			if (nargs<2) {
+				printf("To few parameters for '%s'\n", args[0]);
+				continue;
+			}
+			char strsha[40] = {'\0'};
+		    sha1(strsha, args[1]);
+		    puts(strsha);
 		} else if (!strcmp(args[0], "stats")) {
 			debugstats();
 		} else if (!strcmp(args[0], "vacuum")) {
