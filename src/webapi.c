@@ -17,13 +17,18 @@
 #define INIT_VEC_SIZE	1024
 #define VERSION_STRING	"Quantica/0.0.8 (WebAPI)"
 
-static int running = 0;
-
 struct socket_request {
 	int fd;
 	socklen_t addr_len;
 	struct sockaddr_in address;
 	pthread_t thread;
+};
+
+enum method {
+    HTTP_GET = 1,
+    HTTP_POST,
+    HTTP_HEAD,
+    HTTP_OPTIONS
 };
 
 typedef struct {
@@ -60,10 +65,6 @@ void *vector_at(vector_t *v, unsigned int idx) {
 	return idx >= v->size ? NULL : v->buffer[idx];
 }
 
-/*
- * Delete a vector
- * Free its contents and then it.
- */
 void delete_vector(vector_t * vector) {
 	unsigned int i = 0;
 	for (i = 0; i < vector->size; ++i) {
@@ -76,28 +77,60 @@ char from_hex(char ch) {
 	return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
 }
 
-void json_response(FILE *socket_stream, const char *status, const char *message) {
+char *strtolower(char *str){
+    for (; *str; ++str)
+        *str = tolower(*str);
+    return str;
+}
+
+void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
     char squid[39] = {'\0'};
     generate_quid(squid);
+
 	fprintf(socket_stream,
-			"HTTP/1.1 %s\r\n"
-			"Server: " VERSION_STRING "\r\n"
-			"Content-Type: application/json\r\n"
-			"Content-Length: %zu\r\n"
-			"Connection: Keep-Alive\r\n"
-			"Keep-Alive: timeout=2, max=100\r\n"
-            "Access-Control-Allow-Origin: http://localhost\r\n"
-            "Access-Control-Allow-Methods: GET,POST,PUT,HEAD,OPTIONS\r\n"
-			"X-Xss-Protection: 1; mode=block\r\n"
-			"X-QUID: %s\r\n"
-			"\r\n"
-			"%s\r\n", status, strlen(message)+2, squid, message);
+        "HTTP/1.1 %s\r\n"
+        "Server: " VERSION_STRING "\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: 0\r\n", status);
+
+    size_t i;
+    for (i=0; i<headers->size; ++i) {
+			char *str = (char*)(vector_at(headers, i));
+			fprintf(socket_stream, "%s", str);
+    }
+
+	fprintf(socket_stream,
+        "X-QUID: %s\r\n"
+        "\r\n", squid);
+}
+
+void json_response(FILE *socket_stream, vector_t *headers, const char *status, const char *message) {
+    char squid[39] = {'\0'};
+    generate_quid(squid);
+
+	fprintf(socket_stream,
+        "HTTP/1.1 %s\r\n"
+        "Server: " VERSION_STRING "\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %zu\r\n", status, strlen(message)+2);
+
+    size_t i;
+    for (i=0; i<headers->size; ++i) {
+			char *str = (char*)(vector_at(headers, i));
+			fprintf(socket_stream, "%s", str);
+    }
+
+	fprintf(socket_stream,
+        "X-QUID: %s\r\n"
+        "\r\n"
+        "%s\r\n", squid, message);
 }
 
 void *handle_request(void *socket) {
 	struct socket_request *request = (struct socket_request *)socket;
+	unsigned int close = 0;
 
-    puts("New connection spanned");
+    puts("[info] New connection spanned");
 	FILE *socket_stream = fdopen(request->fd, "r+");
 	if (!socket_stream) {
 		fprintf(stderr, "[erro] Failed to get file descriptor\n");
@@ -109,6 +142,7 @@ void *handle_request(void *socket) {
 
 	while(1) {
 		vector_t *queue = alloc_vector();
+		vector_t *headers = alloc_vector();
 		char buf[HEADER_SIZE];
 		while (!feof(socket_stream)) {
 			char *in = fgets(buf, HEADER_SIZE-2, socket_stream);
@@ -119,8 +153,10 @@ void *handle_request(void *socket) {
 				break;
 
 			if (!strstr(in, "\n")) {
-				json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: Request line was too long\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+				raw_response(socket_stream, headers, "400 Bad Request");
+				fflush(socket_stream);
 				delete_vector(queue);
+				delete_vector(headers);
 				goto disconnect;
 			}
 
@@ -131,13 +167,14 @@ void *handle_request(void *socket) {
 
 		if (feof(socket_stream)) {
 			delete_vector(queue);
+			delete_vector(headers);
 			break;
 		}
 
 		char *filename = NULL;
 		char * _filename = NULL;
 		char *querystring = NULL;
-		int request_type = 0;
+		int request_type;
 		char *host = NULL;
 		char *http_version = NULL;
 		unsigned long c_length = 0L;
@@ -155,8 +192,10 @@ void *handle_request(void *socket) {
 			char *colon = strstr(str, ": ");
 			if (!colon) {
 				if (i > 0) {
-					json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: A header line was missing colon\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+					raw_response(socket_stream, headers, "400 Bad Request");
+					fflush(socket_stream);
 					delete_vector(queue);
+					delete_vector(headers);
 					goto disconnect;
 				}
 
@@ -165,7 +204,7 @@ void *handle_request(void *socket) {
 					case 'G':
 						if (strstr(str, "GET ") == str) {
 							r_type_width = 4;
-							request_type = 1;
+							request_type = HTTP_GET;
 						} else {
 							goto unsupported;
 						}
@@ -173,10 +212,7 @@ void *handle_request(void *socket) {
 					case 'P':
 						if (strstr(str, "POST ") == str) {
 							r_type_width = 5;
-							request_type = 2;
-						} else if (strstr(str, "PUT ") == str) {
-							r_type_width = 4;
-							request_type = 3;
+							request_type = HTTP_POST;
 						} else {
 							goto unsupported;
 						}
@@ -184,15 +220,7 @@ void *handle_request(void *socket) {
 					case 'H':
 						if (strstr(str, "HEAD ") == str) {
 							r_type_width = 5;
-							request_type = 4;
-						} else {
-							goto unsupported;
-						}
-						break;
-					case 'D':
-						if (strstr(str, "DELETE ") == str) {
-							r_type_width = 7;
-							request_type = 5;
+							request_type = HTTP_HEAD;
 						} else {
 							goto unsupported;
 						}
@@ -200,7 +228,7 @@ void *handle_request(void *socket) {
 					case 'O':
 						if (strstr(str, "OPTIONS ") == str) {
 							r_type_width = 8;
-							request_type = 6;
+							request_type = HTTP_OPTIONS;
 						} else {
 							goto unsupported;
 						}
@@ -211,15 +239,19 @@ void *handle_request(void *socket) {
 
 				filename = str + r_type_width;
 				if (filename[0] == ' ' || filename[0] == '\r' || filename[0] == '\n') {
-					json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: No request\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+					raw_response(socket_stream, headers, "400 Bad Request");
+					fflush(socket_stream);
 					delete_vector(queue);
+					delete_vector(headers);
 					goto disconnect;
 				}
 
 				http_version = strstr(filename, "HTTP/");
 				if (!http_version) {
-					json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: No HTTP version supplied\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+					raw_response(socket_stream, headers, "400 Bad Request");
+					fflush(socket_stream);
 					delete_vector(queue);
+					delete_vector(headers);
 					goto disconnect;
 				}
 				http_version[-1] = '\0';
@@ -238,8 +270,10 @@ void *handle_request(void *socket) {
 				}
 			} else {
 				if (i == 0) {
-					json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: First line was not a request\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+					raw_response(socket_stream, headers, "400 Bad Request");
+					fflush(socket_stream);
 					delete_vector(queue);
+					delete_vector(headers);
 					goto disconnect;
 				}
 
@@ -254,41 +288,40 @@ void *handle_request(void *socket) {
 					if (eol)
 						eol[0] = '\0';
 				}
+				strtolower(str);
+				strtolower(colon);
 
-				if (!strcmp(str, "Host")) {
+				if (!strcmp(str, "host")) {
 					host = colon;
-				} else if (!strcmp(str, "Content-Length")) {
+					(void)(host);
+				} else if (!strcmp(str, "content-length")) {
 					c_length = atol(colon);
-				} else if (!strcmp(str, "Content-Type")) {
+				} else if (!strcmp(str, "content-type")) {
 					c_type = colon;
-				} else if (!strcmp(str, "Cookie")) {
+					(void)(c_type);
+				} else if (!strcmp(str, "cookie")) {
 					c_cookie = colon;
-				} else if (!strcmp(str, "User-Agent")) {
+					(void)(c_cookie);
+				} else if (!strcmp(str, "user-agent")) {
 					c_uagent = colon;
-				} else if (!strcmp(str, "Referer")) {
+				} else if (!strcmp(str, "referer")) {
 					c_referer = colon;
-				} else if (!strcmp(str, "Origin")) {
+				} else if (!strcmp(str, "origin")) {
 					c_origin = colon;
-				} else if (!strcmp(str, "Connection")) {
+				} else if (!strcmp(str, "connection")) {
 					c_connection = colon;
-				} else {
-				    printf("Header: %s : %s\n", str, colon);
 				}
 			}
 		}
 
 		fprintf(stderr, "[info] %s - ", str_addr);
-		if (request_type == 1)
+		if (request_type == HTTP_GET)
 			fprintf(stderr, "GET");
-		else if (request_type == 2)
+		else if (request_type == HTTP_POST)
 			fprintf(stderr, "POST");
-		else if (request_type == 3)
-			fprintf(stderr, "PUT");
-		else if (request_type == 4)
+		else if (request_type == HTTP_HEAD)
 			fprintf(stderr, "HEAD");
-		else if (request_type == 5)
-			fprintf(stderr, "DELETE");
-		else if (request_type == 6)
+		else if (request_type == HTTP_OPTIONS)
 			fprintf(stderr, "OPTIONS");
 
 		fprintf(stderr, " %s - ", http_version);
@@ -302,17 +335,40 @@ void *handle_request(void *socket) {
 		else
 			fprintf(stderr, "\n");
 
+        if (c_origin) {
+            char *originhost = (char *)malloc(strlen(c_origin)+32);
+            strcpy(originhost, "Access-Control-Allow-Origin: ");
+            strcat(originhost, c_origin);
+            strcat(originhost, "\r\n");
+            vector_append(headers, originhost);
+            vector_append(headers, strdup("Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"));
+        }
+
+        if (c_connection) {
+            if(!strcmp(c_connection, "close")){
+                vector_append(headers, strdup("Connection: close\r\n"));
+                close = 1;
+            } else if(!strcmp(c_connection, "keep-alive")){
+                vector_append(headers, strdup("Connection: keep-alive\r\n"));
+                close = 0;
+            }
+        }
+
 		if (!request_type) {
 unsupported:
-			json_response(socket_stream, "405 Method Not Allowed", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Request is not allowed\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+            raw_response(socket_stream, headers, "405 Method Not Allowed");
+            fflush(socket_stream);
 			delete_vector(queue);
+			delete_vector(headers);
 			goto disconnect;
 		}
 
 		if (!filename || strstr(filename, "'") || strstr(filename, " ") ||
 			(querystring && strstr(querystring," "))) {
-			json_response(socket_stream, "400 Bad Request", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Bad request: No filename provided\",\"status\":\"HTTP_ERROR\",\"success\":0}");
+			raw_response(socket_stream, headers, "400 Bad Request");
+            fflush(socket_stream);
 			delete_vector(queue);
+			delete_vector(headers);
 			goto disconnect;
 		}
 
@@ -341,28 +397,9 @@ unsupported:
 		}
 		size_t fsz = strlen(_filename);
 
-		if (request_type == 4) {
-            fprintf(socket_stream,
-                "HTTP/1.1 200 OK\r\n"
-                "Server: " VERSION_STRING "\r\n"
-                "Content-Type: application/json\r\n"
-                "Content-Length: 0\r\n"
-                "X-Xss-Protection: 1; mode=block\r\n"
-                "X-QUID: {efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\r\n"
-                "\r\n");
-			goto done;
-		}
-
-		if (request_type == 6) {
-            fprintf(socket_stream,
-                "HTTP/1.1 200 OK\r\n"
-                "Server: " VERSION_STRING "\r\n"
-                "Content-Type: application/json\r\n"
-                "Content-Length: 0\r\n"
-                "Allow: POST,OPTIONS,GET,HEAD,PUT\r\n"
-                "X-Xss-Protection: 1; mode=block\r\n"
-                "X-QUID: {efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\r\n"
-                "\r\n");
+		if (request_type == HTTP_OPTIONS) {
+		    vector_append(headers, strdup("Allow: POST,OPTIONS,GET,HEAD\r\n"));
+		    raw_response(socket_stream, headers, "200 OK");
 			goto done;
 		}
 
@@ -379,7 +416,7 @@ unsupported:
             c_buf[total_read] = '\0';
         }
 
-        if (request_type == 2) {
+        if (request_type == HTTP_POST) {
             if (c_buf) {
                 int processed = 0;
                 if (!strcmp(_filename, "/store")) {
@@ -393,93 +430,104 @@ unsupported:
                             if (!strcmp(var, "rdata")) {
                                 int rtn = store(squid, value, strlen(value));
                                 if (rtn<0) {
-                                    json_response(socket_stream, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
                                 sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
-                                json_response(socket_stream, "200 OK", jsonbuf);
+                                json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
                         }
                         var = strtok(NULL, "&");
                     }
                     if (!processed)
-                        json_response(socket_stream, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
                 } else {
-                    puts(c_buf);
-                    json_response(socket_stream, "404 Not Found", "{\"description\":\"API call does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
+                    json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
                 };
             } else {
-                json_response(socket_stream, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
             }
             goto done;
         }
 
         if (!strcmp(_filename, "/")) {
-            json_response(socket_stream, "200 OK", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}");
+            if (request_type == HTTP_HEAD)
+                raw_response(socket_stream, headers, "200 OK");
+            else
+                json_response(socket_stream, headers, "200 OK", "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}");
         }else if (!strcmp(_filename, "/license")) {
-            json_response(socket_stream, "200 OK", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}");
+            if (request_type == HTTP_HEAD)
+                raw_response(socket_stream, headers, "200 OK");
+            else
+                json_response(socket_stream, headers, "200 OK", "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}");
         }else if (!strcmp(_filename, "/help")) {
-            json_response(socket_stream, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
-        }else if (!strcmp(_filename, "/shutdown")) {
-            json_response(socket_stream, "200 OK", "{\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Shutdown database\",\"status\":\"COMMAND_OK\",\"success\":1}");
-            running = 0;
+            if (request_type == HTTP_HEAD)
+                raw_response(socket_stream, headers, "200 OK");
+            else
+                json_response(socket_stream, headers, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
+        }else if (!strcmp(_filename, "/version")) {
+            if (request_type == HTTP_HEAD) {
+                raw_response(socket_stream, headers, "200 OK");
+            } else {
+                char jsonbuf[512] = {'\0'};
+                sprintf(jsonbuf, "{\"api_version\":\"%s\",\"db_version\":\"%s\",\"idx_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", APIVERSION, DBVERSION, IDXVERSION);
+                json_response(socket_stream, headers, "200 OK", jsonbuf);
+            }
         }else if (!strcmp(_filename, "/stats")) {
-            char jsonbuf[512] = {'\0'};
-            char squid[39] = {'\0'};
-            generate_quid(squid);
-            sprintf(jsonbuf, "{\"statistics\":[{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d}],\"quid\":\"%s\",\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, squid);
-            json_response(socket_stream, "200 OK", jsonbuf);
-        } else if (fsz==39) {
-			size_t len;
-			char *data = request_quid(++_filename, &len);
-			if (data==NULL) {
+            if (request_type == HTTP_HEAD) {
+                raw_response(socket_stream, headers, "200 OK");
+            } else {
                 char jsonbuf[512] = {'\0'};
-                char squid[39] = {'\0'};
-                generate_quid(squid);
-                sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}", squid);
-                json_response(socket_stream, "200 OK", jsonbuf);
-			} else{
-				data[len] = '\0';
-                char jsonbuf[512] = {'\0'};
-                char squid[39] = {'\0'};
-                generate_quid(squid);
-                sprintf(jsonbuf, "{\"quid\":\"%s\",\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", squid, data);
-                json_response(socket_stream, "200 OK", jsonbuf);
-				free(data);
-			}
-        } else if (fsz==37) {
+                sprintf(jsonbuf, "{\"statistics\":[{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d}],\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY);
+                json_response(socket_stream, headers, "200 OK", jsonbuf);
+            }
+        } else if (fsz==37 || fsz==39) {
 			size_t len;
 			char rquid[39] = {'\0'};
-			strcpy(rquid, _filename);
-			rquid[0] = '{'; rquid[37] = '}';
+            if (fsz==37) {
+                strcpy(rquid, _filename);
+                rquid[0] = '{'; rquid[37] = '}'; rquid[38] = '\0';
+            } else {
+                strcpy(rquid, _filename+1);
+            }
 			char *data = request_quid(rquid, &len);
 			if (data==NULL) {
-                char jsonbuf[512] = {'\0'};
-                char squid[39] = {'\0'};
-                generate_quid(squid);
-                sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}", squid);
-                json_response(socket_stream, "200 OK", jsonbuf);
+                if (request_type == HTTP_HEAD)
+                    raw_response(socket_stream, headers, "200 OK");
+                else
+                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}");
 			} else{
-				data[len] = '\0';
-                char jsonbuf[512] = {'\0'};
-                char squid[39] = {'\0'};
-                generate_quid(squid);
-                sprintf(jsonbuf, "{\"quid\":\"%s\",\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", squid, data);
-                json_response(socket_stream, "200 OK", jsonbuf);
-				free(data);
+                if (request_type == HTTP_HEAD) {
+                    raw_response(socket_stream, headers, "200 OK");
+                } else {
+                    data[len] = '\0';
+                    char jsonbuf[512] = {'\0'};
+                    sprintf(jsonbuf, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+                    json_response(socket_stream, headers, "200 OK", jsonbuf);
+                    free(data);
+                }
 			}
         } else {
-            json_response(socket_stream, "404 Not Found", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"API call does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
+            if (request_type == HTTP_HEAD)
+                raw_response(socket_stream, headers, "404 Not Found");
+            else
+                json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
         }
 
 done:
 		fflush(socket_stream);
+		free(_filename);
 		delete_vector(queue);
+		delete_vector(headers);
+
+		if (close)
+            break;
 	}
 
 disconnect:
+    puts("[info] Closing thread");
 	if (socket_stream) {
 		fclose(socket_stream);
 	}
@@ -521,13 +569,10 @@ void daemonize() {
 	printf("[info] Listening on port %d.\n", PORT);
 	printf("[info] Server version string is " VERSION_STRING ".\n");
 
-    running = 1;
-	while (running) {
+	while (1) {
 		struct socket_request *incoming = malloc(sizeof(struct socket_request));
 		unsigned int c_len = sizeof(incoming->address);
-		void *_last_unaccepted = (void *)incoming;
 		incoming->fd = accept(serversock, (struct sockaddr *) &(incoming->address), &c_len);
-		_last_unaccepted = NULL;
 		pthread_create(&incoming->thread, NULL, handle_request, (void *)(incoming));
 	}
 

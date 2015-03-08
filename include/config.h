@@ -3,6 +3,7 @@
 
 #define DBVERSION	"0.0.8"
 #define IDXVERSION	"0.0.8"
+#define APIVERSION	"0.0.8"
 
 #define INITDB		"i1"
 
