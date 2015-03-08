@@ -84,6 +84,10 @@ void json_response(FILE *socket_stream, const char *status, const char *message)
 			"Server: " VERSION_STRING "\r\n"
 			"Content-Type: application/json\r\n"
 			"Content-Length: %zu\r\n"
+			"Connection: Keep-Alive\r\n"
+			"Keep-Alive: timeout=2, max=100\r\n"
+            "Access-Control-Allow-Origin: http://localhost\r\n"
+            "Access-Control-Allow-Methods: GET,POST,PUT,HEAD,OPTIONS\r\n"
 			"X-Xss-Protection: 1; mode=block\r\n"
 			"X-QUID: %s\r\n"
 			"\r\n"
@@ -93,6 +97,7 @@ void json_response(FILE *socket_stream, const char *status, const char *message)
 void *handle_request(void *socket) {
 	struct socket_request *request = (struct socket_request *)socket;
 
+    puts("New connection spanned");
 	FILE *socket_stream = fdopen(request->fd, "r+");
 	if (!socket_stream) {
 		fprintf(stderr, "[erro] Failed to get file descriptor\n");
@@ -103,7 +108,7 @@ void *handle_request(void *socket) {
 	inet_ntop(AF_INET, &request->address.sin_addr, str_addr, INET_ADDRSTRLEN);
 
 	while(1) {
-		vector_t * queue = alloc_vector();
+		vector_t *queue = alloc_vector();
 		char buf[HEADER_SIZE];
 		while (!feof(socket_stream)) {
 			char *in = fgets(buf, HEADER_SIZE-2, socket_stream);
@@ -118,9 +123,7 @@ void *handle_request(void *socket) {
 				delete_vector(queue);
 				goto disconnect;
 			}
-			/*
-			 * Store the request line in the queue for this request.
-			 */
+
 			char *request_line = malloc((strlen(buf)+1) * sizeof(char));
 			strcpy(request_line, buf);
 			vector_append(queue, (void *)request_line);
@@ -142,6 +145,8 @@ void *handle_request(void *socket) {
 		char *c_cookie = NULL;
 		char *c_uagent = NULL;
 		char *c_referer = NULL;
+		char *c_origin = NULL;
+		char *c_connection = NULL;
 
 		unsigned int i;
 		for (i=0; i<queue->size; ++i) {
@@ -240,7 +245,7 @@ void *handle_request(void *socket) {
 
 				colon[0] = '\0';
 				colon += 2;
-				char * eol = strstr(colon, "\r");
+				char *eol = strstr(colon, "\r");
 				if (eol) {
 					eol[0] = '\0';
 					eol[1] = '\0';
@@ -262,6 +267,12 @@ void *handle_request(void *socket) {
 					c_uagent = colon;
 				} else if (!strcmp(str, "Referer")) {
 					c_referer = colon;
+				} else if (!strcmp(str, "Origin")) {
+					c_origin = colon;
+				} else if (!strcmp(str, "Connection")) {
+					c_connection = colon;
+				} else {
+				    printf("Header: %s : %s\n", str, colon);
 				}
 			}
 		}
@@ -337,7 +348,6 @@ unsupported:
                 "Content-Type: application/json\r\n"
                 "Content-Length: 0\r\n"
                 "X-Xss-Protection: 1; mode=block\r\n"
-                "Etag: 20a66c58-543a-a150-bb14-28f1a99ab04e\r\n"
                 "X-QUID: {efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\r\n"
                 "\r\n");
 			goto done;
@@ -351,11 +361,60 @@ unsupported:
                 "Content-Length: 0\r\n"
                 "Allow: POST,OPTIONS,GET,HEAD,PUT\r\n"
                 "X-Xss-Protection: 1; mode=block\r\n"
-                "Etag: 20a66c58-543a-a150-bb14-28f1a99ab04e\r\n"
                 "X-QUID: {efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\r\n"
                 "\r\n");
 			goto done;
 		}
+
+        char *c_buf;
+        if (c_length > 0) {
+            size_t total_read = 0;
+            c_buf = malloc(c_length);
+            while ((total_read < c_length) && (!feof(socket_stream))) {
+                size_t diff = c_length - total_read;
+                if (diff > 1024) diff = 1024;
+                size_t read = fread(c_buf, 1, diff, socket_stream);
+                total_read += read;
+            }
+            c_buf[total_read] = '\0';
+        }
+
+        if (request_type == 2) {
+            if (c_buf) {
+                int processed = 0;
+                if (!strcmp(_filename, "/store")) {
+                    char squid[39] = {'\0'};
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "rdata")) {
+                                int rtn = store(squid, value, strlen(value));
+                                if (rtn<0) {
+                                    json_response(socket_stream, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
+                                    goto done;
+                                }
+                                char jsonbuf[512] = {'\0'};
+                                sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
+                                json_response(socket_stream, "200 OK", jsonbuf);
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else {
+                    puts(c_buf);
+                    json_response(socket_stream, "404 Not Found", "{\"description\":\"API call does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
+                };
+            } else {
+                json_response(socket_stream, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+            }
+            goto done;
+        }
 
         if (!strcmp(_filename, "/")) {
             json_response(socket_stream, "200 OK", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}");
@@ -363,34 +422,6 @@ unsupported:
             json_response(socket_stream, "200 OK", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}");
         }else if (!strcmp(_filename, "/help")) {
             json_response(socket_stream, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
-        }else if (!strcmp(_filename, "/store")) {
-            if (request_type == 2) {
-                if (c_length > 0) {
-                    size_t total_read = 0;
-                    char buf[1024];
-                    while ((total_read < c_length) && (!feof(socket_stream))) {
-                        size_t diff = c_length - total_read;
-                        if (diff > 1024) diff = 1024;
-                        size_t read = fread(buf, 1, diff, socket_stream);
-                        total_read += read;
-                    }
-                    char squid[39] = {'\0'};
-                    int rtn = store(squid, buf, strlen(buf));
-                    if (rtn<0) {
-                        char jsonbuf[512] = {'\0'};
-                        char squid[39] = {'\0'};
-                        generate_quid(squid);
-                        sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Storing data failed\",\"status\":\"DATA_NOT_STORED\",\"success\":0}", squid);
-                        json_response(socket_stream, "200 OK", jsonbuf);
-                    }
-                    char jsonbuf[512] = {'\0'};
-                    sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
-                    json_response(socket_stream, "200 OK", jsonbuf);
-                } else {
-                    json_response(socket_stream, "200 OK", "{\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"No data submitted\",\"status\":\"DATA_EMPTY\",\"success\":0}");
-                }
-            } else
-                goto notfound;
         }else if (!strcmp(_filename, "/shutdown")) {
             json_response(socket_stream, "200 OK", "{\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"Shutdown database\",\"status\":\"COMMAND_OK\",\"success\":1}");
             running = 0;
@@ -440,7 +471,6 @@ unsupported:
 				free(data);
 			}
         } else {
-notfound:
             json_response(socket_stream, "404 Not Found", "{\"api_version\":\"0.0.8\",\"quid\":\"{efb4bc8e-a99a-4344-9a4d-0aedab8c7074}\",\"description\":\"API call does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
         }
 
