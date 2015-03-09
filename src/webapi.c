@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "config.h"
 #include "core.h"
@@ -16,6 +17,9 @@
 #define MAX_CLIENTS		150
 #define INIT_VEC_SIZE	1024
 #define VERSION_STRING	"Quantica/0.0.8 (WebAPI)"
+
+int serversock;
+void *unaccepted = NULL;
 
 struct socket_request {
 	int fd;
@@ -83,6 +87,20 @@ char *strtolower(char *str){
     return str;
 }
 
+void handle_shutdown(int sigal) {
+	puts("\n[info] Shutting down");
+
+	shutdown(serversock, SHUT_RDWR);
+	close(serversock);
+
+	free(unaccepted);
+	fprintf(stderr, "[info] Cleanup and detach core\n");
+	detach_core();
+
+	exit(sigal);
+}
+
+
 void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
     char squid[39] = {'\0'};
     generate_quid(squid);
@@ -130,7 +148,6 @@ void *handle_request(void *socket) {
 	struct socket_request *request = (struct socket_request *)socket;
 	unsigned int close = 0;
 
-    puts("[info] New connection spanned");
 	FILE *socket_stream = fdopen(request->fd, "r+");
 	if (!socket_stream) {
 		fprintf(stderr, "[erro] Failed to get file descriptor\n");
@@ -443,6 +460,30 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/sha1")) {
+                    char strsha[40] = {'\0'};
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "rdata")) {
+                                int rtn = sha1(strsha, value);
+                                if (!rtn) {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Hashing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
+                                    goto done;
+                                }
+                                char jsonbuf[512] = {'\0'};
+                                sprintf(jsonbuf, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
+                                json_response(socket_stream, headers, "200 OK", jsonbuf);
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
                 } else {
                     json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
                 };
@@ -457,17 +498,27 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             else
                 json_response(socket_stream, headers, "200 OK", "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}");
-        }else if (!strcmp(_filename, "/license")) {
+        } else if (!strcmp(_filename, "/license")) {
             if (request_type == HTTP_HEAD)
                 raw_response(socket_stream, headers, "200 OK");
             else
                 json_response(socket_stream, headers, "200 OK", "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}");
-        }else if (!strcmp(_filename, "/help")) {
+        } else if (!strcmp(_filename, "/help")) {
             if (request_type == HTTP_HEAD)
                 raw_response(socket_stream, headers, "200 OK");
             else
                 json_response(socket_stream, headers, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
-        }else if (!strcmp(_filename, "/version")) {
+        } else if (!strcmp(_filename, "/vacuum")) {
+            if (request_type == HTTP_HEAD) {
+                raw_response(socket_stream, headers, "200 OK");
+            } else {
+                if(vacuum()<0) {
+                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum failed\",\"status\":\"COMMAND_OK\",\"success\":0}");
+                } else {
+                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                }
+            }
+        } else if (!strcmp(_filename, "/version")) {
             if (request_type == HTTP_HEAD) {
                 raw_response(socket_stream, headers, "200 OK");
             } else {
@@ -475,7 +526,7 @@ unsupported:
                 sprintf(jsonbuf, "{\"api_version\":\"%s\",\"db_version\":\"%s\",\"idx_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", APIVERSION, DBVERSION, IDXVERSION);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
-        }else if (!strcmp(_filename, "/stats")) {
+        } else if (!strcmp(_filename, "/stats")) {
             if (request_type == HTTP_HEAD) {
                 raw_response(socket_stream, headers, "200 OK");
             } else {
@@ -527,11 +578,10 @@ done:
 	}
 
 disconnect:
-    puts("[info] Closing thread");
 	if (socket_stream) {
 		fclose(socket_stream);
 	}
-	shutdown(request->fd, 2);
+	shutdown(request->fd, SHUT_RDWR);
 
 	if (request->thread) {
 		pthread_detach(request->thread);
@@ -548,7 +598,7 @@ void daemonize() {
 	start_core();
 
 	struct sockaddr_in sin;
-	int serversock = socket(AF_INET, SOCK_STREAM, 0);
+	serversock = socket(AF_INET, SOCK_STREAM, 0);
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(PORT);
 	sin.sin_addr.s_addr = INADDR_ANY;
@@ -569,10 +619,14 @@ void daemonize() {
 	printf("[info] Listening on port %d.\n", PORT);
 	printf("[info] Server version string is " VERSION_STRING ".\n");
 
+	signal(SIGINT, handle_shutdown);
+
 	while (1) {
 		struct socket_request *incoming = malloc(sizeof(struct socket_request));
 		unsigned int c_len = sizeof(incoming->address);
+		unaccepted = (void *)incoming;
 		incoming->fd = accept(serversock, (struct sockaddr *) &(incoming->address), &c_len);
+		unaccepted = NULL;
 		pthread_create(&incoming->thread, NULL, handle_request, (void *)(incoming));
 	}
 
