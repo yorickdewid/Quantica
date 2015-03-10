@@ -484,6 +484,27 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/delete")) {
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "quid")) {
+                                int rtn = delete(value);
+                                if (rtn<0) {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to delete record\",\"status\":\"DELETE_FAILED\",\"success\":0}");
+                                } else {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Record deleted from storage\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                }
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
                 } else {
                     json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
                 };
@@ -513,7 +534,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 if(vacuum()<0) {
-                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum failed\",\"status\":\"COMMAND_OK\",\"success\":0}");
+                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}");
                 } else {
                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}");
                 }
