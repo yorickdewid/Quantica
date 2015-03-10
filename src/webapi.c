@@ -118,6 +118,8 @@ void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
     }
 
 	fprintf(socket_stream,
+        "Access-Control-Allow-Origin: *\r\n"
+        "Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
         "X-QUID: %s\r\n"
         "\r\n", squid);
 }
@@ -139,6 +141,8 @@ void json_response(FILE *socket_stream, vector_t *headers, const char *status, c
     }
 
 	fprintf(socket_stream,
+        "Access-Control-Allow-Origin: *\r\n"
+        "Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
         "X-QUID: %s\r\n"
         "\r\n"
         "%s\r\n", squid, message);
@@ -199,7 +203,6 @@ void *handle_request(void *socket) {
 		char *c_cookie = NULL;
 		char *c_uagent = NULL;
 		char *c_referer = NULL;
-		char *c_origin = NULL;
 		char *c_connection = NULL;
 
 		unsigned int i;
@@ -323,8 +326,6 @@ void *handle_request(void *socket) {
 					c_uagent = colon;
 				} else if (!strcmp(str, "referer")) {
 					c_referer = colon;
-				} else if (!strcmp(str, "origin")) {
-					c_origin = colon;
 				} else if (!strcmp(str, "connection")) {
 					c_connection = colon;
 				}
@@ -351,15 +352,6 @@ void *handle_request(void *socket) {
 			fprintf(stderr, " \"%s\"\n", c_referer);
 		else
 			fprintf(stderr, "\n");
-
-        if (c_origin) {
-            char *originhost = (char *)malloc(strlen(c_origin)+32);
-            strcpy(originhost, "Access-Control-Allow-Origin: ");
-            strcat(originhost, c_origin);
-            strcat(originhost, "\r\n");
-            vector_append(headers, originhost);
-            vector_append(headers, strdup("Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"));
-        }
 
         if (c_connection) {
             if(!strcmp(c_connection, "close")){
@@ -497,6 +489,63 @@ unsupported:
                                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to delete record\",\"status\":\"DELETE_FAILED\",\"success\":0}");
                                 } else {
                                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Record deleted from storage\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                }
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/update")) {
+                    struct microdata md;
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "lifecycle")) {
+                                md.lifecycle = atoi(var);
+                            } else if (!strcmp(var, "importance")) {
+                                md.importance = atoi(var);
+                            } else if (!strcmp(var, "syslock")) {
+                                md.syslock = atoi(var);
+                            } else if (!strcmp(var, "exec")) {
+                                md.exec = atoi(var);
+                            } else if (!strcmp(var, "freeze")) {
+                                md.freeze = atoi(var);
+                            } else if (!strcmp(var, "error")) {
+                                md.error = atoi(var);
+                            } else if (!strcmp(var, "flag")) {
+                                md.flag = atoi(var);
+                            } else if (!strcmp(var, "quid")) {
+                                int rtn = update(var, &md);
+                                if (rtn<0) {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to update record\",\"status\":\"UPDATE_FAILED\",\"success\":0}");
+                                } else {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                }
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/meta")) {
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "quid")) {
+                                int rtn = debugkey(var);
+                                if (rtn<0) {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to show recordmeta\",\"status\":\"META_FAILED\",\"success\":0}");
+                                } else {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Metatdata outputted to console\",\"status\":\"COMMAND_OK\",\"success\":1}");
                                 }
                                 processed = 1;
                             }
