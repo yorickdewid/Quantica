@@ -506,21 +506,21 @@ unsupported:
                             value[0] = '\0';
                             value++;
                             if (!strcmp(var, "lifecycle")) {
-                                md.lifecycle = atoi(var);
+                                md.lifecycle = atoi(value);
                             } else if (!strcmp(var, "importance")) {
-                                md.importance = atoi(var);
+                                md.importance = atoi(value);
                             } else if (!strcmp(var, "syslock")) {
-                                md.syslock = atoi(var);
+                                md.syslock = atoi(value);
                             } else if (!strcmp(var, "exec")) {
-                                md.exec = atoi(var);
+                                md.exec = atoi(value);
                             } else if (!strcmp(var, "freeze")) {
-                                md.freeze = atoi(var);
+                                md.freeze = atoi(value);
                             } else if (!strcmp(var, "error")) {
-                                md.error = atoi(var);
+                                md.error = atoi(value);
                             } else if (!strcmp(var, "flag")) {
-                                md.flag = atoi(var);
+                                md.flag = atoi(value);
                             } else if (!strcmp(var, "quid")) {
-                                int rtn = update(var, &md);
+                                int rtn = update(value, &md);
                                 if (rtn<0) {
                                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to update record\",\"status\":\"UPDATE_FAILED\",\"success\":0}");
                                 } else {
@@ -541,12 +541,29 @@ unsupported:
                             value[0] = '\0';
                             value++;
                             if (!strcmp(var, "quid")) {
-                                int rtn = debugkey(var);
+                                int rtn = debugkey(value);
                                 if (rtn<0) {
                                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to show recordmeta\",\"status\":\"META_FAILED\",\"success\":0}");
                                 } else {
                                     json_response(socket_stream, headers, "200 OK", "{\"description\":\"Metatdata outputted to console\",\"status\":\"COMMAND_OK\",\"success\":1}");
                                 }
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/instance")) {
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "name")) {
+                                set_instance_name(value);
+                                json_response(socket_stream, headers, "200 OK", "{\"description\":\"Database instance name changed\",\"status\":\"COMMAND_OK\",\"success\":1}");
                                 processed = 1;
                             }
                         }
@@ -578,6 +595,14 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             else
                 json_response(socket_stream, headers, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
+        } else if (!strcmp(_filename, "/instance")) {
+            if (request_type == HTTP_HEAD) {
+                raw_response(socket_stream, headers, "200 OK");
+            } else {
+                char jsonbuf[128] = {'\0'};
+                sprintf(jsonbuf, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
+                json_response(socket_stream, headers, "200 OK", jsonbuf);
+            }
         } else if (!strcmp(_filename, "/vacuum")) {
             if (request_type == HTTP_HEAD) {
                 raw_response(socket_stream, headers, "200 OK");

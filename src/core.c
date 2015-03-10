@@ -10,11 +10,26 @@
 
 static struct btree btx;
 static uint8_t ready = 0;
+char ins_name[INSTANCE_LENGTH];
 
 void start_core() {
+    memset(ins_name, 0, INSTANCE_LENGTH);
+    set_instance_name("DEVSRV1");
 	btree_init(&btx, INITDB);
 	bootstrap(&btx);
 	ready = 1;
+}
+
+void set_instance_name(char name[]) {
+    if (strlen(name) > INSTANCE_LENGTH)
+        return;
+
+    strcpy(ins_name, name);
+    ins_name[INSTANCE_LENGTH-1] = '\0';
+}
+
+char *get_instance_name() {
+    return ins_name;
 }
 
 int store(char *quid, const void *data, size_t len) {

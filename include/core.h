@@ -4,6 +4,8 @@
 #include "quid.h"
 #include "engine.h"
 
+#define INSTANCE_LENGTH 32
+
 struct stats {
 	unsigned int commit;
 };
@@ -15,6 +17,8 @@ unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 int test(char *param[]);
 void debugstats();
+void set_instance_name(char name[]);
+char *get_instance_name();
 void generate_quid(char *quid);
 int debugkey(char *quid);
 int sha1(char *s, const char *data);
