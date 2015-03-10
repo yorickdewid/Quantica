@@ -2,7 +2,7 @@ INCLUDE=include
 SRCDIR=src
 TESTDIR=test
 BINDIR=bin
-CFLAGS=-c -g -Wall -Wextra -DDEBUG
+CFLAGS=-c -g -Wall -Wextra -DDEBUG -DSHELL
 LDFLAGS=-lrt
 SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c $(SRCDIR)/webapi.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c $(TESTDIR)/benchmark-quid.c $(TESTDIR)/test-engine.c $(TESTDIR)/test-bootstrap.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o

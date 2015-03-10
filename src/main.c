@@ -10,6 +10,7 @@
 #define BUFFER_SIZE 1<<16
 #define ARR_SIZE 1<<16
 
+#ifdef SHELL
 void usage() {
 	puts("help\t\t\tthis help menu");
 	puts("license\t\t\tshow software license");
@@ -172,24 +173,28 @@ void shell() {
         } else printf("Unknown command '%s'\n", args[0]);
     }
 }
+#endif
 
 int main(int argc, char *argv[]) {
+#ifdef SHELL
 	if (argc < 2)
 		shell();
+#endif
 
 	int i;
 	for (i=1; i<argc; ++i) {
 		if (argv[i][0] == '-') {
-			//printf("%c\n", argv[i][1]);
 			switch(argv[i][1]) {
 				case 'D':
 				case 'd':
 					daemonize();
 					break;
+#ifdef SHELL
 				case 's':
 				case 'S':
 					shell();
 					break;
+#endif
 				default:
 					printf("Unknown option '-%c'\n", argv[i][1]);
 			}
