@@ -2,8 +2,8 @@
 #include <string.h>
 
 #include "test.h"
-#include "quid.h"
-#include "engine.h"
+#include "../src/quid.h"
+#include "../src/engine.h"
 
 static int file_exists(const char *path)
 {

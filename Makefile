@@ -2,9 +2,12 @@ INCLUDE=include
 SRCDIR=src
 TESTDIR=test
 BINDIR=bin
-CFLAGS=-c -g -Wall -Wextra -DDEBUG -DSHELL
+CFLAGS=-c -g -Wall -Werror -Wextra -DDEBUG
 LDFLAGS=-lrt
-SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c $(SRCDIR)/crc32.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c $(SRCDIR)/webapi.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c $(TESTDIR)/benchmark-quid.c $(TESTDIR)/test-engine.c $(TESTDIR)/test-bootstrap.c
+SOURCES=$(SRCDIR)/bswap.c $(SRCDIR)/common.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c \
+        $(SRCDIR)/crc32.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c \
+        $(SRCDIR)/webapi.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c \
+        $(TESTDIR)/benchmark-quid.c $(TESTDIR)/test-engine.c $(TESTDIR)/test-bootstrap.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o
 TESTOBJECTS=$(SOURCES:.c=.o) $(TESTDIR)/runner.o
 EXECUTABLE=quantica

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "config.h"
+#include <config.h>
 
 static const unsigned long crc_table[256] = {
    0x00000000,0x77073096,0xee0e612c,0x990951ba,0x076dc419,0x706af48f,0xe963a535,
@@ -45,7 +45,7 @@ static const unsigned long crc_table[256] = {
 unsigned long crc32_calculate(unsigned long in_crc32, const void *buf, size_t len) {
     unsigned long crc32;
     unsigned char *byte_buf;
-    int i;
+    size_t i;
 
     crc32 = in_crc32 ^ 0xffffffff;
     byte_buf = (unsigned char*) buf;

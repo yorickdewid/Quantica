@@ -3,21 +3,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "config.h"
+#include <config.h>
 #include "bswap.h"
 #include "track.h"
 #include "quid.h"
 #include "engine.h"
-
-#define DBEXT	".db"
-#define IDXEXT	".idx"
-#define LOGEXT	".log"
-#define CDBEXT	"._db"
-#define CIDXEXT	"._idx"
-#define CLOGEXT	"._log"
-#define BDBEXT	".db1"
-#define BIDXEXT	".idx1"
-#define BLOGEXT	".log1"
 
 static int delete_larger = 0;
 static struct etrace error = {.code = NO_ERROR};
@@ -149,12 +139,12 @@ static int btree_open(struct btree *btree, const char *idxname,
 	btree->free_top = from_be64(super.free_top);
 	btree->stats.keys = from_be64(super.nkey);
 	btree->stats.free_tables = from_be64(super.nfree_table);
-	assert(!strcmp(super.signature, IDXVERSION));
+	assert(!strcmp(super.signature, VERSION));
 
 	struct btree_dbsuper dbsuper;
 	if (read(btree->db_fd, &dbsuper, sizeof dbsuper) != (ssize_t) sizeof dbsuper)
 		return -1;
-	assert(!strcmp(dbsuper.signature, DBVERSION));
+	assert(!strcmp(dbsuper.signature, VERSION));
 
 	btree->alloc = lseek(btree->fd, 0, SEEK_END);
 	btree->db_alloc = lseek(btree->db_fd, 0, SEEK_END);
@@ -341,7 +331,7 @@ static void flush_super(struct btree *btree)
 {
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
-	strcpy(super.signature, IDXVERSION);
+	strcpy(super.signature, VERSION);
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
 	super.nkey = to_be64(btree->stats.keys);
@@ -358,7 +348,7 @@ static void flush_dbsuper(struct btree *btree)
 {
 	struct btree_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
-	strcpy(dbsuper.signature, DBVERSION);
+	strcpy(dbsuper.signature, VERSION);
 
 	lseek(btree->db_fd, 0, SEEK_SET);
 	if (write(btree->db_fd, &dbsuper, sizeof(struct btree_dbsuper)) != sizeof(struct btree_dbsuper)) {

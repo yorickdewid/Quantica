@@ -1,9 +1,9 @@
 #include <string.h>
 
 #include "test.h"
-#include "quid.h"
-#include "engine.h"
-#include "bootstrap.h"
+#include "../src/quid.h"
+#include "../src/engine.h"
+#include "../src/bootstrap.h"
 
 #define BS_MAGIC "__zero()__"
 

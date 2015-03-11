@@ -1,7 +1,7 @@
 #include <string.h>
 
 #include "test.h"
-#include "quid.h"
+#include "../src/quid.h"
 
 static void quid_compare(){
 	struct quid quid1;

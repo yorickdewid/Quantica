@@ -4,8 +4,8 @@
 #include <time.h>
 
 #include "test.h"
-#include "quid.h"
-#include "engine.h"
+#include "../src/quid.h"
+#include "../src/engine.h"
 
 #define NUM		200000
 #define R_NUM		(NUM/200)

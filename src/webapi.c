@@ -8,11 +8,11 @@
 #include <pthread.h>
 #include <signal.h>
 
-#include "config.h"
+#include <config.h>
+#include <common.h>
 #include "core.h"
 #include "webapi.h"
 
-#define PORT			4017
 #define HEADER_SIZE		10240L
 #define MAX_CLIENTS		150
 #define INIT_VEC_SIZE	1024
@@ -75,16 +75,6 @@ void delete_vector(vector_t * vector) {
 		free(vector_at(vector, i));
 	}
 	free_vector(vector);
-}
-
-char from_hex(char ch) {
-	return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
-}
-
-char *strtolower(char *str){
-    for (; *str; ++str)
-        *str = tolower(*str);
-    return str;
 }
 
 void handle_shutdown(int sigal) {
@@ -533,6 +523,7 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+#if 0
                 } else if (!strcmp(_filename, "/meta")) {
                     char *var = strtok(c_buf, "&");
                     while(var != NULL) {
@@ -554,6 +545,7 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+#endif
                 } else if (!strcmp(_filename, "/instance")) {
                     char *var = strtok(c_buf, "&");
                     while(var != NULL) {
@@ -618,7 +610,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[512] = {'\0'};
-                sprintf(jsonbuf, "{\"api_version\":\"%s\",\"db_version\":\"%s\",\"idx_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", APIVERSION, DBVERSION, IDXVERSION);
+                sprintf(jsonbuf, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (!strcmp(_filename, "/stats")) {
@@ -687,6 +679,7 @@ disconnect:
 }
 
 void daemonize() {
+    fprintf(stderr, "[info] %s %s (%s, %s)\n", PROGNAME, VERSION, __DATE__, __TIME__);
 	fprintf(stderr, "[info] Starting daemon\n");
 
 	fprintf(stderr, "[info] Start database core\n");
@@ -695,7 +688,7 @@ void daemonize() {
 	struct sockaddr_in sin;
 	serversock = socket(AF_INET, SOCK_STREAM, 0);
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(PORT);
+	sin.sin_port = htons(API_PORT);
 	sin.sin_addr.s_addr = INADDR_ANY;
 
 	int _true = 1;
@@ -706,13 +699,13 @@ void daemonize() {
 	}
 
 	if (bind(serversock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-		fprintf(stderr, "[erro] Failed to bind socket to port %d\n", PORT);
+		fprintf(stderr, "[erro] Failed to bind socket to port %d\n", API_PORT);
 		return;
 	}
 
 	listen(serversock, MAX_CLIENTS);
-	printf("[info] Listening on port %d.\n", PORT);
-	printf("[info] Server version string is " VERSION_STRING ".\n");
+	fprintf(stderr, "[info] Listening on port %d.\n", API_PORT);
+	fprintf(stderr, "[info] Server version string is " VERSION_STRING ".\n");
 
 	signal(SIGINT, handle_shutdown);
 

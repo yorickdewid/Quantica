@@ -1,15 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
+#include <config.h>
+#include <common.h>
 #include "quid.h"
 #include "sha1.h"
+#include "crc32.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
 
 static struct btree btx;
-static uint8_t ready = 0;
+static uint8_t ready = FALSE;
 char ins_name[INSTANCE_LENGTH];
 
 void start_core() {
@@ -17,7 +19,7 @@ void start_core() {
     set_instance_name("DEVSRV1");
 	btree_init(&btx, INITDB);
 	bootstrap(&btx);
-	ready = 1;
+	ready = TRUE;
 }
 
 void set_instance_name(char name[]) {
@@ -48,34 +50,6 @@ int test(char *param[]) {
 	(void)(param);
 	return 0;
 }
-
-#ifdef DEBUG
-int debugkey(char *quid) {
-	if (!ready)
-		return -1;
-	struct quid key;
-	strtoquid(quid, &key);
-	struct microdata md;
-	if (btree_get_meta(&btx, &key, &md)<0)
-		return -1;
-	printf("lifecycle %d\n", md.lifecycle);
-	printf("importance %d\n", md.importance);
-	printf("syslock %d\n", md.syslock);
-	printf("exec %d\n", md.exec);
-	printf("freeze %d\n", md.freeze);
-	printf("error %d\n", md.error);
-	printf("flag %d\n", md.flag);
-	return 0;
-}
-
-void debugstats() {
-	printf("cardinality\t\t%ld\n", btx.stats.keys);
-	printf("cardinality free\t%ld\n", btx.stats.free_tables);
-	printf("tablecache\t\t%d\n", CACHE_SLOTS);
-	printf("datacache\t\t%d\n", DBCACHE_SLOTS);
-	printf("datacache density\t%d%%\n", DBCACHE_DENSITY);
-}
-#endif
 
 int sha1(char *s, const char *data) {
     struct sha sha;
@@ -142,5 +116,5 @@ void detach_core() {
 	if (!ready)
 		return;
 	btree_close(&btx);
-	ready = 0;
+	ready = FALSE;
 }

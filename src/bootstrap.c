@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h"
+#include <config.h>
 #include "quid.h"
 #include "engine.h"
 #include "bootstrap.h"

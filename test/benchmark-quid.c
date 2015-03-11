@@ -1,7 +1,7 @@
 #include <time.h>
 
 #include "test.h"
-#include "quid.h"
+#include "../src/quid.h"
 
 #define NUM			2000000
 

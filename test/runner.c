@@ -5,8 +5,7 @@
 
 void print_environment() {
 	LOG("Start unittests\n");
-	LOGF("Quantica: idx version %s\n", IDXVERSION);
-	LOGF("Quantica: db version %s\n", DBVERSION);
+	LOGF(PROGNAME" %s (%s, %s)\n", VERSION, __DATE__, __TIME__);
 	time_t now = time(NULL);
 	LOGF("Date:\t\t%s", (char*)ctime(&now));
 }
