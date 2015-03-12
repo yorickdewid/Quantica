@@ -5,6 +5,7 @@
 #include <common.h>
 #include "quid.h"
 #include "sha1.h"
+#include "aes.h"
 #include "crc32.h"
 #include "engine.h"
 #include "bootstrap.h"
