@@ -698,7 +698,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				/* found */
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					error.code = QUID_INVALID;
 					return 0;
 				}
@@ -746,10 +746,10 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
 	return data;
 }
 
-int btree_delete(struct btree *btree, const struct quid *c_quid)
-{
+int btree_delete(struct btree *btree, const struct quid *c_quid) {
 	struct quid quid;
 	error.code = NO_ERROR;
+
 	if (btree->lock == LOCK)
 		return -1;
 
@@ -757,6 +757,7 @@ int btree_delete(struct btree *btree, const struct quid *c_quid)
 	uint64_t offset = delete_table(btree, btree->top, &quid);
 	if (error.code != NO_ERROR)
 		return -1;
+
 	btree->top = collapse(btree, btree->top);
 	btree->stats.keys--;
 
@@ -775,7 +776,7 @@ static struct microdata *get_meta(struct btree *btree, uint64_t table_offset,
 			i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					error.code = QUID_INVALID;
 					return 0;
 				}
@@ -818,7 +819,7 @@ static int set_meta(struct btree *btree, uint64_t table_offset,
 			i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_NEUTRAL) {
+				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					error.code = QUID_INVALID;
 					return -1;
 				}
@@ -854,6 +855,25 @@ int btree_meta(struct btree *btree, const struct quid *quid,
 	if (error.code != NO_ERROR)
 		return -1;
 
+	return 0;
+}
+
+int btree_remove(struct btree *btree, const struct quid *quid) {
+	error.code = NO_ERROR;
+
+	if (btree->lock == LOCK)
+		return -1;
+
+	struct microdata *nmd = get_meta(btree, btree->top, quid);
+	if (error.code != NO_ERROR)
+		return -1;
+
+    nmd->lifecycle = MD_LIFECYCLE_RECYCLE;
+	set_meta(btree, btree->top, quid, nmd);
+	if (error.code != NO_ERROR)
+		return -1;
+
+	flush_super(btree);
 	return 0;
 }
 
@@ -901,19 +921,22 @@ static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t o
 	}
 }
 
-int btree_vacuum(struct btree *btree, const char *fname)
-{
+int btree_vacuum(struct btree *btree, const char *fname) {
+    char dbname[1024], idxname[1024], walname[1024];
 	struct btree cbtree;
 	struct btree tmp;
+
 	if (btree->lock == LOCK)
 		return -1;
+
 	if (!btree->stats.keys)
 		return -1;
+
 	btree->lock = LOCK;
-	char dbname[1024], idxname[1024], walname[1024];
 	sprintf(idxname, "%s%s", fname, CIDXEXT);
 	sprintf(dbname, "%s%s", fname, CDBEXT);
 	sprintf(walname, "%s%s", fname, CLOGEXT);
+
 	btree_create(&cbtree, idxname, dbname, walname);
 	tree_traversal(btree, &cbtree, btree->top);
 

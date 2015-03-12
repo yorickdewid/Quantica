@@ -46,9 +46,17 @@ int store(char *quid, const void *data, size_t len) {
 	return 0;
 }
 
-int test(char *param[]) {
+int test(void *param[]) {
 	puts("Test stub");
 	(void)(param);
+	return 0;
+}
+
+int rremove(char *quid) {
+	struct quid key;
+	strtoquid(quid, &key);
+
+	btree_remove(&btx, &key);
 	return 0;
 }
 

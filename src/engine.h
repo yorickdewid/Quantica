@@ -22,7 +22,7 @@
 #define LOCK 0x1
 
 enum key_lifecycle {
-	MD_LIFECYCLE_NEUTRAL = 0,
+	MD_LIFECYCLE_FINITE = 0,
 	MD_LIFECYCLE_INVALID,
 	MD_LIFECYCLE_CORRUPT,
 	MD_LIFECYCLE_RECYCLE,
@@ -158,6 +158,8 @@ int btree_get_meta(struct btree *btree, const struct quid *quid,
 
 int btree_meta(struct btree *btree, const struct quid *quid,
 			const struct microdata *data);
+
+int btree_remove(struct btree *btree, const struct quid *quid);
 
 void walk_dbstorage(struct btree *btree);
 int btree_vacuum(struct btree *btree, const char *fname);
