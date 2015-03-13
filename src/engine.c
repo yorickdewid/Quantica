@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <config.h>
+#include <common.h>
 #include "bswap.h"
 #include "track.h"
 #include "quid.h"
@@ -16,19 +17,14 @@ static void flush_super(struct btree *btree);
 static void flush_dbsuper(struct btree *btree);
 static void free_chunk(struct btree *btree, uint64_t offset);
 static void free_dbchunk(struct btree *btree, uint64_t offset);
-static uint64_t remove_table(struct btree *btree, struct btree_table *table,
-							size_t i, struct quid *quid);
-static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
-                             struct quid *quid);
-static uint64_t lookup(struct btree *btree, uint64_t table_offset,
-                       const struct quid *quid);
-static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-                         struct quid *quid, const void *data, size_t len);
+static uint64_t remove_table(struct btree *btree, struct btree_table *table, size_t i, struct quid *quid);
+static uint64_t delete_table(struct btree *btree, uint64_t table_offset, struct quid *quid);
+static uint64_t lookup(struct btree *btree, uint64_t table_offset, const struct quid *quid);
+static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset, struct quid *quid, const void *data, size_t len);
 
 static uint64_t collapse(struct btree *btree, uint64_t table_offset);
 
-static int file_exists(const char *path)
-{
+static int file_exists(const char *path) {
 	int fd = open(path, O_RDWR);
 	if(fd>-1) {
 		close(fd);
@@ -64,9 +60,7 @@ static struct btree_table *get_table(struct btree *btree, uint64_t offset) {
 }
 
 /* Free a table acquired with alloc_table() or get_table() */
-static void put_table(struct btree *btree, struct btree_table *table,
-                      uint64_t offset)
-{
+static void put_table(struct btree *btree, struct btree_table *table, uint64_t offset) {
 	assert(offset != 0);
 
 	/* overwrite cache */
@@ -718,8 +712,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 	return 0;
 }
 
-void *btree_get(struct btree *btree, const struct quid *quid, size_t *len)
-{
+void *btree_get(struct btree *btree, const struct quid *quid, size_t *len) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return NULL;

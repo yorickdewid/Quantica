@@ -31,7 +31,7 @@ static void bootstrap_init(){
 	const char fname[] = "test_bootstrap2";
 	struct quid quid;
 
-	const char squid[] = "{00000000-00c1-a150-ab68-01cafaa7a081}";
+	const char squid[] = "{00000000-00c1-a150-0000-000000000080}";
 	const char data[] = "{\"pre\":\"_init\",\"description\":\"bootstrap\"}";
 	strtoquid(squid, &quid);
 	btree_init(&btree, fname);

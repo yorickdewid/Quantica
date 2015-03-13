@@ -18,9 +18,6 @@
 #define BIDXEXT	".idx1"
 #define BLOGEXT	".log1"
 
-#define NOLOCK 0x0
-#define LOCK 0x1
-
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
 	MD_LIFECYCLE_INVALID,

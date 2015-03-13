@@ -6,6 +6,9 @@
 #define TRUE    1
 #define FALSE   0
 
+#define NOLOCK 0x0
+#define LOCK 0x1
+
 char from_hex(char ch);
 char *strtolower(char *str);
 

@@ -18,6 +18,7 @@ struct quid {
 } __attribute__((packed));
 
 typedef unsigned long long int cuuid_time_t;
+typedef struct quid quid_t;
 
 /*
  * Create new QUID
