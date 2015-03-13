@@ -508,7 +508,7 @@ unsupported:
                             } else if (!strcmp(var, "error")) {
                                 md.error = atoi(value);
                             } else if (!strcmp(var, "flag")) {
-                                md.flag = atoi(value);
+                                md.type = atoi(value);
                             } else if (!strcmp(var, "quid")) {
                                 int rtn = update(value, &md);
                                 if (rtn<0) {

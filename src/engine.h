@@ -44,11 +44,12 @@ enum key_importance {
 	MD_IMPORTANT_IRRELEVANT
 };
 
-enum key_flag {
-	MD_FLAG_SIGNED,
-	MD_FLAG_BOOL_FALSE,
-	MD_FLAG_BOOL_TRUE,
-	MD_FLAG_NULL
+enum key_type {
+    MD_TYPE_DATA = 0,
+	MD_TYPE_SIGNED,
+	MD_TYPE_BOOL_FALSE,
+	MD_TYPE_BOOL_TRUE,
+	MD_TYPE_POINTER
 };
 
 struct microdata {
@@ -58,7 +59,7 @@ struct microdata {
 	uint16_t exec		: 1;
 	uint16_t freeze		: 1;
 	uint16_t error		: 1;
-	uint16_t flag		: 3;
+	uint16_t type	    : 3;
 };
 
 struct btree_item {

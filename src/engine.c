@@ -663,9 +663,7 @@ static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-int btree_insert(struct btree *btree, const struct quid *c_quid, const void *data,
-                  size_t len)
-{
+int btree_insert(struct btree *btree, const struct quid *c_quid, const void *data, size_t len) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
@@ -679,7 +677,7 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
 	if (error.code != NO_ERROR)
 		return -1;
 
-	btree->stats.keys++;
+    btree->stats.keys++;
 	return 0;
 }
 
@@ -819,10 +817,6 @@ static int set_meta(struct btree *btree, uint64_t table_offset,
 			i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
-					error.code = QUID_INVALID;
-					return -1;
-				}
 				if (table->items[i].meta.syslock) {
 					error.code = QUID_LOCKED;
 					return -1;
@@ -913,7 +907,16 @@ static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t o
 			free(data);
 			data = NULL;
 		}
-		insert_toplevel(cbtree, &cbtree->top, &table->items[i].quid, data, len);
+
+		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
+            error.code = NO_ERROR;
+            insert_toplevel(cbtree, &cbtree->top, &table->items[i].quid, data, len);
+            if (error.code != NO_ERROR)
+                continue;
+            cbtree->stats.keys++;
+            flush_super(cbtree);
+		}
+
 		free(data);
 
 		if (child) tree_traversal(btree, cbtree, child);

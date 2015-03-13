@@ -118,13 +118,13 @@ static void engine_meta(){
 	ASSERT(!r);
 
 	const struct microdata md = {
-		.lifecycle = MD_LIFECYCLE_NEUTRAL,
+		.lifecycle = MD_LIFECYCLE_FINITE,
 		.importance = MD_IMPORTANT_LEVEL3,
 		.syslock = 0,
 		.exec = 1,
 		.freeze = 1,
 		.error = 0,
-		.flag = MD_FLAG_BOOL_TRUE,
+		.type = MD_TYPE_BOOL_TRUE,
 	};
 	int r2 = btree_meta(&btree, &quid, &md);
 	ASSERT(!r2);
