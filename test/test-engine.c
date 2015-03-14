@@ -46,7 +46,7 @@ static void engine_create(){
 static void engine_crud(){
 	struct btree btree;
 	const char fname[] = "test_database2";
-	struct quid quid;
+	quid_t quid;
 	char data[] = ".....";
 
 	btree_init(&btree, fname);
@@ -78,7 +78,7 @@ static void engine_crud(){
 static void engine_vacuum(){
 	struct btree btree;
 	const char fname[] = "test_database3";
-	struct quid quid;
+	quid_t quid;
 	char data[] = ".....";
 
 	btree_init(&btree, fname);
@@ -109,7 +109,7 @@ static void engine_vacuum(){
 static void engine_meta(){
 	struct btree btree;
 	const char fname[] = "test_database4";
-	struct quid quid;
+	quid_t quid;
 	char data[] = ".....";
 
 	btree_init(&btree, fname);

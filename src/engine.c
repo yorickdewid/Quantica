@@ -17,10 +17,10 @@ static void flush_super(struct btree *btree);
 static void flush_dbsuper(struct btree *btree);
 static void free_chunk(struct btree *btree, uint64_t offset);
 static void free_dbchunk(struct btree *btree, uint64_t offset);
-static uint64_t remove_table(struct btree *btree, struct btree_table *table, size_t i, struct quid *quid);
-static uint64_t delete_table(struct btree *btree, uint64_t table_offset, struct quid *quid);
-static uint64_t lookup(struct btree *btree, uint64_t table_offset, const struct quid *quid);
-static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset, struct quid *quid, const void *data, size_t len);
+static uint64_t remove_table(struct btree *btree, struct btree_table *table, size_t i, quid_t *quid);
+static uint64_t delete_table(struct btree *btree, uint64_t table_offset, quid_t *quid);
+static uint64_t lookup(struct btree *btree, uint64_t table_offset, const quid_t *quid);
+static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset, quid_t *quid, const void *data, size_t len);
 
 static uint64_t collapse(struct btree *btree, uint64_t table_offset);
 
@@ -273,10 +273,10 @@ static void free_chunk(struct btree *btree, uint64_t offset)
 	assert(offset > 0);
 	struct btree_table *table = get_table(btree, offset);
 
-	struct quid quid;
-	memset(&quid, 0, sizeof(struct quid));
+	quid_t quid;
+	memset(&quid, 0, sizeof(quid_t));
 
-	memcpy(&table->items[0].quid, &quid, sizeof(struct quid));
+	memcpy(&table->items[0].quid, &quid, sizeof(quid_t));
 	table->size++;
 	table->items[0].offset = 0;
 	table->items[0].child = to_be64(btree->free_top);
@@ -380,10 +380,8 @@ static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
 
 /* Split a table. The pivot item is stored to 'quid' and 'offset'.
    Returns offset to the new table. */
-static uint64_t split_table(struct btree *btree, struct btree_table *table,
-                            struct quid *quid, uint64_t *offset)
-{
-	memcpy(quid, &table->items[TABLE_SIZE / 2].quid, sizeof(struct quid));
+static uint64_t split_table(struct btree *btree, struct btree_table *table, quid_t *quid, uint64_t *offset) {
+	memcpy(quid, &table->items[TABLE_SIZE / 2].quid, sizeof(quid_t));
 	*offset = from_be64(table->items[TABLE_SIZE / 2].offset);
 
 	struct btree_table *new_table = alloc_table();
@@ -414,9 +412,7 @@ static uint64_t collapse(struct btree *btree, uint64_t table_offset)
 
 /* Find and remove the smallest item from the given table. The key of the item
    is stored to 'quid'. Returns offset to the item */
-static uint64_t take_smallest(struct btree *btree, uint64_t table_offset,
-                              struct quid *quid)
-{
+static uint64_t take_smallest(struct btree *btree, uint64_t table_offset, quid_t *quid) {
 	struct btree_table *table = get_table(btree, table_offset);
 	assert(table->size > 0);
 
@@ -435,9 +431,7 @@ static uint64_t take_smallest(struct btree *btree, uint64_t table_offset,
 
 /* Find and remove the largest item from the given table. The key of the item
    is stored to 'quid'. Returns offset to the item */
-static uint64_t take_largest(struct btree *btree, uint64_t table_offset,
-                             struct quid *quid)
-{
+static uint64_t take_largest(struct btree *btree, uint64_t table_offset, quid_t *quid) {
 	struct btree_table *table = get_table(btree, table_offset);
 	assert(table->size > 0);
 
@@ -456,13 +450,11 @@ static uint64_t take_largest(struct btree *btree, uint64_t table_offset,
 
 /* Remove an item in position 'i' from the given table. The key of the
    removed item is stored to 'quid'. Returns offset to the item. */
-static uint64_t remove_table(struct btree *btree, struct btree_table *table,
-                             size_t i, struct quid *quid)
-{
+static uint64_t remove_table(struct btree *btree, struct btree_table *table, size_t i, quid_t *quid) {
 	assert(i < table->size);
 
 	if (quid)
-		memcpy(quid, &table->items[i].quid, sizeof(struct quid));
+		memcpy(quid, &table->items[i].quid, sizeof(quid_t));
 
 	uint64_t offset = from_be64(table->items[i].offset);
 	uint64_t left_child = from_be64(table->items[i].child);
@@ -501,9 +493,7 @@ static uint64_t remove_table(struct btree *btree, struct btree_table *table,
 
 /* Insert a new item with key 'quid' with the contents in 'data' to the given
    table. Returns offset to the new item. */
-static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
-                             struct quid *quid, const void *data, size_t len)
-{
+static uint64_t insert_table(struct btree *btree, uint64_t table_offset, quid_t *quid, const void *data, size_t len) {
 	struct btree_table *table = get_table(btree, table_offset);
 	assert(table->size < TABLE_SIZE-1);
 
@@ -553,7 +543,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
 	table->size++;
 	memmove(&table->items[i + 1], &table->items[i],
 	        (table->size - i) * sizeof(struct btree_item));
-	memcpy(&table->items[i].quid, quid, sizeof(struct quid));
+	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
 	memset(&table->items[i].meta, 0, sizeof(struct microdata));
 	table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
@@ -569,9 +559,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset,
  * removed item is returned.
  * Please note that 'quid' is overwritten when called inside the allocator.
  */
-static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
-                             struct quid *quid)
-{
+static uint64_t delete_table(struct btree *btree, uint64_t table_offset, quid_t *quid) {
 	if (table_offset == 0) {
 		error.code = DB_EMPTY; //TODO this may not be always the case
 		return 0;
@@ -619,9 +607,7 @@ static uint64_t delete_table(struct btree *btree, uint64_t table_offset,
 	return ret;
 }
 
-static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
-                         struct quid *quid, const void *data, size_t len)
-{
+static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset, quid_t *quid, const void *data, size_t len) {
 	uint64_t offset = 0;
 	uint64_t ret = 0;
 	uint64_t right_child = 0;
@@ -644,7 +630,7 @@ static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	/* create new top level table */
 	struct btree_table *new_table = alloc_table();
 	new_table->size = 1;
-	memcpy(&new_table->items[0].quid, quid, sizeof(struct quid));
+	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);
 	new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
 	new_table->items[0].child = to_be64(*table_offset);
@@ -657,14 +643,14 @@ static uint64_t insert_toplevel(struct btree *btree, uint64_t *table_offset,
 	return ret;
 }
 
-int btree_insert(struct btree *btree, const struct quid *c_quid, const void *data, size_t len) {
+int btree_insert(struct btree *btree, const quid_t *c_quid, const void *data, size_t len) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
 
 	/* QUID must be in writable memory */
-	struct quid quid;
-	memcpy(&quid, c_quid, sizeof(struct quid));
+	quid_t quid;
+	memcpy(&quid, c_quid, sizeof(quid_t));
 
 	insert_toplevel(btree, &btree->top, &quid, data, len);
 	flush_super(btree);
@@ -679,9 +665,7 @@ int btree_insert(struct btree *btree, const struct quid *c_quid, const void *dat
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static uint64_t lookup(struct btree *btree, uint64_t table_offset,
-                       const struct quid *quid)
-{
+static uint64_t lookup(struct btree *btree, uint64_t table_offset, const quid_t *quid) {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -712,7 +696,7 @@ static uint64_t lookup(struct btree *btree, uint64_t table_offset,
 	return 0;
 }
 
-void *btree_get(struct btree *btree, const struct quid *quid, size_t *len) {
+void *btree_get(struct btree *btree, const quid_t *quid, size_t *len) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return NULL;
@@ -737,14 +721,14 @@ void *btree_get(struct btree *btree, const struct quid *quid, size_t *len) {
 	return data;
 }
 
-int btree_delete(struct btree *btree, const struct quid *c_quid) {
-	struct quid quid;
+int btree_delete(struct btree *btree, const quid_t *c_quid) {
+	quid_t quid;
 	error.code = NO_ERROR;
 
 	if (btree->lock == LOCK)
 		return -1;
 
-	memcpy(&quid, c_quid, sizeof(struct quid));
+	memcpy(&quid, c_quid, sizeof(quid_t));
 	uint64_t offset = delete_table(btree, btree->top, &quid);
 	if (error.code != NO_ERROR)
 		return -1;
@@ -757,9 +741,7 @@ int btree_delete(struct btree *btree, const struct quid *c_quid) {
 	return 0;
 }
 
-static struct microdata *get_meta(struct btree *btree, uint64_t table_offset,
-                       const struct quid *quid)
-{
+static struct microdata *get_meta(struct btree *btree, uint64_t table_offset, const quid_t *quid) {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -787,9 +769,7 @@ static struct microdata *get_meta(struct btree *btree, uint64_t table_offset,
 	return 0;
 }
 
-int btree_get_meta(struct btree *btree, const struct quid *quid,
-				struct microdata *md)
-{
+int btree_get_meta(struct btree *btree, const quid_t *quid, struct microdata *md) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
@@ -800,9 +780,7 @@ int btree_get_meta(struct btree *btree, const struct quid *quid,
 	return 0;
 }
 
-static int set_meta(struct btree *btree, uint64_t table_offset,
-                       const struct quid *quid, const struct microdata *md)
-{
+static int set_meta(struct btree *btree, uint64_t table_offset, const quid_t *quid, const struct microdata *md) {
 	while (table_offset) {
 		struct btree_table *table = get_table(btree, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -832,9 +810,7 @@ static int set_meta(struct btree *btree, uint64_t table_offset,
 	return -1;
 }
 
-int btree_meta(struct btree *btree, const struct quid *quid,
-			const struct microdata *data)
-{
+int btree_meta(struct btree *btree, const quid_t *quid, const struct microdata *data) {
 	error.code = NO_ERROR;
 	if (btree->lock == LOCK)
 		return -1;
@@ -845,7 +821,7 @@ int btree_meta(struct btree *btree, const struct quid *quid,
 	return 0;
 }
 
-int btree_remove(struct btree *btree, const struct quid *quid) {
+int btree_remove(struct btree *btree, const quid_t *quid) {
 	error.code = NO_ERROR;
 
 	if (btree->lock == LOCK)

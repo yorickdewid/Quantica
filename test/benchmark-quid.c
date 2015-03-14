@@ -24,7 +24,7 @@ static void print_header() {
 }
 
 static void quid_generate() {
-	struct quid quid;
+	quid_t quid;
 	start_timer();
 	int all=0,i;
 	for(i=0; i<NUM; ++i) {

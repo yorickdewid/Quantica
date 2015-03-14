@@ -23,21 +23,21 @@ typedef struct quid quid_t;
 /*
  * Create new QUID
  */
-void quid_create(struct quid *);
+void quid_create(quid_t *);
 
 /*
  * Compare to QUID keys
  */
-int quidcmp(const struct quid *a, const struct quid *b);
+int quidcmp(const quid_t *a, const quid_t *b);
 
 /*
  * Convert QUID key to string
  */
-void quidtostr(char *s, struct quid *u);
+void quidtostr(char *s, quid_t *u);
 
 /*
  * Convert string to QUID key
  */
-void strtoquid(const char *s, struct quid *u);
+void strtoquid(const char *s, quid_t *u);
 
 #endif // QUID_H_INCLUDED

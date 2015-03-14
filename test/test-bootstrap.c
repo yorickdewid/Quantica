@@ -10,7 +10,7 @@
 static void bootstrap_zero(){
     struct btree btree;
     const char fname[] = "test_bootstrap";
-	struct quid quid;
+	quid_t quid;
 
 	const char squid[] = "{00000000-0000-0000-0000-000000000000}";
 	strtoquid(squid, &quid);
@@ -29,7 +29,7 @@ static void bootstrap_zero(){
 static void bootstrap_init(){
 	struct btree btree;
 	const char fname[] = "test_bootstrap2";
-	struct quid quid;
+	quid_t quid;
 
 	const char squid[] = "{00000000-00c1-a150-0000-000000000080}";
 	const char data[] = "{\"pre\":\"_init\",\"description\":\"bootstrap\"}";

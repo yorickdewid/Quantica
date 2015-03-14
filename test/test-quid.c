@@ -4,15 +4,15 @@
 #include "../src/quid.h"
 
 static void quid_compare(){
-	struct quid quid1;
-	struct quid quid2;
+	quid_t quid1;
+	quid_t quid2;
 	quid_create(&quid1);
-	memcpy(&quid2, &quid1, sizeof(struct quid));
+	memcpy(&quid2, &quid1, sizeof(quid_t));
 	ASSERT(!quidcmp(&quid1, &quid2));
 }
 
 static void quid_generate(){
-	struct quid rquid[5];
+	quid_t rquid[5];
 	quid_create(&rquid[0]);
 	quid_create(&rquid[1]);
 	quid_create(&rquid[2]);
@@ -32,7 +32,7 @@ static void quid_generate(){
 static void quid_sformat(){
 	char *pch;
 	int phyp, nhyp = 0;
-	struct quid quid;
+	quid_t quid;
 	char squid[39] = {'\0'};
 	quid_create(&quid);
 	quidtostr(squid, &quid);
@@ -52,8 +52,8 @@ static void quid_sformat(){
 }
 
 static void quid_convertoi(){
-	struct quid quido;
-	struct quid quidi;
+	quid_t quido;
+	quid_t quidi;
 	char squid[39] = {'\0'};
 	quid_create(&quido);
 	quidtostr(squid, &quido);
@@ -62,7 +62,7 @@ static void quid_convertoi(){
 }
 
 static void quid_convertio(){
-	struct quid quid;
+	quid_t quid;
 	char squidi[] = "{00000000-0000-a150-8345-c649140dc096}";
 	char squido[39] = {'\0'};
 	strtoquid(squidi, &quid);

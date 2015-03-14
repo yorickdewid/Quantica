@@ -11,7 +11,7 @@
 
 static int rnd_seed = RND_SEED_CYCLE;
 
-static void format_quid(struct quid *, unsigned short, cuuid_time_t);
+static void format_quid(quid_t *, unsigned short, cuuid_time_t);
 static void get_current_time(cuuid_time_t *);
 
 /* Retrieve system time */
@@ -56,7 +56,7 @@ static unsigned short true_random(void) {
 }
 
 /* Construct QUID */
-void quid_create(struct quid *uid) {
+void quid_create(quid_t *uid) {
 	cuuid_time_t timestamp;
 	unsigned short clockseq;
 
@@ -70,7 +70,7 @@ void quid_create(struct quid *uid) {
  * Format QUID from the timestamp, clocksequence, and node ID
  * Structure succeeds version 3
  */
-static void format_quid(struct quid* uid, unsigned short clock_seq, cuuid_time_t timestamp){
+static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t timestamp){
 	uid->time_low = (unsigned long)(timestamp & 0xffffffff);
 	uid->time_mid = (unsigned short)((timestamp >> 32) & 0xffff);
 
@@ -121,13 +121,12 @@ static void get_current_time(cuuid_time_t *timestamp) {
 }
 
 /* Compare two identifiers */
-int quidcmp(const struct quid *a, const struct quid *b) {
-	return memcmp(a, b, sizeof(struct quid));
+int quidcmp(const quid_t *a, const quid_t *b) {
+	return memcmp(a, b, sizeof(quid_t));
 }
 
 /* Print QUID to string */
-void quidtostr(char *s, struct quid *u)
-{
+void quidtostr(char *s, quid_t *u) {
 	sprintf(s, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
 			, (unsigned int)u->time_low
 			, u->time_mid
@@ -142,8 +141,7 @@ void quidtostr(char *s, struct quid *u)
 			, u->node[5]);
 }
 
-void strtoquid(const char *s, struct quid *u)
-{
+void strtoquid(const char *s, quid_t *u) {
 	sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
 			, &u->time_low
 			, &u->time_mid

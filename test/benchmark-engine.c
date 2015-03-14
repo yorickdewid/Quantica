@@ -16,7 +16,7 @@
 static struct timespec start;
 static struct btree btree;
 static char val[VALSIZE+1] = {'\0'};
-struct quid quidr[NUM];
+quid_t quidr[NUM];
 
 static void start_timer() {
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -45,16 +45,16 @@ static void print_header() {
 }
 
 static void db_write_test() {
-	struct quid key;
+	quid_t key;
 	int v_len = strlen(val);
 	start_timer();
 	int i;
 	for(i=0; i<NUM; ++i) {
-		memset(&key, 0, sizeof(struct quid));
+		memset(&key, 0, sizeof(quid_t));
 		quid_create(&key);
 		if (btree_insert(&btree, &key, val, v_len)<0)
 			FATAL("btree_insert");
-		memcpy(&quidr[i], &key, sizeof(struct quid));
+		memcpy(&quidr[i], &key, sizeof(quid_t));
 		if(!(i%10000))
 			LOGF("finished %d ops%30s\r", i, "");
 	}
@@ -68,14 +68,14 @@ static void db_write_test() {
 }
 
 static void db_read_seq_test() {
-	struct quid key;
+	quid_t key;
 	int all = 0, i;
 	int start = NUM/2;
 	int end = start+R_NUM;
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=start; i<end; ++i) {
-		memcpy(&key, &quidr[i], sizeof(struct quid));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
 		void *data = btree_get(&btree, &key, &len);
@@ -101,14 +101,14 @@ static void db_read_seq_test() {
 }
 
 static void db_read_random_test() {
-	struct quid key;
+	quid_t key;
 	int all=0,i;
 	int start=NUM/2;
 	int end=start+R_NUM;
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=start; i<end; ++i) {
-		memcpy(&key, &quidr[i], sizeof(struct quid));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
 		void *data = btree_get(&btree, &key, &len);
@@ -134,13 +134,13 @@ static void db_read_random_test() {
 }
 
 static void db_read_bounds_test() {
-	struct quid key;
+	quid_t key;
 	int all=0,i;
 	int end=NUM/2000;
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=0; i<end; ++i) {
-		memcpy(&key, &quidr[i], sizeof(struct quid));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
 		void *data = btree_get(&btree, &key, &len);
@@ -166,15 +166,15 @@ static void db_read_bounds_test() {
 }
 
 static void db_delete_random_test() {
-	struct quid key;
+	quid_t key;
 	int all=0,i;
 	int start=NUM/2;
 	int end=start+R_NUM;
 	char squid[35] = {'\0'};
 	start_timer();
 	for(i=start; i<end; ++i) {
-		memset(&key, 0, sizeof(struct quid));
-		memcpy(&key, &quidr[i], sizeof(struct quid));
+		memset(&key, 0, sizeof(quid_t));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
 		if(btree_delete(&btree, &key)<0)
@@ -202,11 +202,11 @@ static void db_delete_random_test() {
 }
 
 static void db_read_test() {
-	struct quid key;
+	quid_t key;
 	start_timer();
 	int all=0,i;
 	for(i=0; i<NUM; ++i) {
-		memcpy(&key, &quidr[i], sizeof(struct quid));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
 		void *data = btree_get(&btree, &key, &len);

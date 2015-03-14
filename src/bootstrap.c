@@ -13,7 +13,7 @@ quid_t key;
 struct microdata md;
 
 void bootstrap(struct btree *btree) {
-	memset(&key, 0, sizeof(struct quid));
+	memset(&key, 0, sizeof(quid_t));
 	memset(&md, 0, sizeof(struct microdata));
 
 	/* Verify bootstrap signature */

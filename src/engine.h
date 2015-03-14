@@ -60,7 +60,7 @@ struct microdata {
 };
 
 struct btree_item {
-     struct quid quid;
+     quid_t quid;
      struct microdata meta;
      __be64 offset;
      __be64 child;
@@ -136,28 +136,25 @@ void btree_purge(const char *fname);
  * Insert a new item with key 'quid' with the contents in 'data' to the
  * database file.
  */
-int btree_insert(struct btree *btree, const struct quid *quid, const void *data,
-                  size_t len);
+int btree_insert(struct btree *btree, const quid_t *quid, const void *data, size_t len);
 
 /*
  * Look up item with the given key 'quid' in the database file. Length of the
  * item is stored in 'len'. Returns a pointer to the contents of the item.
  * The returned pointer should be released with free() after use.
  */
-void *btree_get(struct btree *btree, const struct quid *quid, size_t *len);
+void *btree_get(struct btree *btree, const quid_t *quid, size_t *len);
 
 /*
  * Remove item with the given key 'quid' from the database file.
  */
-int btree_delete(struct btree *btree, const struct quid *quid);
+int btree_delete(struct btree *btree, const quid_t *quid);
 
-int btree_get_meta(struct btree *btree, const struct quid *quid,
-				struct microdata *md);
+int btree_get_meta(struct btree *btree, const quid_t *quid, struct microdata *md);
 
-int btree_meta(struct btree *btree, const struct quid *quid,
-			const struct microdata *data);
+int btree_meta(struct btree *btree, const quid_t *quid, const struct microdata *data);
 
-int btree_remove(struct btree *btree, const struct quid *quid);
+int btree_remove(struct btree *btree, const quid_t *quid);
 
 void walk_dbstorage(struct btree *btree);
 int btree_vacuum(struct btree *btree, const char *fname);
