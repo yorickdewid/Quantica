@@ -72,9 +72,7 @@ static void put_table(struct btree *btree, struct btree_table *table, uint64_t o
 }
 
 /* Write a table and free it */
-static void flush_table(struct btree *btree, struct btree_table *table,
-                        uint64_t offset)
-{
+static void flush_table(struct btree *btree, struct btree_table *table, uint64_t offset) {
 	assert(offset != 0);
 
 	lseek(btree->fd, offset, SEEK_SET);
@@ -85,8 +83,7 @@ static void flush_table(struct btree *btree, struct btree_table *table,
 	put_table(btree, table, offset);
 }
 
-static void create_backup(const char *fname)
-{
+static void create_backup(const char *fname) {
 	char ddbname[1024], didxname[1024], dwalname[1024];
 	char sdbname[1024], sidxname[1024], swalname[1024];
 	sprintf(sidxname, "%s%s", fname, IDXEXT);
@@ -100,8 +97,7 @@ static void create_backup(const char *fname)
 	rename(swalname, dwalname);
 }
 
-static void restore_tmpdb(const char *fname)
-{
+static void restore_tmpdb(const char *fname) {
 	char ddbname[1024], didxname[1024], dwalname[1024];
 	char sdbname[1024], sidxname[1024], swalname[1024];
 	sprintf(sidxname, "%s%s", fname, CIDXEXT);
@@ -115,9 +111,7 @@ static void restore_tmpdb(const char *fname)
 	rename(swalname, dwalname);
 }
 
-static int btree_open(struct btree *btree, const char *idxname,
-					const char *dbname, const char* walname)
-{
+static int btree_open(struct btree *btree, const char *idxname, const char *dbname, const char* walname) {
 	memset(btree, 0, sizeof *btree);
 	btree->fd = open(idxname, O_RDWR | O_BINARY);
 	btree->db_fd = open(dbname, O_RDWR | O_BINARY);
@@ -144,9 +138,7 @@ static int btree_open(struct btree *btree, const char *idxname,
 	return 0;
 }
 
-static int btree_create(struct btree *btree, const char *idxname,
-						const char* dbname, const char* walname)
-{
+static int btree_create(struct btree *btree, const char *idxname, const char* dbname, const char* walname) {
 	memset(btree, 0, sizeof *btree);
 	btree->fd = open(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	btree->db_fd = open(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
@@ -163,8 +155,7 @@ static int btree_create(struct btree *btree, const char *idxname,
 	return 0;
 }
 
-void btree_init(struct btree *btree, const char *fname)
-{
+void btree_init(struct btree *btree, const char *fname) {
 	char dbname[1024],idxname[1024],walname[1024];
 	sprintf(idxname, "%s%s", fname, IDXEXT);
 	sprintf(dbname, "%s%s", fname, DBEXT);
@@ -178,8 +169,7 @@ void btree_init(struct btree *btree, const char *fname)
 	}
 }
 
-void btree_close(struct btree *btree)
-{
+void btree_close(struct btree *btree) {
 	flush_super(btree);
 	close(btree->fd);
 	close(btree->db_fd);
@@ -192,8 +182,7 @@ void btree_close(struct btree *btree)
 	}
 }
 
-void btree_purge(const char* fname)
-{
+void btree_purge(const char* fname) {
 	char dbname[1024],idxname[1024],walname[1024];
 	sprintf(idxname, "%s%s", fname, IDXEXT);
 	sprintf(dbname, "%s%s", fname, DBEXT);
@@ -204,8 +193,7 @@ void btree_purge(const char* fname)
 }
 
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
-static size_t page_align(size_t val)
-{
+static size_t page_align(size_t val) {
 	size_t i = 1;
 	while (i < val)
 		i <<= 1;
@@ -213,8 +201,7 @@ static size_t page_align(size_t val)
 }
 
 /* Allocate a chunk from the index file */
-static uint64_t alloc_chunk(struct btree *btree, size_t len)
-{
+static uint64_t alloc_chunk(struct btree *btree, size_t len) {
 	assert(len > 0);
 
 	/* Use blocks from freelist instead of allocation */
@@ -239,8 +226,7 @@ static uint64_t alloc_chunk(struct btree *btree, size_t len)
 }
 
 /* Allocate a chunk from the database file */
-static uint64_t alloc_dbchunk(struct btree *btree, size_t len)
-{
+static uint64_t alloc_dbchunk(struct btree *btree, size_t len) {
 	assert(len > 0);
 
 	if(!btree->dbcache[DBCACHE_SLOTS-1].len)
@@ -267,8 +253,7 @@ new_block:
 }
 
 /* Mark a chunk as unused in the database file */
-static void free_chunk(struct btree *btree, uint64_t offset)
-{
+static void free_chunk(struct btree *btree, uint64_t offset) {
 	assert(offset > 0);
 	struct btree_table *table = get_table(btree, offset);
 
@@ -285,8 +270,7 @@ static void free_chunk(struct btree *btree, uint64_t offset)
 	btree->stats.free_tables++;
 }
 
-static void free_dbchunk(struct btree *btree, uint64_t offset)
-{
+static void free_dbchunk(struct btree *btree, uint64_t offset) {
 	lseek(btree->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(btree->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
@@ -320,8 +304,7 @@ static void free_dbchunk(struct btree *btree, uint64_t offset)
 	}
 }
 
-static void flush_super(struct btree *btree)
-{
+static void flush_super(struct btree *btree) {
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
 	strcpy(super.signature, VERSION);
@@ -337,8 +320,7 @@ static void flush_super(struct btree *btree)
 	}
 }
 
-static void flush_dbsuper(struct btree *btree)
-{
+static void flush_dbsuper(struct btree *btree) {
 	struct btree_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
 	strcpy(dbsuper.signature, VERSION);
@@ -350,8 +332,7 @@ static void flush_dbsuper(struct btree *btree)
 	}
 }
 
-static uint64_t insert_data(struct btree *btree, const void *data, size_t len)
-{
+static uint64_t insert_data(struct btree *btree, const void *data, size_t len) {
 	if (data == NULL || len == 0) {
 		error.code = VAL_EMPTY;
 		return len;
@@ -397,8 +378,7 @@ static uint64_t split_table(struct btree *btree, struct btree_table *table, quid
 }
 
 /* Try to collapse the given table. Returns a new table offset. */
-static uint64_t collapse(struct btree *btree, uint64_t table_offset)
-{
+static uint64_t collapse(struct btree *btree, uint64_t table_offset) {
 	struct btree_table *table = get_table(btree, table_offset);
 	if (table->size == 0) {
 		uint64_t ret = from_be64(table->items[0].child);
@@ -464,21 +444,17 @@ static uint64_t remove_table(struct btree *btree, struct btree_table *table, siz
 		   child tables */
 		uint64_t new_offset;
 		if (rand() & 1) {
-			new_offset = take_largest(btree, left_child,
-			                          &table->items[i].quid);
+			new_offset = take_largest(btree, left_child, &table->items[i].quid);
 			table->items[i].child =
 			    to_be64(collapse(btree, left_child));
 		} else {
-			new_offset = take_smallest(btree, right_child,
-			                           &table->items[i].quid);
-			table->items[i + 1].child =
-			    to_be64(collapse(btree, right_child));
+			new_offset = take_smallest(btree, right_child, &table->items[i].quid);
+			table->items[i + 1].child = to_be64(collapse(btree, right_child));
 		}
 		table->items[i].offset = to_be64(new_offset);
 
 	} else {
-		memmove(&table->items[i], &table->items[i + 1],
-		        (table->size - i) * sizeof(struct btree_item));
+		memmove(&table->items[i], &table->items[i + 1], (table->size - i) * sizeof(struct btree_item));
 		table->size--;
 
 		if (left_child != 0) {
@@ -540,8 +516,7 @@ static uint64_t insert_table(struct btree *btree, uint64_t table_offset, quid_t 
 	}
 
 	table->size++;
-	memmove(&table->items[i + 1], &table->items[i],
-	        (table->size - i) * sizeof(struct btree_item));
+	memmove(&table->items[i + 1], &table->items[i], (table->size - i) * sizeof(struct btree_item));
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
 	memset(&table->items[i].meta, 0, sizeof(struct microdata));
@@ -839,8 +814,7 @@ int btree_remove(struct btree *btree, const quid_t *quid) {
 	return 0;
 }
 
-void walk_dbstorage(struct btree *btree)
-{
+void walk_dbstorage(struct btree *btree) {
 	uint64_t offset = sizeof(struct btree_dbsuper);
 	struct blob_info info;
 
@@ -853,8 +827,7 @@ void walk_dbstorage(struct btree *btree)
 	}
 }
 
-static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t offset)
-{
+static void tree_traversal(struct btree *btree, struct btree *cbtree, uint64_t offset) {
 	int i;
 	struct btree_table *table = get_table(btree, offset);
 	size_t sz = table->size;
