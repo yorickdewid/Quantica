@@ -3,7 +3,7 @@ SRCDIR=src
 TESTDIR=test
 BINDIR=bin
 CFLAGS=-c -g -Wall -Werror -Wextra -DDEBUG
-LDFLAGS=-lrt
+LDFLAGS=-lrt -lpthread
 SOURCES=$(SRCDIR)/common.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c $(SRCDIR)/aes.c \
         $(SRCDIR)/crc32.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c \
         $(SRCDIR)/webapi.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c \
