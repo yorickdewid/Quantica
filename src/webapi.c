@@ -545,7 +545,6 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-#endif
                 } else if (!strcmp(_filename, "/test")) {
                     char *var = strtok(c_buf, "&");
                     while(var != NULL) {
@@ -567,6 +566,7 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+#endif
                 } else if (!strcmp(_filename, "/instance")) {
                     char *var = strtok(c_buf, "&");
                     while(var != NULL) {

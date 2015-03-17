@@ -5,7 +5,6 @@
 
 #include <config.h>
 #include <common.h>
-#include "bswap.h"
 #include "track.h"
 #include "quid.h"
 #include "engine.h"

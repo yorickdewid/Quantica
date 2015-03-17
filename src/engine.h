@@ -3,8 +3,9 @@
 
 #include <stdio.h>
 #include <fcntl.h>
-
-#include "bswap.h"
+#include <stdint.h>
+#include <config.h>
+#include <common.h>
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct btree_item))
 

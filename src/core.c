@@ -38,7 +38,7 @@ char *get_instance_name() {
 int store(char *quid, const void *data, size_t len) {
 	if (!ready)
 		return -1;
-	struct quid key;
+	quid_t key;
 	quid_create(&key);
 	if (btree_insert(&btx, &key, data, len)<0)
 		return -1;
@@ -49,14 +49,6 @@ int store(char *quid, const void *data, size_t len) {
 int test(void *param[]) {
 	puts("Test stub");
 	(void)(param);
-	return 0;
-}
-
-int rremove(char *quid) {
-	struct quid key;
-	strtoquid(quid, &key);
-
-	btree_remove(&btx, &key);
 	return 0;
 }
 
@@ -81,7 +73,7 @@ unsigned long int stat_getfreekeys() {
 }
 
 void generate_quid(char *quid) {
-	struct quid key;
+	quid_t key;
 	quid_create(&key);
 	quidtostr(quid, &key);
 }
@@ -89,7 +81,7 @@ void generate_quid(char *quid) {
 void *request_quid(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
-	struct quid key;
+	quid_t key;
 	strtoquid(quid, &key);
 	void *data = btree_get(&btx, &key, len);
 	return data;
@@ -98,7 +90,7 @@ void *request_quid(char *quid, size_t *len) {
 int update(char *quid, struct microdata *nmd) {
 	if (!ready)
 		return -1;
-	struct quid key;
+	quid_t key;
 	strtoquid(quid, &key);
 	if (btree_meta(&btx, &key, nmd)<0)
 		return -1;
@@ -108,7 +100,7 @@ int update(char *quid, struct microdata *nmd) {
 int delete(char *quid) {
 	if (!ready)
 		return -1;
-	struct quid key;
+	quid_t key;
 	strtoquid(quid, &key);
 	if (btree_delete(&btx, &key)<0)
 		return -1;
