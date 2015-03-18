@@ -17,7 +17,7 @@ static void get_current_time(cuuid_time_t *);
 /* Retrieve system time */
 void get_system_time(cuuid_time_t *uid_time) {
 	struct timeval tv;
-	unsigned long long int result = EPOCH_DIFF;
+	cuuid_time_t result = EPOCH_DIFF;
 	gettimeofday(&tv, NULL);
 	result += tv.tv_sec;
 	result *= 10000000LL;
