@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "config.h"
+#include <config.h>
 #include "aes.h"
 
 #define NB      4

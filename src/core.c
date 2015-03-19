@@ -7,6 +7,7 @@
 #include "sha1.h"
 #include "aes.h"
 #include "crc32.h"
+#include "base64.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
