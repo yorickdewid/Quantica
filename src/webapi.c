@@ -11,6 +11,7 @@
 #include <config.h>
 #include <common.h>
 #include "core.h"
+#include "time.h"
 #include "webapi.h"
 
 #define HEADER_SIZE		10240L
@@ -722,10 +723,9 @@ disconnect:
 	return NULL;
 }
 
-void daemonize() {
+int daemonize() {
     fprintf(stderr, "[info] %s %s (%s, %s)\n", PROGNAME, VERSION, __DATE__, __TIME__);
 	fprintf(stderr, "[info] Starting daemon\n");
-
 	fprintf(stderr, "[info] Start database core\n");
 	start_core();
 
@@ -739,12 +739,12 @@ void daemonize() {
 	if (setsockopt(serversock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
 		close(serversock);
 		fprintf(stderr, "[erro] Failed to set socket option\n");
-		return;
+		return 1;
 	}
 
 	if (bind(serversock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
 		fprintf(stderr, "[erro] Failed to bind socket to port %d\n", API_PORT);
-		return;
+		return 1;
 	}
 
 	listen(serversock, MAX_CLIENTS);
@@ -764,4 +764,5 @@ void daemonize() {
 
 	fprintf(stderr, "[info] Cleanup and detach core\n");
 	detach_core();
+	return 0;
 }

@@ -3,17 +3,15 @@
 #include <string.h>
 
 #include <config.h>
-#include "core.h"
-#include "engine.h"
 #include "webapi.h"
 
 void print_version() {
-    printf(PROGNAME" %s (%s, %s)\n", VERSION, __DATE__, __TIME__);
+    printf(PROGNAME " " VERSION " (%s, %s)\n", __DATE__, __TIME__);
 }
 
 int main(int argc, char *argv[]) {
     if (argc<2)
-        daemonize();
+        return daemonize();
 
 	int i;
 	for (i=1; i<argc; ++i) {

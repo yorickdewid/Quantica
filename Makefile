@@ -5,7 +5,7 @@ BINDIR=bin
 CFLAGS=-c -g -Wall -Werror -Wextra -DDEBUG
 LDFLAGS=-lrt -lpthread
 SOURCES=$(SRCDIR)/common.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c $(SRCDIR)/aes.c $(SRCDIR)/base64.c \
-        $(SRCDIR)/crc32.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c \
+        $(SRCDIR)/crc32.c $(SRCDIR)/time.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/bootstrap.c \
         $(SRCDIR)/webapi.c $(TESTDIR)/benchmark-engine.c $(TESTDIR)/test-quid.c \
         $(TESTDIR)/benchmark-quid.c $(TESTDIR)/test-engine.c $(TESTDIR)/test-bootstrap.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o

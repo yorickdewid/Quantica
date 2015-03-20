@@ -3,6 +3,6 @@
 
 #define API_VERSION     1
 
-void daemonize();
+int daemonize();
 
 #endif // WEBAPI_H_INCLUDED
