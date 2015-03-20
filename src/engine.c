@@ -892,3 +892,50 @@ int btree_vacuum(struct btree *btree, const char *fname) {
 
 	return 0;
 }
+
+int btree_update(struct btree *btree, const quid_t *quid, const void *data, size_t len) {
+	error.code = NO_ERROR;
+	if (btree->lock == LOCK)
+		return -1;
+
+    uint64_t offset = 0;
+    uint64_t table_offset = btree->top;
+	while (table_offset) {
+		struct btree_table *table = get_table(btree, table_offset);
+		size_t left = 0, right = table->size, i;
+		while (left < right) {
+			i = (right - left) / 2 + left;
+			int cmp = quidcmp(quid, &table->items[i].quid);
+			if (cmp == 0) {
+				if (table->items[i].meta.syslock) {
+					error.code = QUID_LOCKED;
+					return -1;
+				}
+				offset = from_be64(table->items[i].offset);
+				free_dbchunk(btree, offset);
+				offset = insert_data(btree, data, len);
+				table->items[i].offset = to_be64(offset);
+				flush_table(btree, table, table_offset);
+				goto done;
+			}
+			if (cmp < 0) {
+				right = i;
+			} else {
+				left = i + 1;
+			}
+		}
+		uint64_t child = from_be64(table->items[left].child);
+		put_table(btree, table, table_offset);
+		table_offset = child;
+	}
+
+done:
+	flush_super(btree);
+	if (error.code != NO_ERROR) {
+        puts("coderr");
+		return -1;
+	}
+
+	return 0;
+}
+

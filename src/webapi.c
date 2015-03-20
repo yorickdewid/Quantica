@@ -442,6 +442,29 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+                } else if (!strcmp(_filename, "/replace")) {
+                    char *var = strtok(c_buf, "&");
+                    while(var != NULL) {
+                        char *value = strchr(var, '=');
+                        if (value) {
+                            value[0] = '\0';
+                            value++;
+                            if (!strcmp(var, "quid")) {
+                                int rtn = update_key(value, "value", strlen("value"));
+                                if (rtn<0) {
+                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
+                                    goto done;
+                                }
+                                char jsonbuf[512] = {'\0'};
+                                sprintf(jsonbuf, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                json_response(socket_stream, headers, "200 OK", jsonbuf);
+                                processed = 1;
+                            }
+                        }
+                        var = strtok(NULL, "&");
+                    }
+                    if (!processed)
+                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
                 } else if (!strcmp(_filename, "/sha1")) {
                     char strsha[40] = {'\0'};
                     char *var = strtok(c_buf, "&");

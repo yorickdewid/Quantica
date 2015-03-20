@@ -53,6 +53,17 @@ int test(void *param[]) {
 	return 0;
 }
 
+int update_key(char *quid, const void *data, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+    strtoquid(quid, &key);
+	if (btree_update(&btx, &key, data, len)<0) {
+		return -1;
+	}
+	return 0;
+}
+
 int sha1(char *s, const char *data) {
     struct sha sha;
     sha1_reset(&sha);

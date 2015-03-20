@@ -20,6 +20,7 @@ void debugstats();
 void set_instance_name(char name[]);
 char *get_instance_name();
 void generate_quid(char *quid);
+int update_key(char *quid, const void *data, size_t len);
 int debugkey(char *quid);
 int sha1(char *s, const char *data);
 int update(char *quid, struct microdata *nmd);
