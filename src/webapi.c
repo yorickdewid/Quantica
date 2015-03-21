@@ -724,7 +724,8 @@ disconnect:
 }
 
 int daemonize() {
-    fprintf(stderr, "[info] %s %s (%s, %s)\n", PROGNAME, VERSION, __DATE__, __TIME__);
+    fprintf(stderr, "[info] " PROGNAME " " VERSION "(%s, %s)\n", __DATE__, __TIME__);
+    fprintf(stderr, "[info] Current time: %lld\n", get_timestamp());
 	fprintf(stderr, "[info] Starting daemon\n");
 	fprintf(stderr, "[info] Start database core\n");
 	start_core();
