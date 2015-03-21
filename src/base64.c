@@ -76,8 +76,6 @@ int base64_decode(char *bufplain, const char *bufcoded) {
     return nbytesdecoded;
 }
 
-
-
 int base64_encode_len(int len) {
     return ((len + 2) / 3 * 4) + 1;
 }
