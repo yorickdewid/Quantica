@@ -403,10 +403,10 @@ unsupported:
 			goto done;
 		}
 
-        char *c_buf;
+        char *c_buf = NULL;
         if (c_length > 0) {
             size_t total_read = 0;
-            c_buf = malloc(c_length);
+            c_buf = (char *)malloc(c_length+1);
             while ((total_read < c_length) && (!feof(socket_stream))) {
                 size_t diff = c_length - total_read;
                 if (diff > 1024) diff = 1024;
@@ -685,6 +685,7 @@ unsupported:
                 if (request_type == HTTP_HEAD) {
                     raw_response(socket_stream, headers, "200 OK");
                 } else {
+                    data = realloc(data, len+1);
                     data[len] = '\0';
                     char jsonbuf[512] = {'\0'};
                     sprintf(jsonbuf, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
@@ -701,6 +702,7 @@ unsupported:
 
 done:
 		fflush(socket_stream);
+		free(c_buf);
 		free(_filename);
 		delete_vector(queue);
 		delete_vector(headers);

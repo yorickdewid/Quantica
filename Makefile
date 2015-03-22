@@ -2,6 +2,8 @@ INCLUDE=include
 SRCDIR=src
 TESTDIR=test
 BINDIR=bin
+VALGRIND=valgrind
+VALFLAGS=--leak-check=yes --track-origins=yes
 CFLAGS=-c -g -Wall -Werror -Wextra -DDEBUG
 LDFLAGS=-lrt -lpthread
 SOURCES=$(SRCDIR)/common.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c $(SRCDIR)/aes.c $(SRCDIR)/base64.c \
@@ -26,6 +28,9 @@ $(EXECUTABLETEST): $(TESTOBJECTS)
 
 .c.o:
 	$(CC) -I$(INCLUDE) $(CFLAGS) $< -o $@
+
+memcheck: debug
+	$(VALGRIND) $(VALFLAGS) $(BINDIR)/$(EXECUTABLE)
 
 cleanall: clean cleandb cleandebug cleantest
 

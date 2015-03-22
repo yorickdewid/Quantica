@@ -51,7 +51,7 @@ static struct btree_table *get_table(struct btree *btree, uint64_t offset) {
 	struct btree_table *table = malloc(sizeof *table);
 
 	lseek(btree->fd, offset, SEEK_SET);
-	if (read(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
+	if (read(btree->fd, table, sizeof(struct btree_table)) != sizeof(struct btree_table)) {
 		fprintf(stderr, "btree: I/O error\n");
 		abort();
 	}
@@ -76,7 +76,7 @@ static void flush_table(struct btree *btree, struct btree_table *table, uint64_t
 	assert(offset != 0);
 
 	lseek(btree->fd, offset, SEEK_SET);
-	if (write(btree->fd, table, sizeof *table) != (ssize_t) sizeof *table) {
+	if (write(btree->fd, table, sizeof(struct btree_table)) != sizeof(struct btree_table)) {
 		fprintf(stderr, "btree: I/O error offset:%ld\n", offset);
 		abort();
 	}

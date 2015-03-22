@@ -19,8 +19,10 @@ void bootstrap(struct btree *btree) {
 	/* Verify bootstrap signature */
 	size_t len;
 	void *rdata = btree_get(btree, &key, &len);
-	if (rdata && !strcmp(rdata, BS_MAGIC))
-		goto done;
+	if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
+		free(rdata);
+		return;
+    }
 
 	/* Add bootstrap signature to empty database */
 	const char data0[] = BS_MAGIC;
@@ -70,7 +72,4 @@ void bootstrap(struct btree *btree) {
 	md.type = MD_TYPE_BOOL_TRUE;
 	if (btree_meta(btree, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
-
-done:
-	free(rdata);
 }
