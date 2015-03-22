@@ -11,16 +11,16 @@ void sha1_process_message_block(struct sha *ctx);
 void sha1_padmessage(struct sha *ctx);
 
 void sha1_reset(struct sha *ctx) {
-    ctx->szlow             = 0;
-    ctx->szhigh            = 0;
-    ctx->message_block_idx    = 0;
-    ctx->digest[0]      = 0x67452301;
-    ctx->digest[1]      = 0xEFCDAB89;
-    ctx->digest[2]      = 0x98BADCFE;
-    ctx->digest[3]      = 0x10325476;
-    ctx->digest[4]      = 0xC3D2E1F0;
-    ctx->computed   = 0;
-    ctx->corrupted  = 0;
+    ctx->szlow = 0;
+    ctx->szhigh = 0;
+    ctx->message_block_idx = 0;
+    ctx->digest[0] = 0x67452301;
+    ctx->digest[1] = 0xEFCDAB89;
+    ctx->digest[2] = 0x98BADCFE;
+    ctx->digest[3] = 0x10325476;
+    ctx->digest[4] = 0xC3D2E1F0;
+    ctx->computed = 0;
+    ctx->corrupted = 0;
 }
 
 int sha1_result(struct sha *ctx) {
@@ -174,7 +174,7 @@ void sha1_padmessage(struct sha *ctx) {
 }
 
 void sha1_strsum(char *s, struct sha *ctx) {
-	sprintf(s, "%x%x%x%x%x"
+	sprintf(s, "%.8x%.8x%.8x%.8x%.8x"
 			, ctx->digest[0]
 			, ctx->digest[1]
 			, ctx->digest[2]
