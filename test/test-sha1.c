@@ -12,7 +12,7 @@ static void sha1_1(){
     sha1_input(&sha, (const unsigned char *)input, strlen(input));
     ASSERT(sha1_result(&sha));
     sha1_strsum(output, &sha);
-    output[41] = '\0';
+    output[40] = '\0';
 	ASSERT(!strcmp(expected, output));
 }
 
@@ -25,7 +25,7 @@ static void sha1_2(){
     sha1_input(&sha, (const unsigned char *)input, strlen(input));
     ASSERT(sha1_result(&sha));
     sha1_strsum(output, &sha);
-    output[41] = '\0';
+    output[40] = '\0';
 	ASSERT(!strcmp(expected, output));
 }
 
@@ -38,7 +38,7 @@ static void sha1_3(){
     sha1_input(&sha, (const unsigned char *)input, strlen(input));
     ASSERT(sha1_result(&sha));
     sha1_strsum(output, &sha);
-    output[41] = '\0';
+    output[40] = '\0';
 	ASSERT(!strcmp(expected, output));
 }
 
