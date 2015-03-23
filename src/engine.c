@@ -307,7 +307,7 @@ static void free_dbchunk(struct btree *btree, uint64_t offset) {
 static void flush_super(struct btree *btree) {
 	struct btree_super super;
 	memset(&super, 0, sizeof super);
-	strcpy(super.signature, VERSION);
+	strlcpy(super.signature, VERSION, sizeof(super.signature));
 	super.top = to_be64(btree->top);
 	super.free_top = to_be64(btree->free_top);
 	super.nkey = to_be64(btree->stats.keys);
@@ -323,7 +323,7 @@ static void flush_super(struct btree *btree) {
 static void flush_dbsuper(struct btree *btree) {
 	struct btree_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct btree_dbsuper));
-	strcpy(dbsuper.signature, VERSION);
+	strlcpy(dbsuper.signature, VERSION, sizeof(dbsuper.signature));
 
 	lseek(btree->db_fd, 0, SEEK_SET);
 	if (write(btree->db_fd, &dbsuper, sizeof(struct btree_dbsuper)) != sizeof(struct btree_dbsuper)) {

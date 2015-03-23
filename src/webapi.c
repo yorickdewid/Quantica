@@ -179,8 +179,9 @@ void *handle_request(void *socket) {
 				goto disconnect;
 			}
 
-			char *request_line = malloc((strlen(buf)+1) * sizeof(char));
-			strcpy(request_line, buf);
+            size_t request_sz = (strlen(buf)+1) * sizeof(char);
+			char *request_line = malloc(request_sz);
+			strlcpy(request_line, buf, request_sz);
 			vector_append(queue, (void *)request_line);
 		}
 
@@ -379,8 +380,9 @@ unsupported:
 			goto disconnect;
 		}
 
-		_filename = calloc(sizeof(char) * (strlen(filename) + 2), 1);
-		strcat(_filename, filename);
+        size_t _filename_sz = sizeof(char) * (strlen(filename) + 2);
+		_filename = calloc(_filename_sz, 1);
+		strlcat(_filename, filename, _filename_sz);
 		if (strstr(_filename, "%")) {
 			char *buf = malloc(strlen(_filename) + 1);
 			char *pstr = _filename;
@@ -678,10 +680,10 @@ unsupported:
 			size_t len;
 			char rquid[39] = {'\0'};
             if (fsz==37) {
-                strcpy(rquid, _filename);
+                strlcpy(rquid, _filename, 39);
                 rquid[0] = '{'; rquid[37] = '}'; rquid[38] = '\0';
             } else {
-                strcpy(rquid, _filename+1);
+                strlcpy(rquid, _filename+1, 39);
             }
 			char *data = request_quid(rquid, &len);
 			if (data==NULL) {

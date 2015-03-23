@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <config.h>
+#include <unistd.h>
 
 #ifdef __CHECKER__
 #define FORCE	__attribute__((force))
@@ -29,6 +30,11 @@
 
 #define NOLOCK 0x0
 #define LOCK 0x1
+
+#ifdef LINUX
+size_t strlcpy(char *dst, const char *src, size_t siz);
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif // LINUX
 
 char from_hex(char ch);
 char *strtolower(char *str);

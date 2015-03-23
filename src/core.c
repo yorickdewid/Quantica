@@ -31,7 +31,7 @@ void set_instance_name(char name[]) {
     if (strlen(name) > INSTANCE_LENGTH)
         return;
 
-    strcpy(ins_name, name);
+    strlcpy(ins_name, name, INSTANCE_LENGTH);
     ins_name[INSTANCE_LENGTH-1] = '\0';
 }
 
