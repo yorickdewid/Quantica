@@ -13,7 +13,7 @@ char *strtolower(char *str){
     return str;
 }
 
-inline uint16_t ntohs(uint16_t x) {
+INLINE uint16_t ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;
 	return (uint16_t)(s[0] << 8 | s[1]);
@@ -22,7 +22,7 @@ inline uint16_t ntohs(uint16_t x) {
 #endif
 }
 
-inline uint32_t htonl(x) uint32_t x; {
+INLINE uint32_t htonl(x) uint32_t x; {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char  *)&x;
 	return (uint32_t)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
@@ -31,7 +31,7 @@ inline uint32_t htonl(x) uint32_t x; {
 #endif
 }
 
-inline uint32_t ntohl(x) uint32_t x; {
+INLINE uint32_t ntohl(x) uint32_t x; {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;
 	return (uint32_t)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
@@ -40,7 +40,7 @@ inline uint32_t ntohl(x) uint32_t x; {
 #endif
 }
 
-inline uint16_t htons(uint16_t x) {
+INLINE uint16_t htons(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;
 	return (uint16_t)(s[0] << 8 | s[1]);
