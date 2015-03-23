@@ -2,7 +2,7 @@
 #define CONFIG_H_INCLUDED
 
 #define PROGNAME    "Quantica"
-#define VERSION     "0.0.9"
+#define VERSION     "0.1.1"
 
 #define INITDB		"i1"
 

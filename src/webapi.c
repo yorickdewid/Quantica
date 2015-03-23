@@ -17,7 +17,7 @@
 #define HEADER_SIZE		10240L
 #define MAX_CLIENTS		150
 #define INIT_VEC_SIZE	1024
-#define VERSION_STRING	"Quantica/0.0.8 (WebAPI)"
+#define VERSION_STRING	"(WebAPI)"
 
 int serversock;
 void *unaccepted = NULL;
@@ -98,7 +98,7 @@ void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
-        "Server: " VERSION_STRING "\r\n"
+        "Server: " PROGNAME "/" VERSION " " VERSION_STRING "\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: 0\r\n", status);
 
@@ -121,7 +121,7 @@ void json_response(FILE *socket_stream, vector_t *headers, const char *status, c
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
-        "Server: " VERSION_STRING "\r\n"
+        "Server: " PROGNAME "/" VERSION " " VERSION_STRING "\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %zu\r\n", status, strlen(message)+2);
 
@@ -658,12 +658,13 @@ unsupported:
                 sprintf(jsonbuf, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
-        } else if (!strcmp(_filename, "/stats")) {
+        } else if (!strcmp(_filename, "/status")) {
             if (request_type == HTTP_HEAD) {
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[512] = {'\0'};
-                sprintf(jsonbuf, "{\"statistics\":[{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d}],\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY);
+                char suptime[32];
+                sprintf(jsonbuf, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime));
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (fsz==37 || fsz==39) {
@@ -751,8 +752,8 @@ int daemonize() {
 	}
 
 	listen(serversock, MAX_CLIENTS);
-	fprintf(stderr, "[info] Listening on port %d.\n", API_PORT);
-	fprintf(stderr, "[info] Server version string is " VERSION_STRING ".\n");
+	fprintf(stderr, "[info] Listening on port %d\n", API_PORT);
+	fprintf(stderr, "[info] Server version " PROGNAME "/" VERSION " " VERSION_STRING "\n");
 
 	signal(SIGINT, handle_shutdown);
 

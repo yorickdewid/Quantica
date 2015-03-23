@@ -8,6 +8,7 @@
 #include "aes.h"
 #include "crc32.h"
 #include "base64.h"
+#include "time.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
@@ -15,12 +16,14 @@
 static struct btree btx;
 static uint8_t ready = FALSE;
 char ins_name[INSTANCE_LENGTH];
+static qtime_t uptime;
 
 void start_core() {
     memset(ins_name, 0, INSTANCE_LENGTH);
     set_instance_name("DEVSRV1");
 	btree_init(&btx, INITDB);
 	bootstrap(&btx);
+	uptime = get_timestamp();
 	ready = TRUE;
 }
 
@@ -34,6 +37,16 @@ void set_instance_name(char name[]) {
 
 char *get_instance_name() {
     return ins_name;
+}
+
+char *get_uptime(char *buf) {
+    qtime_t passed = get_timestamp()-uptime;
+    unsigned int days = passed/86400;
+    unsigned int hours = passed/3600;
+    unsigned int mins = passed/60;
+    unsigned int secs = passed % 60;
+    sprintf(buf, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
+    return buf;
 }
 
 int store(char *quid, const void *data, size_t len) {

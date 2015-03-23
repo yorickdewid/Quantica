@@ -1,6 +1,8 @@
 #ifndef TIME_H_INCLUDED
 #define TIME_H_INCLUDED
 
+#include <time.h>
+
 typedef long long int qtime_t;
 
 qtime_t get_timestamp();
