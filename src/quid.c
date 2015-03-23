@@ -1,11 +1,18 @@
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 700
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-
 #include <unistd.h>
 #include <sys/time.h>
 #include <ctype.h>
+#include <time.h>
+
+#include <config.h>
 
 #include "quid.h"
 

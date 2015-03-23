@@ -77,7 +77,7 @@ static void flush_table(struct btree *btree, struct btree_table *table, uint64_t
 
 	lseek(btree->fd, offset, SEEK_SET);
 	if (write(btree->fd, table, sizeof(struct btree_table)) != sizeof(struct btree_table)) {
-		fprintf(stderr, "btree: I/O error offset:%ld\n", offset);
+		fprintf(stderr, "btree: I/O error offset:%lu\n", offset);
 		abort();
 	}
 	put_table(btree, table, offset);
