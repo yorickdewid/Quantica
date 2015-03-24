@@ -17,12 +17,6 @@
 #define BITWISE
 #endif
 
-#ifdef LINUX
-#define INLINE inline
-#else
-#define INLINE
-#endif // LINUX
-
 #define O_BINARY 0
 
 #define TRUE    1
