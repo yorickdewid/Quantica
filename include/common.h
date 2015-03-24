@@ -37,6 +37,8 @@ typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
 typedef uint64_t BITWISE __be64; /* big endian, 64 bits */
 
+typedef uint8_t bool;
+
 __be32 to_be32(uint32_t x);
 __be16 to_be16(uint16_t x);
 __be64 to_be64(uint64_t x);

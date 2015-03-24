@@ -13,7 +13,7 @@
 #include "bootstrap.h"
 #include "core.h"
 
-static struct btree btx;
+static struct engine btx;
 static uint8_t ready = FALSE;
 char ins_name[INSTANCE_LENGTH];
 static qtime_t uptime;
@@ -21,7 +21,7 @@ static qtime_t uptime;
 void start_core() {
     memset(ins_name, 0, INSTANCE_LENGTH);
     set_instance_name("DEVSRV1");
-	btree_init(&btx, INITDB);
+	engine_init(&btx, INITDB);
 	bootstrap(&btx);
 	uptime = get_timestamp();
 	ready = TRUE;
@@ -57,7 +57,7 @@ int store(char *quid, const void *data, size_t len) {
 		return -1;
 	quid_t key;
 	quid_create(&key);
-	if (btree_insert(&btx, &key, data, len)<0)
+	if (engine_insert(&btx, &key, data, len)<0)
 		return -1;
 	quidtostr(quid, &key);
 	return 0;
@@ -74,7 +74,7 @@ int update_key(char *quid, const void *data, size_t len) {
 		return -1;
 	quid_t key;
     strtoquid(quid, &key);
-	if (btree_update(&btx, &key, data, len)<0) {
+	if (engine_update(&btx, &key, data, len)<0) {
 		return -1;
 	}
 	return 0;
@@ -111,7 +111,7 @@ void *request_quid(char *quid, size_t *len) {
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
-	void *data = btree_get(&btx, &key, len);
+	void *data = engine_get(&btx, &key, len);
 	return data;
 }
 
@@ -120,7 +120,7 @@ int update(char *quid, struct microdata *nmd) {
 		return -1;
 	quid_t key;
 	strtoquid(quid, &key);
-	if (btree_meta(&btx, &key, nmd)<0)
+	if (engine_meta(&btx, &key, nmd)<0)
 		return -1;
 	return 0;
 }
@@ -130,7 +130,7 @@ int delete(char *quid) {
 		return -1;
 	quid_t key;
 	strtoquid(quid, &key);
-	if (btree_delete(&btx, &key)<0)
+	if (engine_delete(&btx, &key)<0)
 		return -1;
 	return 0;
 }
@@ -138,12 +138,12 @@ int delete(char *quid) {
 int vacuum() {
 	if (!ready)
 		return -1;
-	return btree_vacuum(&btx, INITDB);
+	return engine_vacuum(&btx, INITDB);
 }
 
 void detach_core() {
 	if (!ready)
 		return;
-	btree_close(&btx);
+	engine_close(&btx);
 	ready = FALSE;
 }

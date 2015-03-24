@@ -8,42 +8,42 @@
 #define BS_MAGIC "__zero()__"
 
 static void bootstrap_zero(){
-    struct btree btree;
+    struct engine e;
     const char fname[] = "test_bootstrap";
 	quid_t quid;
 
 	const char squid[] = "{00000000-0000-0000-0000-000000000000}";
 	strtoquid(squid, &quid);
-	btree_init(&btree, fname);
-	bootstrap(&btree);
+	engine_init(&e, fname);
+	bootstrap(&e);
 
 	size_t len;
-	void *data = btree_get(&btree, &quid, &len);
+	void *data = engine_get(&e, &quid, &len);
 	ASSERT(data);
 	ASSERT(!strncmp(data, BS_MAGIC, len));
 
-	btree_close(&btree);
-	btree_purge(fname);
+	engine_close(&e);
+	engine_purge(fname);
 }
 
 static void bootstrap_init(){
-	struct btree btree;
+	struct engine e;
 	const char fname[] = "test_bootstrap2";
 	quid_t quid;
 
 	const char squid[] = "{00000000-00c1-a150-0000-000000000080}";
 	const char data[] = "{\"pre\":\"_init\",\"description\":\"bootstrap\"}";
 	strtoquid(squid, &quid);
-	btree_init(&btree, fname);
-	bootstrap(&btree);
+	engine_init(&e, fname);
+	bootstrap(&e);
 
 	size_t len;
-	void *rdata = btree_get(&btree, &quid, &len);
+	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
 	ASSERT(!strncmp(rdata, data, len));
 
-	btree_close(&btree);
-	btree_purge(fname);
+	engine_close(&e);
+	engine_purge(fname);
 }
 
 TEST_IMPL(bootstrap) {

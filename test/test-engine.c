@@ -26,70 +26,70 @@ static void unlink_backup(const char* fname)
     unlink(walname);
 }
 
-static void engine_create(){
-	struct btree btree;
+static void test_engine_create(){
+	struct engine e;
 	const char fname[] = "test_database1";
     size_t fpath_sz = sizeof(fname)+5;
 	char fpath[fpath_sz];
 
-	btree_init(&btree, fname);
-	ASSERT(btree.fd);
-	ASSERT(btree.db_fd);
-	ASSERT(btree.alloc);
-	ASSERT(btree.db_alloc);
-	btree_close(&btree);
+	engine_init(&e, fname);
+	ASSERT(e.fd);
+	ASSERT(e.db_fd);
+	ASSERT(e.alloc);
+	ASSERT(e.db_alloc);
+	engine_close(&e);
 	snprintf(fpath, fpath_sz, "%s.db", fname);
 	ASSERT(file_exists(fpath));
-	btree_purge(fname);
+	engine_purge(fname);
 	ASSERT(!file_exists(fpath));
 }
 
-static void engine_crud(){
-	struct btree btree;
+static void test_engine_crud(){
+	struct engine e;
 	const char fname[] = "test_database2";
 	quid_t quid;
 	char data[] = ".....";
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	quid_create(&quid);
-	int r = btree_insert(&btree, &quid, data, strlen(data));
+	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
-	btree_close(&btree);
+	engine_close(&e);
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	size_t len;
-	void *rdata = btree_get(&btree, &quid, &len);
+	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
 	free(rdata);
-	btree_close(&btree);
+	engine_close(&e);
 
-	btree_init(&btree, fname);
-	int r2 = btree_delete(&btree, &quid);
+	engine_init(&e, fname);
+	int r2 = engine_delete(&e, &quid);
 	ASSERT(!r2);
-	btree_close(&btree);
+	engine_close(&e);
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	size_t len2;
-	void *r2data = btree_get(&btree, &quid, &len2);
+	void *r2data = engine_get(&e, &quid, &len2);
 	ASSERT(!r2data);
-	btree_close(&btree);
-	btree_purge(fname);
+	engine_close(&e);
+	engine_purge(fname);
 }
 
-static void engine_vacuum(){
-	struct btree btree;
+static void test_engine_clean(){
+	struct engine e;
 	const char fname[] = "test_database3";
 	quid_t quid;
 	char data[] = ".....";
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	quid_create(&quid);
-	int r = btree_insert(&btree, &quid, data, strlen(data));
+	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 
-	int r2 = btree_vacuum(&btree, fname);
+	int r2 = engine_vacuum(&e, fname);
 	ASSERT(!r2);
-	btree_close(&btree);
+	engine_close(&e);
 
     size_t fpath_sz = sizeof(fname)+5;
 	char fpath[fpath_sz];
@@ -98,25 +98,25 @@ static void engine_vacuum(){
 	snprintf(fpath, fpath_sz, "%s.db1", fname);
 	ASSERT(file_exists(fpath));
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	size_t len;
-	void *rdata = btree_get(&btree, &quid, &len);
+	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
 	free(rdata);
-	btree_close(&btree);
-	btree_purge(fname);
+	engine_close(&e);
+	engine_purge(fname);
 	unlink_backup(fname);
 }
 
-static void engine_meta(){
-	struct btree btree;
+static void test_engine_meta(){
+	struct engine e;
 	const char fname[] = "test_database4";
 	quid_t quid;
 	char data[] = ".....";
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	quid_create(&quid);
-	int r = btree_insert(&btree, &quid, data, strlen(data));
+	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 
 	const struct microdata md = {
@@ -128,25 +128,25 @@ static void engine_meta(){
 		.error = 0,
 		.type = MD_TYPE_BOOL_TRUE,
 	};
-	int r2 = btree_meta(&btree, &quid, &md);
+	int r2 = engine_meta(&e, &quid, &md);
 	ASSERT(!r2);
-	btree_close(&btree);
+	engine_close(&e);
 
-	btree_init(&btree, fname);
+	engine_init(&e, fname);
 	struct microdata md2;
-	int r3 = btree_get_meta(&btree, &quid, &md2);
+	int r3 = engine_get_meta(&e, &quid, &md2);
 	ASSERT(!r3);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct microdata)));
-	btree_close(&btree);
-	btree_purge(fname);
+	engine_close(&e);
+	engine_purge(fname);
 }
 
 TEST_IMPL(engine) {
 	/* Run testcase */
-	engine_create();
-	engine_crud();
-	engine_vacuum();
-	engine_meta();
+	test_engine_create();
+	test_engine_crud();
+	test_engine_clean();
+	test_engine_meta();
 
 	RETURN_OK();
 }

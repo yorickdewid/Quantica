@@ -22,7 +22,7 @@
 #define VALSIZE		100
 
 static struct timespec start;
-static struct btree btree;
+static struct engine e;
 static char val[VALSIZE+1] = {'\0'};
 quid_t quidr[NUM];
 
@@ -60,8 +60,8 @@ static void db_write_test() {
 	for(i=0; i<NUM; ++i) {
 		memset(&key, 0, sizeof(quid_t));
 		quid_create(&key);
-		if (btree_insert(&btree, &key, val, v_len)<0)
-			FATAL("btree_insert");
+		if (engine_insert(&e, &key, val, v_len)<0)
+			FATAL("engine_insert");
 		memcpy(&quidr[i], &key, sizeof(quid_t));
 		if(!(i%10000))
 			LOGF("finished %d ops%30s\r", i, "");
@@ -86,7 +86,7 @@ static void db_read_seq_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = btree_get(&btree, &key, &len);
+		void *data = engine_get(&e, &key, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -119,7 +119,7 @@ static void db_read_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = btree_get(&btree, &key, &len);
+		void *data = engine_get(&e, &key, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -151,7 +151,7 @@ static void db_read_bounds_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = btree_get(&btree, &key, &len);
+		void *data = engine_get(&e, &key, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -185,9 +185,9 @@ static void db_delete_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		if(btree_delete(&btree, &key)<0)
-			FATAL("btree_delete");
-		void *data = btree_get(&btree, &key, &len);
+		if(engine_delete(&e, &key)<0)
+			FATAL("engine_delete");
+		void *data = engine_get(&e, &key, &len);
 		if(data==NULL) {
 			all++;
 		} else {
@@ -217,7 +217,7 @@ static void db_read_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = btree_get(&btree, &key, &len);
+		void *data = engine_get(&e, &key, &len);
 		if(data!=NULL) {
 			all++;
 		}
@@ -242,7 +242,7 @@ BENCHMARK_IMPL(engine) {
 	random_value();
 
 	/* Create new database */
-	btree_init(&btree, DBNAME);
+	engine_init(&e, DBNAME);
 
 	/* Run testcase */
 	db_write_test();
@@ -255,8 +255,8 @@ BENCHMARK_IMPL(engine) {
 	LINE();
 
 	/* Close and delete database */
-	btree_close(&btree);
-	btree_purge(DBNAME);
+	engine_close(&e);
+	engine_purge(DBNAME);
 
 	RETURN_OK();
 }
