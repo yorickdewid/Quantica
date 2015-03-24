@@ -95,7 +95,7 @@ static void engine_vacuum(){
 	char fpath[fpath_sz];
 	snprintf(fpath, fpath_sz, "%s._db", fname);
 	ASSERT(file_exists(fpath));
-	sprintf(fpath, "%s.db1", fname);
+	snprintf(fpath, fpath_sz, "%s.db1", fname);
 	ASSERT(file_exists(fpath));
 
 	btree_init(&btree, fname);
