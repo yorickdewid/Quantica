@@ -33,6 +33,7 @@
 
 int serversock;
 void *unaccepted = NULL;
+static unsigned long int client_requests = 0;
 
 struct socket_request {
 	int fd;
@@ -208,6 +209,7 @@ void *handle_request(void *socket) {
 		char *c_uagent = NULL;
 		char *c_referer = NULL;
 		char *c_connection = NULL;
+		client_requests++;
 
 		unsigned int i;
 		for (i=0; i<queue->size; ++i) {
@@ -684,7 +686,7 @@ unsupported:
             } else {
                 char jsonbuf[512] = {'\0'};
                 char suptime[32];
-                snprintf(jsonbuf, 512, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime, 32));
+                snprintf(jsonbuf, 512, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime, 32), client_requests);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (fsz==37 || fsz==39) {
