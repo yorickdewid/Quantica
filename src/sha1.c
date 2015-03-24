@@ -174,7 +174,7 @@ void sha1_padmessage(struct sha *ctx) {
 }
 
 void sha1_strsum(char *s, struct sha *ctx) {
-	sprintf(s, "%.8x%.8x%.8x%.8x%.8x"
+	snprintf(s, 41, "%.8x%.8x%.8x%.8x%.8x"
 			, ctx->digest[0]
 			, ctx->digest[1]
 			, ctx->digest[2]

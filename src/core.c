@@ -31,7 +31,7 @@ void set_instance_name(char name[]) {
     if (strlen(name) > INSTANCE_LENGTH)
         return;
 
-    strcpy(ins_name, name);
+    strlcpy(ins_name, name, INSTANCE_LENGTH);
     ins_name[INSTANCE_LENGTH-1] = '\0';
 }
 
@@ -39,13 +39,13 @@ char *get_instance_name() {
     return ins_name;
 }
 
-char *get_uptime(char *buf) {
+char *get_uptime(char *buf, size_t len) {
     qtime_t passed = get_timestamp()-uptime;
     unsigned int days = passed/86400;
     unsigned int hours = passed/3600;
     unsigned int mins = passed/60;
     unsigned int secs = passed % 60;
-    sprintf(buf, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
+    snprintf(buf, len, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
     return buf;
 }
 

@@ -1,9 +1,18 @@
+#ifdef LINUX
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 700
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+#endif // LINUX
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <signal.h>
@@ -172,8 +181,9 @@ void *handle_request(void *socket) {
 				goto disconnect;
 			}
 
-			char *request_line = malloc((strlen(buf)+1) * sizeof(char));
-			strcpy(request_line, buf);
+            size_t request_sz = (strlen(buf)+1) * sizeof(char);
+			char *request_line = malloc(request_sz);
+			strlcpy(request_line, buf, request_sz);
 			vector_append(queue, (void *)request_line);
 		}
 
@@ -372,8 +382,9 @@ unsupported:
 			goto disconnect;
 		}
 
-		_filename = calloc(sizeof(char) * (strlen(filename) + 2), 1);
-		strcat(_filename, filename);
+        size_t _filename_sz = sizeof(char) * (strlen(filename) + 2);
+		_filename = calloc(_filename_sz, 1);
+		strlcat(_filename, filename, _filename_sz);
 		if (strstr(_filename, "%")) {
 			char *buf = malloc(strlen(_filename) + 1);
 			char *pstr = _filename;
@@ -434,7 +445,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
+                                snprintf(jsonbuf, 512, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -457,7 +468,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                snprintf(jsonbuf, 512, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -481,7 +492,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
+                                snprintf(jsonbuf, 512, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -637,7 +648,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[128] = {'\0'};
-                sprintf(jsonbuf, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
+                snprintf(jsonbuf, 128, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (!strcmp(_filename, "/vacuum")) {
@@ -655,7 +666,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[512] = {'\0'};
-                sprintf(jsonbuf, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
+                snprintf(jsonbuf, 512, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (!strcmp(_filename, "/status")) {
@@ -664,17 +675,17 @@ unsupported:
             } else {
                 char jsonbuf[512] = {'\0'};
                 char suptime[32];
-                sprintf(jsonbuf, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime));
+                snprintf(jsonbuf, 512, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime, 32));
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (fsz==37 || fsz==39) {
 			size_t len;
 			char rquid[39] = {'\0'};
             if (fsz==37) {
-                strcpy(rquid, _filename);
+                strlcpy(rquid, _filename, 39);
                 rquid[0] = '{'; rquid[37] = '}'; rquid[38] = '\0';
             } else {
-                strcpy(rquid, _filename+1);
+                strlcpy(rquid, _filename+1, 39);
             }
 			char *data = request_quid(rquid, &len);
 			if (data==NULL) {
@@ -689,7 +700,7 @@ unsupported:
                     data = realloc(data, len+1);
                     data[len] = '\0';
                     char jsonbuf[512] = {'\0'};
-                    sprintf(jsonbuf, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+                    snprintf(jsonbuf, 512, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
                     json_response(socket_stream, headers, "200 OK", jsonbuf);
                     free(data);
                 }

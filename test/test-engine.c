@@ -18,9 +18,9 @@ static int file_exists(const char *path)
 static void unlink_backup(const char* fname)
 {
     char dbname[1024], idxname[1024], walname[1024];
-    sprintf(idxname, "%s.db1", fname);
-    sprintf(dbname, "%s.idx1", fname);
-    sprintf(walname, "%s.log1", fname);
+    snprintf(idxname, 1024, "%s.db1", fname);
+    snprintf(dbname, 1024, "%s.idx1", fname);
+    snprintf(walname, 1024, "%s.log1", fname);
     unlink(idxname);
     unlink(dbname);
     unlink(walname);
@@ -29,7 +29,8 @@ static void unlink_backup(const char* fname)
 static void engine_create(){
 	struct btree btree;
 	const char fname[] = "test_database1";
-	char fpath[sizeof(fname)+5];
+    size_t fpath_sz = sizeof(fname)+5;
+	char fpath[fpath_sz];
 
 	btree_init(&btree, fname);
 	ASSERT(btree.fd);
@@ -37,7 +38,7 @@ static void engine_create(){
 	ASSERT(btree.alloc);
 	ASSERT(btree.db_alloc);
 	btree_close(&btree);
-	sprintf(fpath, "%s.db", fname);
+	snprintf(fpath, fpath_sz, "%s.db", fname);
 	ASSERT(file_exists(fpath));
 	btree_purge(fname);
 	ASSERT(!file_exists(fpath));
@@ -90,8 +91,9 @@ static void engine_vacuum(){
 	ASSERT(!r2);
 	btree_close(&btree);
 
-	char fpath[sizeof(fname)+5];
-	sprintf(fpath, "%s._db", fname);
+    size_t fpath_sz = sizeof(fname)+5;
+	char fpath[fpath_sz];
+	snprintf(fpath, fpath_sz, "%s._db", fname);
 	ASSERT(file_exists(fpath));
 	sprintf(fpath, "%s.db1", fname);
 	ASSERT(file_exists(fpath));

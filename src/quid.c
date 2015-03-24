@@ -1,11 +1,20 @@
+#ifdef LINUX
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 700
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+#endif // LINUX
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-
 #include <unistd.h>
 #include <sys/time.h>
 #include <ctype.h>
+#include <time.h>
+
+#include <config.h>
 
 #include "quid.h"
 
@@ -127,7 +136,7 @@ int quidcmp(const quid_t *a, const quid_t *b) {
 
 /* Print QUID to string */
 void quidtostr(char *s, quid_t *u) {
-	sprintf(s, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
+	snprintf(s, 39, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
 			, (unsigned int)u->time_low
 			, u->time_mid
 			, u->time_hi_and_version

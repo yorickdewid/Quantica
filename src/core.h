@@ -18,7 +18,7 @@ unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 int test(void *param[]);
 void debugstats();
-char *get_uptime(char *buf);
+char *get_uptime(char *buf, size_t len);
 void set_instance_name(char name[]);
 char *get_instance_name();
 void generate_quid(char *quid);
