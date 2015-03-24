@@ -136,7 +136,7 @@ int quidcmp(const quid_t *a, const quid_t *b) {
 
 /* Print QUID to string */
 void quidtostr(char *s, quid_t *u) {
-	sprintf(s, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
+	snprintf(s, 39, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
 			, (unsigned int)u->time_low
 			, u->time_mid
 			, u->time_hi_and_version

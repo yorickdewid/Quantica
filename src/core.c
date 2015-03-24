@@ -39,13 +39,13 @@ char *get_instance_name() {
     return ins_name;
 }
 
-char *get_uptime(char *buf) {
+char *get_uptime(char *buf, size_t len) {
     qtime_t passed = get_timestamp()-uptime;
     unsigned int days = passed/86400;
     unsigned int hours = passed/3600;
     unsigned int mins = passed/60;
     unsigned int secs = passed % 60;
-    sprintf(buf, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
+    snprintf(buf, len, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
     return buf;
 }
 

@@ -86,12 +86,12 @@ static void flush_table(struct btree *btree, struct btree_table *table, uint64_t
 static void create_backup(const char *fname) {
 	char ddbname[1024], didxname[1024], dwalname[1024];
 	char sdbname[1024], sidxname[1024], swalname[1024];
-	sprintf(sidxname, "%s%s", fname, IDXEXT);
-	sprintf(sdbname, "%s%s", fname, DBEXT);
-	sprintf(swalname, "%s%s", fname, LOGEXT);
-	sprintf(didxname, "%s%s", fname, BIDXEXT);
-	sprintf(ddbname, "%s%s", fname, BDBEXT);
-	sprintf(dwalname, "%s%s", fname, BLOGEXT);
+	snprintf(sidxname, 1024, "%s%s", fname, IDXEXT);
+	snprintf(sdbname, 1024, "%s%s", fname, DBEXT);
+	snprintf(swalname, 1024, "%s%s", fname, LOGEXT);
+	snprintf(didxname, 1024, "%s%s", fname, BIDXEXT);
+	snprintf(ddbname, 1024, "%s%s", fname, BDBEXT);
+	snprintf(dwalname, 1024, "%s%s", fname, BLOGEXT);
 	rename(sidxname, didxname);
 	rename(sdbname, ddbname);
 	rename(swalname, dwalname);
@@ -100,12 +100,12 @@ static void create_backup(const char *fname) {
 static void restore_tmpdb(const char *fname) {
 	char ddbname[1024], didxname[1024], dwalname[1024];
 	char sdbname[1024], sidxname[1024], swalname[1024];
-	sprintf(sidxname, "%s%s", fname, CIDXEXT);
-	sprintf(sdbname, "%s%s", fname, CDBEXT);
-	sprintf(swalname, "%s%s", fname, CLOGEXT);
-	sprintf(didxname, "%s%s", fname, IDXEXT);
-	sprintf(ddbname, "%s%s", fname, DBEXT);
-	sprintf(dwalname, "%s%s", fname, LOGEXT);
+	snprintf(sidxname, 1024, "%s%s", fname, CIDXEXT);
+	snprintf(sdbname, 1024, "%s%s", fname, CDBEXT);
+	snprintf(swalname, 1024, "%s%s", fname, CLOGEXT);
+	snprintf(didxname, 1024, "%s%s", fname, IDXEXT);
+	snprintf(ddbname, 1024, "%s%s", fname, DBEXT);
+	snprintf(dwalname, 1024, "%s%s", fname, LOGEXT);
 	rename(sidxname, didxname);
 	rename(sdbname, ddbname);
 	rename(swalname, dwalname);
@@ -157,9 +157,9 @@ static int btree_create(struct btree *btree, const char *idxname, const char* db
 
 void btree_init(struct btree *btree, const char *fname) {
 	char dbname[1024],idxname[1024],walname[1024];
-	sprintf(idxname, "%s%s", fname, IDXEXT);
-	sprintf(dbname, "%s%s", fname, DBEXT);
-	sprintf(walname, "%s%s", fname, LOGEXT);
+	snprintf(idxname, 1024, "%s%s", fname, IDXEXT);
+	snprintf(dbname, 1024, "%s%s", fname, DBEXT);
+	snprintf(walname, 1024, "%s%s", fname, LOGEXT);
 
 	restore_tmpdb(fname);
 	if(file_exists(idxname) && file_exists(dbname)) {
@@ -184,9 +184,9 @@ void btree_close(struct btree *btree) {
 
 void btree_purge(const char* fname) {
 	char dbname[1024],idxname[1024],walname[1024];
-	sprintf(idxname, "%s%s", fname, IDXEXT);
-	sprintf(dbname, "%s%s", fname, DBEXT);
-	sprintf(walname, "%s%s", fname, LOGEXT);
+	snprintf(idxname, 1024, "%s%s", fname, IDXEXT);
+	snprintf(dbname, 1024, "%s%s", fname, DBEXT);
+	snprintf(walname, 1024, "%s%s", fname, LOGEXT);
 	unlink(idxname);
 	unlink(dbname);
 	unlink(walname);
@@ -877,9 +877,9 @@ int btree_vacuum(struct btree *btree, const char *fname) {
 		return -1;
 
 	btree->lock = LOCK;
-	sprintf(idxname, "%s%s", fname, CIDXEXT);
-	sprintf(dbname, "%s%s", fname, CDBEXT);
-	sprintf(walname, "%s%s", fname, CLOGEXT);
+	snprintf(idxname, 1024, "%s%s", fname, CIDXEXT);
+	snprintf(dbname, 1024, "%s%s", fname, CDBEXT);
+	snprintf(walname, 1024, "%s%s", fname, CLOGEXT);
 
 	btree_create(&cbtree, idxname, dbname, walname);
 	tree_traversal(btree, &cbtree, btree->top);

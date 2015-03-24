@@ -445,7 +445,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
+                                snprintf(jsonbuf, 512, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -468,7 +468,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
+                                snprintf(jsonbuf, 512, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -492,7 +492,7 @@ unsupported:
                                     goto done;
                                 }
                                 char jsonbuf[512] = {'\0'};
-                                sprintf(jsonbuf, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
+                                snprintf(jsonbuf, 512, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
                                 json_response(socket_stream, headers, "200 OK", jsonbuf);
                                 processed = 1;
                             }
@@ -648,7 +648,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[128] = {'\0'};
-                sprintf(jsonbuf, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
+                snprintf(jsonbuf, 128, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (!strcmp(_filename, "/vacuum")) {
@@ -666,7 +666,7 @@ unsupported:
                 raw_response(socket_stream, headers, "200 OK");
             } else {
                 char jsonbuf[512] = {'\0'};
-                sprintf(jsonbuf, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
+                snprintf(jsonbuf, 512, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (!strcmp(_filename, "/status")) {
@@ -675,7 +675,7 @@ unsupported:
             } else {
                 char jsonbuf[512] = {'\0'};
                 char suptime[32];
-                sprintf(jsonbuf, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime));
+                snprintf(jsonbuf, 512, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime, 32));
                 json_response(socket_stream, headers, "200 OK", jsonbuf);
             }
         } else if (fsz==37 || fsz==39) {
@@ -700,7 +700,7 @@ unsupported:
                     data = realloc(data, len+1);
                     data[len] = '\0';
                     char jsonbuf[512] = {'\0'};
-                    sprintf(jsonbuf, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+                    snprintf(jsonbuf, 512, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
                     json_response(socket_stream, headers, "200 OK", jsonbuf);
                     free(data);
                 }
