@@ -1,0 +1,26 @@
+#include <stdio.h>
+#include <stdarg.h>
+
+#include <config.h>
+#include <common.h>
+#include <log.h>
+
+#include "time.h"
+
+void lprintf(const char *format, ...) {
+	va_list arglist;
+	char buf[32];
+
+	FILE *fp = fopen("quantica.log", "a");
+
+	fprintf(fp, "[%s] ", tstostrf(buf, 32, get_timestamp(), "%d/%b/%Y %H:%M:%S %z"));
+	va_start(arglist, format);
+	vfprintf(fp, format, arglist);
+	va_end(arglist);
+
+	va_start(arglist, format);
+	vfprintf(stderr, format, arglist);
+	va_end(arglist);
+
+    fclose(fp);
+}

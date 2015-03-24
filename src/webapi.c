@@ -19,6 +19,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
 #include "core.h"
 #include "time.h"
 #include "webapi.h"
@@ -27,6 +28,8 @@
 #define MAX_CLIENTS		150
 #define INIT_VEC_SIZE	1024
 #define VERSION_STRING	"(WebAPI)"
+
+#define RLOGLINE_SIZE	256
 
 int serversock;
 void *unaccepted = NULL;
@@ -88,13 +91,13 @@ void delete_vector(vector_t * vector) {
 }
 
 void handle_shutdown(int sigal) {
-	puts("\n[info] Shutting down");
+	lprintf("[info] Shutting down\n");
 
 	shutdown(serversock, SHUT_RDWR);
 	close(serversock);
 
 	free(unaccepted);
-	fprintf(stderr, "[info] Cleanup and detach core\n");
+	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
 
 	exit(sigal);
@@ -154,7 +157,7 @@ void *handle_request(void *socket) {
 
 	FILE *socket_stream = fdopen(request->fd, "r+");
 	if (!socket_stream) {
-		fprintf(stderr, "[erro] Failed to get file descriptor\n");
+		lprintf("[erro] Failed to get file descriptor\n");
 		goto disconnect;
 	};
 
@@ -333,26 +336,32 @@ void *handle_request(void *socket) {
 			}
 		}
 
-		fprintf(stderr, "[info] %s - ", str_addr);
-		if (request_type == HTTP_GET)
-			fprintf(stderr, "GET");
-		else if (request_type == HTTP_POST)
-			fprintf(stderr, "POST");
-		else if (request_type == HTTP_HEAD)
-			fprintf(stderr, "HEAD");
-		else if (request_type == HTTP_OPTIONS)
-			fprintf(stderr, "OPTIONS");
+		char logreqline[RLOGLINE_SIZE];
+		memset(logreqline, 0, RLOGLINE_SIZE);
+		snprintf(logreqline, RLOGLINE_SIZE, "[info] %s - ", str_addr);
+		if (request_type == HTTP_GET) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "GET");
+		} else if (request_type == HTTP_POST) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "POST");
+		} else if (request_type == HTTP_HEAD) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "HEAD");
+		} else if (request_type == HTTP_OPTIONS) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "OPTIONS");
+		}
 
-		fprintf(stderr, " %s - ", http_version);
-		if (querystring)
-			fprintf(stderr, "\"%s?%s\"", filename, querystring);
-		else
-			fprintf(stderr, "\"%s\"", filename);
-		fprintf(stderr, " %lu \"%s\"", c_length, c_uagent);
-		if (c_referer)
-			fprintf(stderr, " \"%s\"\n", c_referer);
-		else
-			fprintf(stderr, "\n");
+		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " %s - ", http_version);
+		if (querystring) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "\"%s?%s\"", filename, querystring);
+		} else {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "\"%s\"", filename);
+		}
+		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " %lu \"%s\"", c_length, c_uagent);
+		if (c_referer) {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " \"%s\"\n", c_referer);
+		} else {
+			snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "\n");
+		}
+		lprintf(logreqline);
 
         if (c_connection) {
             if(!strcmp(c_connection, "close")){
@@ -738,10 +747,10 @@ disconnect:
 }
 
 int daemonize() {
-    fprintf(stderr, "[info] " PROGNAME " " VERSION "(%s, %s)\n", __DATE__, __TIME__);
-    fprintf(stderr, "[info] Current time: %lld\n", get_timestamp());
-	fprintf(stderr, "[info] Starting daemon\n");
-	fprintf(stderr, "[info] Start database core\n");
+    lprintf("[info] " PROGNAME " " VERSION "(%s, %s)\n", __DATE__, __TIME__);
+    lprintf("[info] Current time: %lld\n", get_timestamp());
+	lprintf("[info] Starting daemon\n");
+	lprintf("[info] Start database core\n");
 	start_core();
 
 	struct sockaddr_in sin;
@@ -753,18 +762,18 @@ int daemonize() {
 	int _true = 1;
 	if (setsockopt(serversock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
 		close(serversock);
-		fprintf(stderr, "[erro] Failed to set socket option\n");
+		lprintf("[erro] Failed to set socket option\n");
 		return 1;
 	}
 
 	if (bind(serversock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-		fprintf(stderr, "[erro] Failed to bind socket to port %d\n", API_PORT);
+		lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
 		return 1;
 	}
 
 	listen(serversock, MAX_CLIENTS);
-	fprintf(stderr, "[info] Listening on port %d\n", API_PORT);
-	fprintf(stderr, "[info] Server version " PROGNAME "/" VERSION " " VERSION_STRING "\n");
+	lprintf("[info] Listening on port %d\n", API_PORT);
+	lprintf("[info] Server version " PROGNAME "/" VERSION " " VERSION_STRING "\n");
 
 	signal(SIGINT, handle_shutdown);
 
@@ -777,7 +786,7 @@ int daemonize() {
 		pthread_create(&incoming->thread, NULL, handle_request, (void *)(incoming));
 	}
 
-	fprintf(stderr, "[info] Cleanup and detach core\n");
+	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
 	return 0;
 }

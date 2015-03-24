@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <config.h>
+#include <log.h>
 #include "webapi.h"
 
 void print_version() {
