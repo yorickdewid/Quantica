@@ -569,50 +569,6 @@ unsupported:
                     }
                     if (!processed)
                         json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-#if 0
-                } else if (!strcmp(_filename, "/meta")) {
-                    char *var = strtok(c_buf, "&");
-                    while(var != NULL) {
-                        char *value = strchr(var, '=');
-                        if (value) {
-                            value[0] = '\0';
-                            value++;
-                            if (!strcmp(var, "quid")) {
-                                int rtn = debugkey(value);
-                                if (rtn<0) {
-                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to show recordmeta\",\"status\":\"META_FAILED\",\"success\":0}");
-                                } else {
-                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Metatdata outputted to console\",\"status\":\"COMMAND_OK\",\"success\":1}");
-                                }
-                                processed = 1;
-                            }
-                        }
-                        var = strtok(NULL, "&");
-                    }
-                    if (!processed)
-                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-                } else if (!strcmp(_filename, "/test")) {
-                    char *var = strtok(c_buf, "&");
-                    while(var != NULL) {
-                        char *value = strchr(var, '=');
-                        if (value) {
-                            value[0] = '\0';
-                            value++;
-                            if (!strcmp(var, "quid")) {
-                                int rtn = rremove(value);
-                                if (rtn<0) {
-                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to show recordmeta\",\"status\":\"META_FAILED\",\"success\":0}");
-                                } else {
-                                    json_response(socket_stream, headers, "200 OK", "{\"description\":\"Test executed\",\"status\":\"COMMAND_OK\",\"success\":1}");
-                                }
-                                processed = 1;
-                            }
-                        }
-                        var = strtok(NULL, "&");
-                    }
-                    if (!processed)
-                        json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-#endif
                 } else if (!strcmp(_filename, "/instance")) {
                     char *var = strtok(c_buf, "&");
                     while(var != NULL) {
@@ -748,12 +704,12 @@ disconnect:
 	return NULL;
 }
 
-int daemonize() {
-    lprintf("[info] " PROGNAME " " VERSION "(%s, %s)\n", __DATE__, __TIME__);
+int start_webapi() {
+	start_core();
+    lprintf("[info] " PROGNAME " " VERSION " (%s, %s)\n", __DATE__, __TIME__);
     lprintf("[info] Current time: %lld\n", get_timestamp());
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
-	start_core();
 
 	struct sockaddr_in sin;
 	serversock = socket(AF_INET, SOCK_STREAM, 0);

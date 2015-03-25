@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
 #include "quid.h"
 #include "sha1.h"
 #include "aes.h"
@@ -19,8 +20,9 @@ char ins_name[INSTANCE_LENGTH];
 static qtime_t uptime;
 
 void start_core() {
+	start_log();
     memset(ins_name, 0, INSTANCE_LENGTH);
-    set_instance_name("DEVSRV1");
+    set_instance_name(INSTANCE);
 	engine_init(&btx, INITDB);
 	bootstrap(&btx);
 	uptime = get_timestamp();
@@ -145,5 +147,6 @@ void detach_core() {
 	if (!ready)
 		return;
 	engine_close(&btx);
+	stop_log();
 	ready = FALSE;
 }

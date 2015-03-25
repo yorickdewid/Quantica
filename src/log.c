@@ -7,20 +7,32 @@
 
 #include "time.h"
 
+static FILE *fp = NULL;
+
+void start_log() {
+	if (!fp) {
+		fp = fopen(LOGFILE, "a");
+		setvbuf(fp, NULL, _IOLBF, 1024);
+	}
+}
+
 void lprintf(const char *format, ...) {
 	va_list arglist;
-	char buf[32];
 
-	FILE *fp = fopen("quantica.log", "a");
-
-	fprintf(fp, "[%s] ", tstostrf(buf, 32, get_timestamp(), "%d/%b/%Y %H:%M:%S %z"));
-	va_start(arglist, format);
-	vfprintf(fp, format, arglist);
-	va_end(arglist);
+	if (fp) {
+		char buf[32];
+		fprintf(fp, "[%s] ", tstostrf(buf, 32, get_timestamp(), "%d/%b/%Y %H:%M:%S %z"));
+		va_start(arglist, format);
+		vfprintf(fp, format, arglist);
+		va_end(arglist);
+	}
 
 	va_start(arglist, format);
 	vfprintf(stderr, format, arglist);
 	va_end(arglist);
+}
 
-    fclose(fp);
+void stop_log() {
+	if (!fp)
+		fclose(fp);
 }

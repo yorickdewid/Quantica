@@ -1,8 +1,11 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
-#define PROGNAME    "Quantica"
-#define VERSION     "0.1.2"
+#define PROGNAME	"Quantica"
+#define VERSION		"0.1.4"
+#define INSTANCE	"DEVSRV1"
+
+#define LOGFILE		"quantica.log"
 
 #define INITDB		"i1"
 
