@@ -15,6 +15,7 @@
 #include <time.h>
 
 #include <config.h>
+#include <common.h>
 
 #include "quid.h"
 
@@ -49,11 +50,13 @@ static unsigned short true_random(void) {
 	static int rnd_seed_count = 0;
 	cuuid_time_t time_now;
 
+#ifndef OBSD
 	if (!rnd_seed_count) {
 		get_system_time(&time_now);
 		time_now = time_now / UIDS_PER_TICK;
 		srand((unsigned int)(((time_now >> 32) ^ time_now) & 0xffffffff));
 	}
+#endif // OBSD
 
 	if(rnd_seed_count == rnd_seed) {
 		rnd_seed_count = 0;
@@ -61,7 +64,7 @@ static unsigned short true_random(void) {
 		rnd_seed_count++;
 	}
 
-	return (rand()+get_tick_count());
+	return (RANDOM()+get_tick_count());
 }
 
 /* Construct QUID */

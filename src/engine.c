@@ -434,7 +434,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 		/* replace the removed item by taking an item from one of the
 		   child tables */
 		uint64_t new_offset;
-		if (rand() & 1) {
+		if (RANDOM() & 1) {
 			new_offset = take_largest(e, left_child, &table->items[i].quid);
 			table->items[i].child = to_be64(table_join(e, left_child));
 		} else {
