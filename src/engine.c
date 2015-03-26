@@ -5,6 +5,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
 #include "track.h"
 #include "quid.h"
 #include "engine.h"
@@ -14,22 +15,13 @@ static struct etrace error = {.code = NO_ERROR};
 
 static void flush_super(struct engine *e);
 static void flush_dbsuper(struct engine *e);
-static void free_chunk(struct engine *e, uint64_t offset);
+static void free_index_chunk(struct engine *e, uint64_t offset);
 static void free_dbchunk(struct engine *e, uint64_t offset);
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid);
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid);
-static uint64_t lookup(struct engine *e, uint64_t table_offset, const quid_t *quid);
+static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid);
 static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, const void *data, size_t len);
-static uint64_t collapse(struct engine *e, uint64_t table_offset);
-
-static int file_exists(const char *path) {
-	int fd = open(path, O_RDWR);
-	if(fd>-1) {
-		close(fd);
-		return 1;
-	}
-	return 0;
-}
+static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
 	struct engine_table *table = malloc(sizeof *table);
@@ -51,7 +43,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 
 	lseek(e->fd, offset, SEEK_SET);
 	if (read(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to read database\n");
 		abort();
 	}
 	return table;
@@ -76,7 +68,7 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 
 	lseek(e->fd, offset, SEEK_SET);
 	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 	put_table(e, table, offset);
@@ -176,8 +168,9 @@ void engine_close(struct engine *e) {
 
 	size_t i;
 	for(i = 0; i < CACHE_SLOTS; ++i) {
-		if(e->cache[i].offset)
+		if(e->cache[i].offset) {
 			free(e->cache[i].table);
+		}
 	}
 }
 
@@ -200,7 +193,7 @@ static size_t page_align(size_t val) {
 }
 
 /* Allocate a chunk from the index file */
-static uint64_t alloc_chunk(struct engine *e, size_t len) {
+static uint64_t alloc_index_chunk(struct engine *e, size_t len) {
 	assert(len > 0);
 
 	/* Use blocks from freelist instead of allocation */
@@ -252,7 +245,7 @@ new_block:
 }
 
 /* Mark a chunk as unused in the database file */
-static void free_chunk(struct engine *e, uint64_t offset) {
+static void free_index_chunk(struct engine *e, uint64_t offset) {
 	assert(offset > 0);
 	struct engine_table *table = get_table(e, offset);
 
@@ -273,7 +266,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 	lseek(e->db_fd, offset, SEEK_SET);
 	struct blob_info info;
 	if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to read database\n");
 		abort();
 	}
 
@@ -298,7 +291,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 
 	lseek(e->db_fd, offset, SEEK_SET);
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 }
@@ -314,7 +307,7 @@ static void flush_super(struct engine *e) {
 
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof super) != sizeof super) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 }
@@ -326,7 +319,7 @@ static void flush_dbsuper(struct engine *e) {
 
 	lseek(e->db_fd, 0, SEEK_SET);
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 }
@@ -346,11 +339,11 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 
 	lseek(e->db_fd, offset, SEEK_SET);
 	if (write(e->db_fd, &info, sizeof info) != sizeof info) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 	if (write(e->db_fd, data, len) != (ssize_t) len) {
-		fprintf(stderr, "engine: I/O error\n");
+		lprintf("[erro] Failed to write database\n");
 		abort();
 	}
 
@@ -367,21 +360,20 @@ static uint64_t split_table(struct engine *e, struct engine_table *table, quid_t
 	new_table->size = table->size - TABLE_SIZE / 2 - 1;
 
 	table->size = TABLE_SIZE / 2;
-	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1],
-	       (new_table->size + 1) * sizeof(struct engine_item));
+	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct engine_item));
 
-	uint64_t new_table_offset = alloc_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
 	flush_table(e, new_table, new_table_offset);
 
 	return new_table_offset;
 }
 
-/* Try to collapse the given table. Returns a new table offset. */
-static uint64_t collapse(struct engine *e, uint64_t table_offset) {
+/* Try to table_rejoin the given table. Returns a new table offset. */
+static uint64_t table_join(struct engine *e, uint64_t table_offset) {
 	struct engine_table *table = get_table(e, table_offset);
 	if (table->size == 0) {
 		uint64_t ret = from_be64(table->items[0].child);
-		free_chunk(e, table_offset);
+		free_index_chunk(e, table_offset);
 		return ret;
 	}
 	put_table(e, table, table_offset);
@@ -401,7 +393,7 @@ static uint64_t take_smallest(struct engine *e, uint64_t table_offset, quid_t *q
 	} else {
 		/* recursion */
 		offset = take_smallest(e, child, quid);
-		table->items[0].child = to_be64(collapse(e, child));
+		table->items[0].child = to_be64(table_join(e, child));
 	}
 	flush_table(e, table, table_offset);
 	return offset;
@@ -420,7 +412,7 @@ static uint64_t take_largest(struct engine *e, uint64_t table_offset, quid_t *qu
 	} else {
 		/* recursion */
 		offset = take_largest(e, child, quid);
-		table->items[table->size].child = to_be64(collapse(e, child));
+		table->items[table->size].child = to_be64(table_join(e, child));
 	}
 	flush_table(e, table, table_offset);
 	return offset;
@@ -444,16 +436,14 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 		uint64_t new_offset;
 		if (rand() & 1) {
 			new_offset = take_largest(e, left_child, &table->items[i].quid);
-			table->items[i].child =
-			    to_be64(collapse(e, left_child));
+			table->items[i].child = to_be64(table_join(e, left_child));
 		} else {
 			new_offset = take_smallest(e, right_child, &table->items[i].quid);
-			table->items[i + 1].child = to_be64(collapse(e, right_child));
+			table->items[i+1].child = to_be64(table_join(e, right_child));
 		}
 		table->items[i].offset = to_be64(new_offset);
-
 	} else {
-		memmove(&table->items[i], &table->items[i + 1], (table->size - i) * sizeof(struct engine_item));
+		memmove(&table->items[i], &table->items[i+1], (table->size - i) * sizeof(struct engine_item));
 		table->size--;
 
 		if (left_child != 0) {
@@ -565,7 +555,7 @@ static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	uint64_t child = from_be64(table->items[i].child);
 	uint64_t ret = delete_table(e, child, quid);
 	if (ret != 0)
-		table->items[i].child = to_be64(collapse(e, child));
+		table->items[i].child = to_be64(table_join(e, child));
 
 	if (ret == 0 && delete_larger && i < table->size) {
 		/* remove the next largest */
@@ -609,7 +599,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
-	uint64_t new_table_offset = alloc_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
 	flush_table(e, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
@@ -638,7 +628,7 @@ int engine_insert(struct engine *e, const quid_t *c_quid, const void *data, size
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static uint64_t lookup(struct engine *e, uint64_t table_offset, const quid_t *quid) {
+static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -673,7 +663,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return NULL;
-	uint64_t offset = lookup(e, e->top, quid);
+	uint64_t offset = lookup_key(e, e->top, quid);
 	if (error.code != NO_ERROR)
 		return NULL;
 
@@ -706,7 +696,7 @@ int engine_delete(struct engine *e, const quid_t *c_quid) {
 	if (error.code != NO_ERROR)
 		return -1;
 
-	e->top = collapse(e, e->top);
+	e->top = table_join(e, e->top);
 	e->stats.keys--;
 
 	free_dbchunk(e, offset);
@@ -812,7 +802,8 @@ int engine_remove(struct engine *e, const quid_t *quid) {
 	return 0;
 }
 
-void walk_dbstorage(struct engine *e) {
+#if 0
+static void walk_dbstorage(struct engine *e) {
 	uint64_t offset = sizeof(struct engine_dbsuper);
 	struct blob_info info;
 
@@ -824,6 +815,7 @@ void walk_dbstorage(struct engine *e) {
 		offset = offset+page_align(sizeof(struct blob_info)+from_be32(info.len));
 	}
 }
+#endif // 0
 
 static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset) {
 	int i;
@@ -930,7 +922,6 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 done:
 	flush_super(e);
 	if (error.code != NO_ERROR) {
-        puts("coderr");
 		return -1;
 	}
 

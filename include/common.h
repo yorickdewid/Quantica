@@ -47,4 +47,6 @@ uint32_t from_be32(__be32 x);
 uint16_t from_be16(__be16 x);
 uint64_t from_be64(__be64 x);
 
+int file_exists(const char *path);
+
 #endif // UTIL_H_INCLUDED

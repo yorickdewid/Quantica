@@ -5,18 +5,7 @@
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-static int file_exists(const char *path)
-{
-    int fd = open(path, O_RDWR);
-    if(fd>-1) {
-        close(fd);
-        return 1;
-    }
-    return 0;
-}
-
-static void unlink_backup(const char* fname)
-{
+static void unlink_backup(const char* fname) {
     char dbname[1024], idxname[1024], walname[1024];
     snprintf(idxname, 1024, "%s.db1", fname);
     snprintf(dbname, 1024, "%s.idx1", fname);

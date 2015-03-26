@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <fcntl.h>
 
 #include <config.h>
 #include <common.h>
@@ -79,4 +80,13 @@ uint64_t from_be64(__be64 x) {
 #else
 	return (FORCE uint64_t) x;
 #endif
+}
+
+int file_exists(const char *path) {
+	int fd = open(path, O_RDWR);
+	if(fd>-1) {
+		close(fd);
+		return 1;
+	}
+	return 0;
 }

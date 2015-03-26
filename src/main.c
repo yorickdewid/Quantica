@@ -30,6 +30,7 @@ int daemonize() {
 
 	pid = fork();
 	if (pid < 0) {
+		lprintf("[erro] Failed to fork into background\n");
 		return 1;
 	}
 
@@ -40,13 +41,13 @@ int daemonize() {
 
 	sid = setsid();
 	if (sid < 0) {
-		/* Log the failure */
+		lprintf("[erro] Failed to promote to session leader\n");
 		return 1;
 	}
 
 #if 0
 	if ((chdir("/")) < 0) {
-			/* Log the failure */
+			lprintf("[erro] Failed to change directory\n");
 			return 1;
 	}
 #endif
