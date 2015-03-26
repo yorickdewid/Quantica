@@ -48,9 +48,9 @@ double get_tick_count(void) {
 /* Create true random as prescribed by the IEEE */
 static unsigned short true_random(void) {
 	static int rnd_seed_count = 0;
-	cuuid_time_t time_now;
 
 #ifndef OBSD
+	cuuid_time_t time_now;
 	if (!rnd_seed_count) {
 		get_system_time(&time_now);
 		time_now = time_now / UIDS_PER_TICK;
