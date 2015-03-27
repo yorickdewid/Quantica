@@ -65,11 +65,13 @@ int store(char *quid, const void *data, size_t len) {
 	return 0;
 }
 
+#if 0
 int test(void *param[]) {
 	puts("Test stub");
 	(void)(param);
 	return 0;
 }
+#endif // 0
 
 int update_key(char *quid, const void *data, size_t len) {
 	if (!ready)
