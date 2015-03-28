@@ -34,15 +34,7 @@ int serversock;
 int max_sd;
 fd_set readfds;
 fd_set readsock;
-void *unaccepted = NULL;
 static unsigned long int client_requests = 0;
-
-struct socket_request {
-	int fd;
-	/*socklen_t addr_len;*/
-	struct sockaddr_in address;
-	pthread_t thread;
-};
 
 enum method {
     HTTP_GET = 1,
@@ -99,7 +91,6 @@ void handle_shutdown(int sigal) {
 	shutdown(serversock, SHUT_RDWR);
 	close(serversock);
 
-	free(unaccepted);
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
 
@@ -682,7 +673,8 @@ unsupported:
 
 done:
 	fflush(socket_stream);
-	free(c_buf);
+	if(c_buf)
+		free(c_buf);
 	free(_filename);
 	delete_vector(queue);
 	delete_vector(headers);
