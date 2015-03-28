@@ -202,6 +202,7 @@ void handle_request(int sd, fd_set *set) {
 	char *c_uagent = NULL;
 	char *c_referer = NULL;
 	char *c_connection = NULL;
+	char *c_buf = NULL;
 	client_requests++;
 
 	unsigned int i;
@@ -416,7 +417,6 @@ unsupported:
 		goto done;
 	}
 
-	char *c_buf = NULL;
 	if (c_length > 0) {
 		size_t total_read = 0;
 		c_buf = (char *)malloc(c_length+1);
