@@ -1,11 +1,12 @@
 #include <time.h>
+#include <common.h>
 
 #include "test.h"
 #include "test-list.h"
 
 void print_environment() {
 	LOG("Start unittests\n");
-	LOGF(PROGNAME" %s (%s, %s)\n", VERSION, __DATE__, __TIME__);
+	LOGF(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 	time_t now = time(NULL);
 	LOGF("Date:\t\t%s", (char*)ctime(&now));
 }
