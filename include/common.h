@@ -38,6 +38,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 
 char from_hex(char ch);
 char *strtolower(char *str);
+char *itoa(long i);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */

@@ -711,7 +711,7 @@ int start_webapi() {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if (getaddrinfo(NULL, "4017", &hints, &servinfo) != 0) { //TODO itoa
+    if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) { //TODO itoa
 		lprintf("[erro] Failed to get address info\n");
 		return 1;
     }
