@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <ctype.h>
 #include <signal.h>
 
@@ -30,7 +31,8 @@
 
 #define RLOGLINE_SIZE	256
 
-int serversock;
+int serversock4 = 0;
+int serversock6 = 0;
 int max_sd;
 fd_set readfds;
 fd_set readsock;
@@ -85,18 +87,24 @@ void delete_vector(vector_t * vector) {
 	free_vector(vector);
 }
 
+void *get_in_addr(struct sockaddr *sa) {
+	if (sa->sa_family == AF_INET)
+		return &(((struct sockaddr_in*)sa)->sin_addr);
+	else
+		return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 void handle_shutdown(int sigal) {
 	lprintf("[info] Shutting down\n");
 
-	shutdown(serversock, SHUT_RDWR);
-	close(serversock);
+	shutdown(serversock4, SHUT_RDWR);
+	close(serversock4);
 
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
 
 	exit(sigal);
 }
-
 
 void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
     char squid[39] = {'\0'};
@@ -156,8 +164,7 @@ void handle_request(int sd, fd_set *set) {
     char str_addr[INET6_ADDRSTRLEN];
     socklen_t len = sizeof(addr);
     getpeername(sd, (struct sockaddr*)&addr, &len);
-    struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-    inet_ntop(AF_INET, &s->sin_addr, str_addr, sizeof str_addr);
+	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
 
 	vector_t *queue = alloc_vector();
 	vector_t *headers = alloc_vector();
@@ -698,51 +705,143 @@ int start_webapi() {
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
 
-	struct sockaddr_in sin;
-	serversock = socket(AF_INET, SOCK_STREAM, 0);
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(API_PORT);
-	sin.sin_addr.s_addr = INADDR_ANY;
+	struct addrinfo hints, *servinfo, *p;
+	memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
 
-	int _true = 1;
-	if (setsockopt(serversock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
-		close(serversock);
-		lprintf("[erro] Failed to set socket option\n");
+    if (getaddrinfo(NULL, "4017", &hints, &servinfo) != 0) { //TODO itoa
+		lprintf("[erro] Failed to get address info\n");
+		return 1;
+    }
+
+	for(p=servinfo; p!=NULL; p=p->ai_next) {
+		if (p->ai_family == AF_INET) {
+			if (serversock4 == 0) {
+				serversock4 = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+				if (serversock4 < 0) {
+					lprintf("[erro] Failed to create socket4\n");
+					return 1;
+				}
+
+				int _true = 1;
+				if (setsockopt(serversock4, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
+					close(serversock4);
+					lprintf("[erro] Failed to set socket option\n");
+					return 1;
+				}
+
+			#ifdef NONBLOCKING
+				int opts = fcntl(serversock4, F_GETFL);
+				if (opts < 0){
+					lprintf("[erro] Failed to set nonblock on sock4\n");
+					return 1;
+				}
+
+				opts = (opts | O_NONBLOCK);
+				if (fcntl(serversock4, F_SETFL, opts) < 0){
+					lprintf("[erro] Failed to set nonblock on sock4\n");
+					return 1;
+				}
+			#endif // NONBLOCKING
+
+				if (bind(serversock4, p->ai_addr, p->ai_addrlen) < 0) {
+					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
+					close(serversock4);
+					return 1;
+				}
+			}
+		} else if (p->ai_family == AF_INET6) {
+			if (serversock6 == 0) {
+				serversock6 = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+				if (serversock6 < 0) {
+					lprintf("[erro] Failed to create socket6\n");
+					return 1;
+				}
+
+				int _true = 1;
+				if (setsockopt(serversock6, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
+					close(serversock6);
+					lprintf("[erro] Failed to set socket option\n");
+					return 1;
+				}
+
+				if (setsockopt(serversock6, IPPROTO_IPV6, IPV6_V6ONLY, &_true, sizeof(int)) < 0) {
+					close(serversock6);
+					lprintf("[erro] Failed to set socket option\n");
+					return 1;
+				}
+
+			#ifdef NONBLOCKING
+				int opts = fcntl(serversock6, F_GETFL);
+				if (opts < 0){
+					lprintf("[erro] Failed to set nonblock on sock6\n");
+					return 1;
+				}
+
+				opts = (opts | O_NONBLOCK);
+				if (fcntl(serversock6, F_SETFL, opts) < 0){
+					lprintf("[erro] Failed to set nonblock on sock6\n");
+					return 1;
+				}
+			#endif // NONBLOCKING
+
+				if (bind(serversock6, p->ai_addr, p->ai_addrlen) < 0) {
+					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
+					close(serversock6);
+					return 1;
+				}
+			}
+		}
+	}
+
+	freeaddrinfo(servinfo);
+
+	if (serversock4 == 0 && serversock6 == 0) {
+		lprintf("[erro] Failed to bind any protocol\n");
 		return 1;
 	}
 
-	if (bind(serversock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-		lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
-		return 1;
+	if (serversock4 != 0) {
+		if (listen(serversock4, SOMAXCONN) < 0) {
+			lprintf("[erro] Failed to listen on socket4\n");
+			return 1;
+		}
+		lprintf("[info] Listening on 0.0.0.0:%d\n", API_PORT);
 	}
 
-	if (listen(serversock, SOMAXCONN) < 0) {
-        lprintf("[erro] Failed to listen on socket\n");
-        return 1;
+	if (serversock6 != 0) {
+		if (listen(serversock6, SOMAXCONN) < 0) {
+			lprintf("[erro] Failed to listen on socket6\n");
+			return 1;
+		}
+		lprintf("[info] Listening on :::%d\n", API_PORT);
 	}
-
-	lprintf("[info] Listening on port %d\n", API_PORT);
 	lprintf("[info] Server version " PROGNAME "/" VERSION " " VERSION_STRING "\n");
 
 	signal(SIGINT, handle_shutdown);
 
     FD_ZERO(&readfds);
-    FD_SET(serversock, &readfds);
-    max_sd = serversock;
+    FD_SET(serversock4, &readfds);
+    FD_SET(serversock6, &readfds);
+    max_sd = serversock4;
+    if (serversock6 > max_sd)
+		max_sd = serversock6;
 
     while (1) {
         int sd;
         readsock = readfds;
-        if (select(max_sd+1, &readsock, NULL, NULL, NULL) == -1) {
-            lprintf("[erro] Failed to select socket\n");
+        if (select(max_sd+1, &readsock, NULL, NULL, NULL) < 0) {
+            lprintf("[erro] Failed to select socket\n"); //TODO EINTR
             return 1;
         }
         for (sd=0; sd<=max_sd; ++sd) {
             if (FD_ISSET(sd, &readsock)) {
-                if (sd == serversock) {
-                    struct sockaddr_in their_addr;
-                    socklen_t size = sizeof(struct sockaddr_in);
-                    int nsock = accept(serversock, (struct sockaddr*)&their_addr, &size);
+                if (sd == serversock4 || sd == serversock6) {
+					struct sockaddr_storage addr;
+                    socklen_t size = sizeof(struct sockaddr_storage);
+                    int nsock = accept(sd, (struct sockaddr*)&addr, &size);
                     if (nsock == -1) {
                         lprintf("[erro] Failed to acccept connection\n");
                         return 1;
@@ -758,7 +857,8 @@ int start_webapi() {
         }
     }
 
-    close(serversock);
+    close(serversock4);
+    close(serversock6);
 
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
