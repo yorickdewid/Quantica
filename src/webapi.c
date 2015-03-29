@@ -51,11 +51,11 @@ typedef struct {
 	unsigned int alloc_size;
 } vector_t;
 
-vector_t *alloc_vector() {
+vector_t *alloc_vector(size_t sz) {
 	vector_t *v = (vector_t *)malloc(sizeof(vector_t));
-	v->buffer = (void **)malloc(INIT_VEC_SIZE * sizeof(void *));
+	v->buffer = (void **)malloc(sz * sizeof(void *));
 	v->size = 0;
-	v->alloc_size = INIT_VEC_SIZE;
+	v->alloc_size = sz;
 
 	return v;
 }
@@ -166,8 +166,8 @@ void handle_request(int sd, fd_set *set) {
     getpeername(sd, (struct sockaddr*)&addr, &len);
 	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
 
-	vector_t *queue = alloc_vector();
-	vector_t *headers = alloc_vector();
+	vector_t *queue = alloc_vector(INIT_VEC_SIZE);
+	vector_t *headers = alloc_vector(INIT_VEC_SIZE);
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE-2, socket_stream);
