@@ -6,23 +6,24 @@
 #include <unistd.h>
 
 #include <config.h>
+#include <common.h>
 #include <log.h>
 #include "webapi.h"
 
 void print_version() {
-	puts(PROGNAME " " VERSION " ("__DATE__", "__TIME__")");
+	printf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 }
 
 void print_usage() {
-	puts(
-		PROGNAME " " VERSION " ("__DATE__", "__TIME__")\n"
+	printf(
+		PROGNAME " %s ("__DATE__", "__TIME__")\n"
 		"Usage: "PROGNAME" [-?hvfd]\n"
 		"\nOptions:\n"
 		"  -?,-h         : this help\n"
 		"  -v            : show version and exit\n"
 		"  -d            : run as daemon (default)\n"
-		"  -f            : run in foreground"
-	);
+		"  -f            : run in foreground\n"
+	, get_version_string());
 }
 
 int daemonize() {

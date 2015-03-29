@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 #include <config.h>
 #include <common.h>
@@ -89,4 +90,14 @@ int file_exists(const char *path) {
 		return 1;
 	}
 	return 0;
+}
+
+char *get_version_string() {
+	static char buf[16];
+	snprintf(buf, 16, "%d.%d.%d", VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
+	return buf;
+}
+
+long get_version() {
+	return sizeof(int)*VERSION_RELESE + sizeof(int)*VERSION_MAJOR + sizeof(int)*VERSION_MINOR;
 }

@@ -2,7 +2,9 @@
 #define CONFIG_H_INCLUDED
 
 #define PROGNAME	"Quantica"
-#define VERSION		"0.1.5"
+#define VERSION_RELESE	0
+#define VERSION_MAJOR	1
+#define VERSION_MINOR	6
 #define INSTANCE	"DEVSRV1"
 
 #define LOGFILE		"quantica.log"

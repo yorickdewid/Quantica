@@ -88,15 +88,15 @@ struct blob_info {
 } __attribute__((packed));
 
 struct engine_super {
-	char signature[8];
-     __be64 top;
-     __be64 free_top;
-     __be64 nkey;
-     __be64 nfree_table;
+	__be32 version;
+	__be64 top;
+	__be64 free_top;
+	__be64 nkey;
+	__be64 nfree_table;
 } __attribute__((packed));
 
 struct engine_dbsuper {
-     char signature[8];
+	__be32 version;
 } __attribute__((packed));
 
 struct engine_stats {

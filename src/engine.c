@@ -117,12 +117,12 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->free_top = from_be64(super.free_top);
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
-	assert(!strcmp(super.signature, VERSION));
+	assert(from_be64(super.version)==VERSION_RELESE);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper))
 		return -1;
-	assert(!strcmp(dbsuper.signature, VERSION));
+	assert(from_be64(dbsuper.version)==VERSION_RELESE);
 
 	e->alloc = lseek(e->fd, 0, SEEK_END);
 	e->db_alloc = lseek(e->db_fd, 0, SEEK_END);
@@ -299,7 +299,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 static void flush_super(struct engine *e) {
 	struct engine_super super;
 	memset(&super, 0, sizeof super);
-	strlcpy(super.signature, VERSION, sizeof(super.signature));
+	super.version = to_be64(VERSION_RELESE);
 	super.top = to_be64(e->top);
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
@@ -315,7 +315,7 @@ static void flush_super(struct engine *e) {
 static void flush_dbsuper(struct engine *e) {
 	struct engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct engine_dbsuper));
-	strlcpy(dbsuper.signature, VERSION, sizeof(dbsuper.signature));
+	dbsuper.version = to_be64(VERSION_RELESE);
 
 	lseek(e->db_fd, 0, SEEK_SET);
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {

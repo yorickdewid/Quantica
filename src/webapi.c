@@ -112,9 +112,9 @@ void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
-        "Server: " PROGNAME "/" VERSION " " VERSION_STRING "\r\n"
+        "Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
         "Content-Type: application/json\r\n"
-        "Content-Length: 0\r\n", status);
+        "Content-Length: 0\r\n", status, get_version_string());
 
     size_t i;
     for (i=0; i<headers->size; ++i) {
@@ -135,9 +135,9 @@ void json_response(FILE *socket_stream, vector_t *headers, const char *status, c
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
-        "Server: " PROGNAME "/" VERSION " " VERSION_STRING "\r\n"
+        "Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
         "Content-Type: application/json\r\n"
-        "Content-Length: %zu\r\n", status, strlen(message)+2);
+        "Content-Length: %zu\r\n", status, get_version_string(), strlen(message)+2);
 
     size_t i;
     for (i=0; i<headers->size; ++i) {
@@ -631,7 +631,7 @@ unsupported:
 			raw_response(socket_stream, headers, "200 OK");
 		} else {
 			char jsonbuf[512] = {'\0'};
-			snprintf(jsonbuf, 512, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, VERSION);
+			snprintf(jsonbuf, 512, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, get_version_string());
 			json_response(socket_stream, headers, "200 OK", jsonbuf);
 		}
 	} else if (!strcmp(_filename, "/status")) {
@@ -692,7 +692,6 @@ disconnect:
 	}
 	shutdown(sd, SHUT_RDWR);
     FD_CLR(sd, set);
-    printf("Socket %d closed\n", sd);
 
 	return;
 }
@@ -700,7 +699,7 @@ disconnect:
 int start_webapi() {
 	start_core();
 
-    lprintf("[info] " PROGNAME " " VERSION " (%s, %s)\n", __DATE__, __TIME__);
+    lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n",get_version_string());
     lprintf("[info] Current time: %lld\n", get_timestamp());
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
@@ -818,7 +817,7 @@ int start_webapi() {
 		}
 		lprintf("[info] Listening on :::%d\n", API_PORT);
 	}
-	lprintf("[info] Server version " PROGNAME "/" VERSION " " VERSION_STRING "\n");
+	lprintf("[info] Server version " PROGNAME "/%s " VERSION_STRING "\n", get_version_string());
 
 	signal(SIGINT, handle_shutdown);
 
