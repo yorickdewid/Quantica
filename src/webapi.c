@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -706,14 +707,14 @@ int start_webapi() {
 
 	struct addrinfo hints, *servinfo, *p;
 	memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
 
-    if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) { //TODO itoa
+	if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) { //TODO itoa
 		lprintf("[erro] Failed to get address info\n");
 		return 1;
-    }
+	}
 
 	for(p=servinfo; p!=NULL; p=p->ai_next) {
 		if (p->ai_family == AF_INET) {
@@ -831,7 +832,11 @@ int start_webapi() {
     while (1) {
         int sd;
         readsock = readfds;
+select_restart:
         if (select(max_sd+1, &readsock, NULL, NULL, NULL) < 0) {
+			if (errno == EINTR) {
+				goto select_restart;
+			}
             lprintf("[erro] Failed to select socket\n"); //TODO EINTR
             return 1;
         }
