@@ -32,7 +32,7 @@ void bootstrap(struct engine *e) {
 	md.importance = MD_IMPORTANT_CRITICAL;
 	md.syslock = LOCK;
 	md.exec = TRUE;
-	if (engine_meta(e, &key, &md)<0)
+	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
 	/* Add database initial routine */
@@ -44,7 +44,7 @@ void bootstrap(struct engine *e) {
 
 	md.importance = MD_IMPORTANT_LEVEL2;
 	md.syslock = LOCK;
-	if (engine_meta(e, &key, &md)<0)
+	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
 	/* Add database bootlog routine */
@@ -57,7 +57,7 @@ void bootstrap(struct engine *e) {
 	md.importance = MD_IMPORTANT_LEVEL3;
 	md.syslock = LOCK;
 	md.exec = TRUE;
-	if (engine_meta(e, &key, &md)<0)
+	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
 	/* Set backend intercommunication */
@@ -70,6 +70,6 @@ void bootstrap(struct engine *e) {
 	md.importance = MD_IMPORTANT_LEVEL1;
 	md.syslock = LOCK;
 	md.type = MD_TYPE_BOOL_TRUE;
-	if (engine_meta(e, &key, &md)<0)
+	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 }

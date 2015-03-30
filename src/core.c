@@ -21,12 +21,19 @@ static qtime_t uptime;
 
 void start_core() {
 	start_log();
-    memset(ins_name, 0, INSTANCE_LENGTH);
     set_instance_name(INSTANCE);
 	engine_init(&btx, INITDB);
 	bootstrap(&btx);
 	uptime = get_timestamp();
 	ready = TRUE;
+}
+
+void detach_core() {
+	if (!ready)
+		return;
+	engine_close(&btx);
+	stop_log();
+	ready = FALSE;
 }
 
 void set_instance_name(char name[]) {
@@ -54,37 +61,7 @@ char *get_uptime(char *buf, size_t len) {
     return buf;
 }
 
-int store(char *quid, const void *data, size_t len) {
-	if (!ready)
-		return -1;
-	quid_t key;
-	quid_create(&key);
-	if (engine_insert(&btx, &key, data, len)<0)
-		return -1;
-	quidtostr(quid, &key);
-	return 0;
-}
-
-#if 0
-int test(void *param[]) {
-	puts("Test stub");
-	(void)(param);
-	return 0;
-}
-#endif // 0
-
-int update_key(char *quid, const void *data, size_t len) {
-	if (!ready)
-		return -1;
-	quid_t key;
-    strtoquid(quid, &key);
-	if (engine_update(&btx, &key, data, len)<0) {
-		return -1;
-	}
-	return 0;
-}
-
-int sha1(char *s, const char *data) {
+int crypto_sha1(char *s, const char *data) {
     struct sha sha;
     sha1_reset(&sha);
     sha1_input(&sha, (const unsigned char *)data, strlen(data));
@@ -104,13 +81,24 @@ unsigned long int stat_getfreekeys() {
     return btx.stats.free_tables;
 }
 
-void generate_quid(char *quid) {
+void quid_generate(char *quid) {
 	quid_t key;
 	quid_create(&key);
 	quidtostr(quid, &key);
 }
 
-void *request_quid(char *quid, size_t *len) {
+int db_put(char *quid, const void *data, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	quid_create(&key);
+	if (engine_insert(&btx, &key, data, len)<0)
+		return -1;
+	quidtostr(quid, &key);
+	return 0;
+}
+
+void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	quid_t key;
@@ -119,17 +107,30 @@ void *request_quid(char *quid, size_t *len) {
 	return data;
 }
 
-int update(char *quid, struct microdata *nmd) {
+int db_update(char *quid, const void *data, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+    strtoquid(quid, &key);
+	if (engine_update(&btx, &key, data, len)<0) {
+		return -1;
+	}
+	return 0;
+}
+
+#if 0
+int db_update_(char *quid, struct microdata *nmd) {
 	if (!ready)
 		return -1;
 	quid_t key;
 	strtoquid(quid, &key);
-	if (engine_meta(&btx, &key, nmd)<0)
+	if (engine_set_meta(&btx, &key, nmd)<0)
 		return -1;
 	return 0;
 }
+#endif // 0
 
-int delete(char *quid) {
+int db_delete(char *quid) {
 	if (!ready)
 		return -1;
 	quid_t key;
@@ -139,16 +140,8 @@ int delete(char *quid) {
 	return 0;
 }
 
-int vacuum() {
+int db_vacuum() {
 	if (!ready)
 		return -1;
 	return engine_vacuum(&btx, INITDB);
-}
-
-void detach_core() {
-	if (!ready)
-		return;
-	engine_close(&btx);
-	stop_log();
-	ready = FALSE;
 }

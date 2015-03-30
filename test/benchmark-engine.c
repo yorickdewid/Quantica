@@ -258,7 +258,7 @@ BENCHMARK_IMPL(engine) {
 
 	/* Close and delete database */
 	engine_close(&e);
-	engine_purge(DBNAME);
+	engine_unlink(DBNAME);
 
 	RETURN_OK();
 }

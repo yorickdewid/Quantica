@@ -38,7 +38,6 @@ void get_system_time(cuuid_time_t *uid_time) {
 /* Get hardware tick count */
 double get_tick_count(void) {
 	struct timespec now;
-
 	if (clock_gettime(CLOCK_MONOTONIC, &now))
 		return 0;
 

@@ -131,7 +131,7 @@ void engine_close(struct engine *e);
 /*
  * Delete the database from disk
  */
-void engine_purge(const char *fname);
+void engine_unlink(const char *fname);
 
 /*
  * Insert a new item with key 'quid' with the contents in 'data' to the
@@ -149,13 +149,13 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len);
 /*
  * Remove item with the given key 'quid' from the database file.
  */
+int engine_purge(struct engine *e, quid_t *quid);
+
+int engine_getmeta(struct engine *e, const quid_t *quid, struct microdata *md);
+
+int engine_setmeta(struct engine *e, const quid_t *quid, const struct microdata *data);
+
 int engine_delete(struct engine *e, const quid_t *quid);
-
-int engine_get_meta(struct engine *e, const quid_t *quid, struct microdata *md);
-
-int engine_meta(struct engine *e, const quid_t *quid, const struct microdata *data);
-
-int engine_remove(struct engine *e, const quid_t *quid);
 
 int engine_vacuum(struct engine *e, const char *fname);
 int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len);

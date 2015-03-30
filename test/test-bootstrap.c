@@ -23,7 +23,7 @@ static void bootstrap_zero(){
 	ASSERT(!strncmp(data, BS_MAGIC, len));
 
 	engine_close(&e);
-	engine_purge(fname);
+	engine_unlink(fname);
 }
 
 static void bootstrap_init(){
@@ -43,7 +43,7 @@ static void bootstrap_init(){
 	ASSERT(!strncmp(rdata, data, len));
 
 	engine_close(&e);
-	engine_purge(fname);
+	engine_unlink(fname);
 }
 
 TEST_IMPL(bootstrap) {

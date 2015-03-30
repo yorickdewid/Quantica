@@ -29,7 +29,7 @@ static void test_engine_create(){
 	engine_close(&e);
 	snprintf(fpath, fpath_sz, "%s.db", fname);
 	ASSERT(file_exists(fpath));
-	engine_purge(fname);
+	engine_unlink(fname);
 	ASSERT(!file_exists(fpath));
 }
 
@@ -62,7 +62,7 @@ static void test_engine_crud(){
 	void *r2data = engine_get(&e, &quid, &len2);
 	ASSERT(!r2data);
 	engine_close(&e);
-	engine_purge(fname);
+	engine_unlink(fname);
 }
 
 static void test_engine_clean(){
@@ -93,7 +93,7 @@ static void test_engine_clean(){
 	ASSERT(rdata);
 	free(rdata);
 	engine_close(&e);
-	engine_purge(fname);
+	engine_unlink(fname);
 	unlink_backup(fname);
 }
 
@@ -117,17 +117,17 @@ static void test_engine_meta(){
 		.error = 0,
 		.type = MD_TYPE_BOOL_TRUE,
 	};
-	int r2 = engine_meta(&e, &quid, &md);
+	int r2 = engine_setmeta(&e, &quid, &md);
 	ASSERT(!r2);
 	engine_close(&e);
 
 	engine_init(&e, fname);
 	struct microdata md2;
-	int r3 = engine_get_meta(&e, &quid, &md2);
+	int r3 = engine_getmeta(&e, &quid, &md2);
 	ASSERT(!r3);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct microdata)));
 	engine_close(&e);
-	engine_purge(fname);
+	engine_unlink(fname);
 }
 
 TEST_IMPL(engine) {

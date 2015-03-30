@@ -63,34 +63,6 @@ int daemonize() {
 	return 0;
 }
 
-char *_q(char *c_buf, const char *param) {
-	char *p = c_buf;
-	char *var = strtok(p, "&");
-	while(var != NULL) {
-		char *value = strchr(var, '=');
-		if (value) {
-			value[0] = '\0';
-			value++;
-			printf(">%s : %s\n", var, value);
-			if (!strcmp(var, param)) {
-				return value;
-			}
-		}
-		var = strtok(NULL, "&");
-	}
-	return NULL;
-}
-
-static void test() {
-	char c_buf[] = "rdata=test&check=1&quid=OK&_1=true";
-	char *y = _q(c_buf, "rdata");
-	if (y)
-		puts(y);
-	char *x = _q(c_buf, "check");
-	if (x)
-		puts(x);
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 2)
         return daemonize();
@@ -107,9 +79,6 @@ int main(int argc, char *argv[]) {
 				case 'f':
 					lprintf("[info] Running in foreground\n");
 					start_webapi();
-					break;
-				case 't':
-					test();
 					break;
 				case 'H':
 				case 'h':

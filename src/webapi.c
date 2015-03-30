@@ -111,8 +111,8 @@ void handle_shutdown(int sigal) {
 }
 
 void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
-    char squid[39] = {'\0'};
-    generate_quid(squid);
+    char squid[QUID_LENGTH+1] = {'\0'};
+    quid_generate(squid);
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
@@ -134,8 +134,8 @@ void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
 }
 
 void json_response(FILE *socket_stream, vector_t *headers, const char *status, const char *message) {
-    char squid[39] = {'\0'};
-    generate_quid(squid);
+    char squid[] = {'\0'};
+    quid_generate(squid);
 
 	fprintf(socket_stream,
         "HTTP/1.1 %s\r\n"
@@ -443,7 +443,7 @@ unsupported:
 						value[0] = '\0';
 						value++;
 						if (!strcmp(var, "rdata")) {
-							int rtn = store(squid, value, strlen(value));
+							int rtn = db_put(squid, value, strlen(value));
 							if (rtn<0) {
 								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
 								goto done;
@@ -458,7 +458,7 @@ unsupported:
 				}
 				if (!processed)
 					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-			} else if (!strcmp(_filename, "/replace")) {
+			} else if (!strcmp(_filename, "/update")) {
 				char *var = strtok(c_buf, "&");
 				while(var != NULL) {
 					char *value = strchr(var, '=');
@@ -466,7 +466,7 @@ unsupported:
 						value[0] = '\0';
 						value++;
 						if (!strcmp(var, "quid")) {
-							int rtn = update_key(value, "value", strlen("value"));
+							int rtn = db_update(value, "value", strlen("value"));
 							if (rtn<0) {
 								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
 								goto done;
@@ -490,7 +490,7 @@ unsupported:
 						value[0] = '\0';
 						value++;
 						if (!strcmp(var, "rdata")) {
-							int rtn = sha1(strsha, value);
+							int rtn = crypto_sha1(strsha, value);
 							if (!rtn) {
 								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Hashing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
 								goto done;
@@ -513,7 +513,7 @@ unsupported:
 						value[0] = '\0';
 						value++;
 						if (!strcmp(var, "quid")) {
-							int rtn = delete(value);
+							int rtn = db_delete(value);
 							if (rtn<0) {
 								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to delete record\",\"status\":\"DELETE_FAILED\",\"success\":0}");
 							} else {
@@ -526,6 +526,7 @@ unsupported:
 				}
 				if (!processed)
 					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+#if 0
 			} else if (!strcmp(_filename, "/update")) {
 				struct microdata md;
 				char *var = strtok(c_buf, "&");
@@ -549,7 +550,7 @@ unsupported:
 						} else if (!strcmp(var, "flag")) {
 							md.type = atoi(value);
 						} else if (!strcmp(var, "quid")) {
-							int rtn = update(value, &md);
+							int rtn = db_update(value, &md);
 							if (rtn<0) {
 								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to update record\",\"status\":\"UPDATE_FAILED\",\"success\":0}");
 							} else {
@@ -562,6 +563,7 @@ unsupported:
 				}
 				if (!processed)
 					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+#endif // 0
 			} else if (!strcmp(_filename, "/instance")) {
 				char *var = strtok(c_buf, "&");
 				while(var != NULL) {
@@ -615,7 +617,7 @@ unsupported:
 		if (request_type == HTTP_HEAD) {
 			raw_response(socket_stream, headers, "200 OK");
 		} else {
-			if(vacuum()<0) {
+			if(db_vacuum()<0) {
 				json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}");
 			} else {
 				json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}");
@@ -647,7 +649,7 @@ unsupported:
 		} else {
 			strlcpy(rquid, _filename+1, 39);
 		}
-		char *data = request_quid(rquid, &len);
+		char *data = db_get(rquid, &len);
 		if (data==NULL) {
 			if (request_type == HTTP_HEAD)
 				raw_response(socket_stream, headers, "200 OK");

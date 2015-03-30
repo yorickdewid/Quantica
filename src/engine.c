@@ -174,7 +174,7 @@ void engine_close(struct engine *e) {
 	}
 }
 
-void engine_purge(const char *fname) {
+void engine_unlink(const char *fname) {
 	char dbname[1024],idxname[1024],walname[1024];
 	snprintf(idxname, 1024, "%s%s", fname, IDXEXT);
 	snprintf(dbname, 1024, "%s%s", fname, DBEXT);
@@ -684,15 +684,12 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	return data;
 }
 
-int engine_delete(struct engine *e, const quid_t *c_quid) {
-	quid_t quid;
+int engine_purge(struct engine *e, quid_t *quid) {
 	error.code = NO_ERROR;
-
 	if (e->lock == LOCK)
 		return -1;
 
-	memcpy(&quid, c_quid, sizeof(quid_t));
-	uint64_t offset = delete_table(e, e->top, &quid);
+	uint64_t offset = delete_table(e, e->top, quid);
 	if (error.code != NO_ERROR)
 		return -1;
 
@@ -732,14 +729,14 @@ static struct microdata *get_meta(struct engine *e, uint64_t table_offset, const
 	return 0;
 }
 
-int engine_get_meta(struct engine *e, const quid_t *quid, struct microdata *md) {
+int engine_getmeta(struct engine *e, const quid_t *quid, struct microdata *md) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return -1;
 	struct microdata *umd = get_meta(e, e->top, quid);
 	if (error.code != NO_ERROR)
 		return -1;
-	memcpy(md, umd, sizeof(struct microdata));
+	*md = *umd;
 	return 0;
 }
 
@@ -773,18 +770,17 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 	return -1;
 }
 
-int engine_meta(struct engine *e, const quid_t *quid, const struct microdata *data) {
+int engine_setmeta(struct engine *e, const quid_t *quid, const struct microdata *data) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return -1;
 	set_meta(e, e->top, quid, data);
 	if (error.code != NO_ERROR)
 		return -1;
-
 	return 0;
 }
 
-int engine_remove(struct engine *e, const quid_t *quid) {
+int engine_delete(struct engine *e, const quid_t *quid) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return -1;
