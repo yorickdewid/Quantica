@@ -26,11 +26,12 @@
 #include "time.h"
 #include "webapi.h"
 
-#define HEADER_SIZE		10240L
-#define INIT_VEC_SIZE	1024
-#define VERSION_STRING	"(WebAPI)"
+#define HEADER_SIZE			10240L
+#define VECTOR_RHEAD_SIZE	1024
+#define VECTOR_SHEAD_SIZE	512
+#define VERSION_STRING		"(WebAPI)"
 
-#define RLOGLINE_SIZE	256
+#define RLOGLINE_SIZE		256
 
 int serversock4 = 0;
 int serversock6 = 0;
@@ -99,7 +100,9 @@ void handle_shutdown(int sigal) {
 	lprintf("[info] Shutting down\n");
 
 	shutdown(serversock4, SHUT_RDWR);
+	shutdown(serversock6, SHUT_RDWR);
 	close(serversock4);
+	close(serversock6);
 
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
@@ -167,8 +170,8 @@ void handle_request(int sd, fd_set *set) {
     getpeername(sd, (struct sockaddr*)&addr, &len);
 	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
 
-	vector_t *queue = alloc_vector(INIT_VEC_SIZE);
-	vector_t *headers = alloc_vector(INIT_VEC_SIZE);
+	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
+	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE-2, socket_stream);
@@ -205,8 +208,6 @@ void handle_request(int sd, fd_set *set) {
 	char *host = NULL;
 	char *http_version = NULL;
 	unsigned long c_length = 0L;
-	char *c_type = NULL;
-	char *c_cookie = NULL;
 	char *c_uagent = NULL;
 	char *c_referer = NULL;
 	char *c_connection = NULL;
@@ -324,12 +325,6 @@ void handle_request(int sd, fd_set *set) {
 				(void)(host);
 			} else if (!strcmp(str, "content-length")) {
 				c_length = atol(colon);
-			} else if (!strcmp(str, "content-type")) {
-				c_type = colon;
-				(void)(c_type);
-			} else if (!strcmp(str, "cookie")) {
-				c_cookie = colon;
-				(void)(c_cookie);
 			} else if (!strcmp(str, "user-agent")) {
 				c_uagent = colon;
 			} else if (!strcmp(str, "referer")) {
@@ -384,8 +379,7 @@ unsupported:
 		goto disconnect;
 	}
 
-	if (!filename || strstr(filename, "'") || strstr(filename, " ") ||
-		(querystring && strstr(querystring," "))) {
+	if (!filename || strstr(filename, "'") || strstr(filename, " ") || (querystring && strstr(querystring," "))) {
 		raw_response(socket_stream, headers, "400 Bad Request");
 		fflush(socket_stream);
 		delete_vector(queue);
@@ -441,7 +435,7 @@ unsupported:
 		if (c_buf) {
 			int processed = 0;
 			if (!strcmp(_filename, "/store")) {
-				char squid[39] = {'\0'};
+				char squid[QUID_LENGTH+1] = {'\0'};
 				char *var = strtok(c_buf, "&");
 				while(var != NULL) {
 					char *value = strchr(var, '=');
@@ -693,8 +687,6 @@ disconnect:
 	}
 	shutdown(sd, SHUT_RDWR);
     FD_CLR(sd, set);
-
-	return;
 }
 
 int start_webapi() {
@@ -732,7 +724,6 @@ int start_webapi() {
 					return 1;
 				}
 
-			#ifdef NONBLOCKING
 				int opts = fcntl(serversock4, F_GETFL);
 				if (opts < 0){
 					lprintf("[erro] Failed to set nonblock on sock4\n");
@@ -744,7 +735,6 @@ int start_webapi() {
 					lprintf("[erro] Failed to set nonblock on sock4\n");
 					return 1;
 				}
-			#endif // NONBLOCKING
 
 				if (bind(serversock4, p->ai_addr, p->ai_addrlen) < 0) {
 					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
@@ -773,7 +763,6 @@ int start_webapi() {
 					return 1;
 				}
 
-			#ifdef NONBLOCKING
 				int opts = fcntl(serversock6, F_GETFL);
 				if (opts < 0){
 					lprintf("[erro] Failed to set nonblock on sock6\n");
@@ -785,7 +774,6 @@ int start_webapi() {
 					lprintf("[erro] Failed to set nonblock on sock6\n");
 					return 1;
 				}
-			#endif // NONBLOCKING
 
 				if (bind(serversock6, p->ai_addr, p->ai_addrlen) < 0) {
 					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
