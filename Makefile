@@ -3,7 +3,7 @@ SRCDIR=src
 TESTDIR=test
 BINDIR=bin
 VALGRIND=valgrind
-VALFLAGS=--leak-check=yes --track-origins=yes
+VALFLAGS=--leak-check=full --track-origins=yes
 CFLAGS=-c -g -std=c99 -Wall -Werror -Wextra -DDEBUG
 LDFLAGS=
 SOURCES=$(SRCDIR)/common.c $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/strlcpy.c $(SRCDIR)/strlcat.c $(SRCDIR)/itoa.c $(SRCDIR)/strdup.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c \
@@ -42,7 +42,7 @@ $(EXECUTABLETEST): $(TESTOBJECTS)
 	$(CC) -I$(INCLUDE) $(CFLAGS) $< -o $@
 
 memcheck: debug
-	$(VALGRIND) $(VALFLAGS) $(BINDIR)/$(EXECUTABLE)
+	$(VALGRIND) $(VALFLAGS) $(BINDIR)/$(EXECUTABLE) -f
 
 cleanall: clean cleandb cleandebug cleantest
 

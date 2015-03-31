@@ -134,7 +134,7 @@ void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
 }
 
 void json_response(FILE *socket_stream, vector_t *headers, const char *status, const char *message) {
-    char squid[] = {'\0'};
+    char squid[QUID_LENGTH+1] = {'\0'};
     quid_generate(squid);
 
 	fprintf(socket_stream,
