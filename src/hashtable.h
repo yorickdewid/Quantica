@@ -5,6 +5,18 @@
 #define GROWTH_FACTOR 2
 #define MAX_LOAD_FACTOR 1
 
+struct item {
+	struct item *next;
+	char *key;
+	char *value;
+};
+
+struct hashtable {
+	int size;           /* size of the pointer table */
+	int n;              /* number of elements stored */
+	struct item **table;
+};
+
 typedef struct hashtable hashtable_t;
 
 /* create a new empty dictionary */

@@ -5,18 +5,6 @@
 #include <common.h>
 #include "hashtable.h"
 
-struct item {
-	struct item *next;
-	char *key;
-	char *value;
-};
-
-struct hashtable {
-	int size;           /* size of the pointer table */
-	int n;              /* number of elements stored */
-	struct item **table;
-};
-
 /* dictionary initialization code used in both DictCreate and grow */
 hashtable_t *alloc_hashtable(int size) {
 	hashtable_t *d;

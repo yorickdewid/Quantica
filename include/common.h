@@ -25,6 +25,8 @@
 #define NOLOCK 0x0
 #define LOCK 0x1
 
+#define RSIZE(e) sizeof(e)/sizeof(e[0])
+
 #ifdef LINUX
 size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
