@@ -9,6 +9,8 @@ There is no genetic data architecture, structure or storage convention but rathe
 - Persistent storage on disk
 - Globally unique keys
 - Store any kind of data regardless of the size
+- Event-driven / non-blocking network (45.000 req/s)
+- WebAPI requests
 
 ## License
 
