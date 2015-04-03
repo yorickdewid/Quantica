@@ -275,7 +275,16 @@ http_status_t api_version(char *response, vector_t *headers, http_request_t *req
 http_status_t api_status(char *response, vector_t *headers, http_request_t *req) {
 	(void)(headers);
 	(void)(req);
-	snprintf(response, RESPONSE_SIZE, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
+	snprintf(response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
+	return HTTP_OK;
+}
+
+http_status_t api_generate_quid(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	char squid[QUID_LENGTH+1];
+	quid_generate(squid);
+	snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
 	return HTTP_OK;
 }
 
@@ -299,7 +308,7 @@ http_status_t api_db_put(char *response, vector_t *headers, http_request_t *req)
 	return HTTP_OK;
 }
 
-http_status_t api_quid_get(char *response, vector_t *headers, http_request_t *req) {
+http_status_t api_db_get(char *response, vector_t *headers, http_request_t *req) {
 	(void)(headers);
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
@@ -317,7 +326,7 @@ http_status_t api_quid_get(char *response, vector_t *headers, http_request_t *re
 	return HTTP_OK;
 }
 
-http_status_t api_quid_delete(char *response, vector_t *headers, http_request_t *req) {
+http_status_t api_db_delete(char *response, vector_t *headers, http_request_t *req) {
 	(void)(headers);
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
@@ -332,7 +341,7 @@ http_status_t api_quid_delete(char *response, vector_t *headers, http_request_t 
 	return HTTP_OK;
 }
 
-http_status_t api_quid_update(char *response, vector_t *headers, http_request_t *req) {
+http_status_t api_db_update(char *response, vector_t *headers, http_request_t *req) {
 	(void)(headers);
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
@@ -362,10 +371,11 @@ const struct webroute route[] = {
 	{"/vacuum", api_vacuum, FALSE},
 	{"/version", api_version, FALSE},
 	{"/status", api_status, FALSE},
+	{"/quid", api_generate_quid, FALSE},
 	{"/put", api_db_put, FALSE},
-	{"/get", api_quid_get, TRUE},
-	{"/delete", api_quid_delete, TRUE},
-	{"/update", api_quid_update, TRUE},
+	{"/get", api_db_get, TRUE},
+	{"/delete", api_db_delete, TRUE},
+	{"/update", api_db_update, TRUE},
 };
 
 char *parse_uri(char *uri) {
