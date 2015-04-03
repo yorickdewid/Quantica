@@ -600,7 +600,7 @@ unsupported:
 		goto disconnect;
 	}
 
-	size_t _filename_sz = sizeof(char) * (strlen(filename) + 2);
+	size_t _filename_sz = strlen(filename)+2;
 	_filename = calloc(_filename_sz, 1);
 	strlcat(_filename, filename, _filename_sz);
 	if (strstr(_filename, "%")) {
@@ -662,16 +662,23 @@ unsupported:
 	req.method = request_type;
 	while(nsz-->0) {
 		if (route[nsz].require_quid) {
+			char squid[QUID_LENGTH+1];
 			char *_pfilename = _filename+QUID_LENGTH+1;
+			strlcpy(squid, _filename+1, QUID_LENGTH+1);
+			if (_pfilename[0] != '/') {
+				_pfilename = _filename+QUID_LENGTH-1;
+				squid[QUID_LENGTH-2] = '\0';
+			}
+			if (_pfilename[0] != '/')
+				continue;
+
 			if (_pfilename) {
-				char *quid = 1+_filename;
-				_pfilename[-1] = '\0';
 				if (!strcmp(route[nsz].uri, _pfilename)) {
 					if (!postdata) {
 						postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 						req.data = postdata;
 					}
-					hashtable_put(req.data, "quid", quid);
+					hashtable_put(req.data, "quid", squid);
 					req.uri = _pfilename;
 					status = route[nsz].api_handler(resp_message, &req);
 					goto respond;
@@ -687,7 +694,11 @@ unsupported:
 		status = api_not_found(resp_message, &req);
 
 respond:
-	json_response(socket_stream, headers, get_http_status(status), resp_message);
+	if (request_type == HTTP_HEAD) {
+		raw_response(socket_stream, headers, get_http_status(status));
+	} else {
+		json_response(socket_stream, headers, get_http_status(status), resp_message);
+	}
 	free(resp_message);
 
 done:

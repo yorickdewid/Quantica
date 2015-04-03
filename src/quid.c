@@ -153,16 +153,33 @@ void quidtostr(char *s, quid_t *u) {
 }
 
 void strtoquid(const char *s, quid_t *u) {
-	sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
-			, &u->time_low
-			, &u->time_mid
-			, &u->time_hi_and_version
-			, (unsigned short int *)&u->clock_seq_hi_and_reserved
-			, (unsigned short int *)&u->clock_seq_low
-			, (unsigned int *)&u->node[0]
-			, (unsigned int *)&u->node[1]
-			, (unsigned int *)&u->node[2]
-			, (unsigned int *)&u->node[3]
-			, (unsigned int *)&u->node[4]
-			, (unsigned int *)&u->node[5]);
+	size_t ssz = strlen(s);
+	if (ssz == QUID_LENGTH) {
+		sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
+				, &u->time_low
+				, &u->time_mid
+				, &u->time_hi_and_version
+				, (unsigned short int *)&u->clock_seq_hi_and_reserved
+				, (unsigned short int *)&u->clock_seq_low
+				, (unsigned int *)&u->node[0]
+				, (unsigned int *)&u->node[1]
+				, (unsigned int *)&u->node[2]
+				, (unsigned int *)&u->node[3]
+				, (unsigned int *)&u->node[4]
+				, (unsigned int *)&u->node[5]);
+	} else if (ssz == QUID_SHORT_LENGTH) {
+		sscanf(s, "%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x"
+				, &u->time_low
+				, &u->time_mid
+				, &u->time_hi_and_version
+				, (unsigned short int *)&u->clock_seq_hi_and_reserved
+				, (unsigned short int *)&u->clock_seq_low
+				, (unsigned int *)&u->node[0]
+				, (unsigned int *)&u->node[1]
+				, (unsigned int *)&u->node[2]
+				, (unsigned int *)&u->node[3]
+				, (unsigned int *)&u->node[4]
+				, (unsigned int *)&u->node[5]);
+
+	}
 }
