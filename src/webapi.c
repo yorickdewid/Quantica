@@ -69,7 +69,7 @@ typedef struct {
 
 struct webroute {
 	char uri[32];
-	http_status_t (*api_handler)(char *response, vector_t *headers, http_request_t *req);
+	http_status_t (*api_handler)(char *response, http_request_t *req);
 	int require_quid;
 };
 
@@ -190,36 +190,31 @@ char *get_http_status(http_status_t status) {
 	return buf;
 }
 
-http_status_t api_not_found(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_not_found(char *response, http_request_t *req) {
 	(void)(req);
 	strlcpy(response, "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}", RESPONSE_SIZE);
 	return HTTP_NOT_FOUND;
 }
 
-http_status_t api_root(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_root(char *response, http_request_t *req) {
 	(void)(req);
 	strlcpy(response, "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
-http_status_t api_license(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_license(char *response, http_request_t *req) {
 	(void)(req);
 	strlcpy(response, "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
-http_status_t api_help(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_help(char *response, http_request_t *req) {
 	(void)(req);
 	strlcpy(response, "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
-http_status_t api_instance(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_instance(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_name = (char *)hashtable_get(req->data, "name");
 		if (!param_name) {
@@ -234,8 +229,7 @@ http_status_t api_instance(char *response, vector_t *headers, http_request_t *re
 	return HTTP_OK;
 }
 
-http_status_t api_sha(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_sha(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
@@ -254,8 +248,7 @@ http_status_t api_sha(char *response, vector_t *headers, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_vacuum(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_vacuum(char *response, http_request_t *req) {
 	(void)(req);
 	if(db_vacuum()<0) {
 		strlcpy(response, "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}", RESPONSE_SIZE);
@@ -265,22 +258,19 @@ http_status_t api_vacuum(char *response, vector_t *headers, http_request_t *req)
 	return HTTP_OK;
 }
 
-http_status_t api_version(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_version(char *response, http_request_t *req) {
 	(void)(req);
 	snprintf(response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, get_version_string());
 	return HTTP_OK;
 }
 
-http_status_t api_status(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_status(char *response, http_request_t *req) {
 	(void)(req);
 	snprintf(response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
 	return HTTP_OK;
 }
 
-http_status_t api_generate_quid(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_gen_quid(char *response, http_request_t *req) {
 	(void)(req);
 	char squid[QUID_LENGTH+1];
 	quid_generate(squid);
@@ -288,8 +278,7 @@ http_status_t api_generate_quid(char *response, vector_t *headers, http_request_
 	return HTTP_OK;
 }
 
-http_status_t api_db_put(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_db_put(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
@@ -308,8 +297,7 @@ http_status_t api_db_put(char *response, vector_t *headers, http_request_t *req)
 	return HTTP_OK;
 }
 
-http_status_t api_db_get(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_db_get(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		size_t len;
@@ -326,8 +314,7 @@ http_status_t api_db_get(char *response, vector_t *headers, http_request_t *req)
 	return HTTP_OK;
 }
 
-http_status_t api_db_delete(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_db_delete(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		if (db_delete(param_quid)<0) {
@@ -341,8 +328,7 @@ http_status_t api_db_delete(char *response, vector_t *headers, http_request_t *r
 	return HTTP_OK;
 }
 
-http_status_t api_db_update(char *response, vector_t *headers, http_request_t *req) {
-	(void)(headers);
+http_status_t api_db_update(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
@@ -362,20 +348,20 @@ http_status_t api_db_update(char *response, vector_t *headers, http_request_t *r
 }
 
 const struct webroute route[] = {
-	{"/", api_root, FALSE},
-	{"/license", api_license, FALSE},
-	{"/help", api_help, FALSE},
-	{"/api", api_help, FALSE},
-	{"/instance", api_instance, FALSE},
-	{"/sha1", api_sha, FALSE},
-	{"/vacuum", api_vacuum, FALSE},
-	{"/version", api_version, FALSE},
-	{"/status", api_status, FALSE},
-	{"/quid", api_generate_quid, FALSE},
-	{"/put", api_db_put, FALSE},
-	{"/get", api_db_get, TRUE},
-	{"/delete", api_db_delete, TRUE},
-	{"/update", api_db_update, TRUE},
+	{"/",			api_root,		FALSE},
+	{"/license",	api_license,	FALSE},
+	{"/help",		api_help,		FALSE},
+	{"/api",		api_help,		FALSE},
+	{"/instance",	api_instance,	FALSE},
+	{"/sha1",		api_sha,		FALSE},
+	{"/vacuum",		api_vacuum,		FALSE},
+	{"/version",	api_version,	FALSE},
+	{"/status",		api_status,		FALSE},
+	{"/quid",		api_gen_quid,	FALSE},
+	{"/put",		api_db_put,		FALSE},
+	{"/get",		api_db_get,		TRUE},
+	{"/delete",		api_db_delete,	TRUE},
+	{"/update",		api_db_update,	TRUE},
 };
 
 char *parse_uri(char *uri) {
@@ -687,18 +673,18 @@ unsupported:
 					}
 					hashtable_put(req.data, "quid", quid);
 					req.uri = _pfilename;
-					status = route[nsz].api_handler(resp_message, headers, &req);
+					status = route[nsz].api_handler(resp_message, &req);
 					goto respond;
 				}
 			}
 		} else if (!strcmp(route[nsz].uri, _filename)) {
             req.uri = _filename;
-			status = route[nsz].api_handler(resp_message, headers, &req);
+			status = route[nsz].api_handler(resp_message, &req);
 			goto respond;
         }
 	}
 	if (!status)
-		status = api_not_found(resp_message, headers, &req);
+		status = api_not_found(resp_message, &req);
 
 respond:
 	json_response(socket_stream, headers, get_http_status(status), resp_message);
