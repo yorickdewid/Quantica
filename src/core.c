@@ -14,6 +14,8 @@
 #include "bootstrap.h"
 #include "core.h"
 
+#define INSTANCE_LENGTH 32
+
 static struct engine btx;
 static uint8_t ready = FALSE;
 char ins_name[INSTANCE_LENGTH];
@@ -48,7 +50,8 @@ char *get_instance_name() {
     return ins_name;
 }
 
-char *get_uptime(char *buf, size_t len) {
+char *get_uptime() {
+	static char buf[32];
     qtime_t passed = get_timestamp()-uptime;
     unsigned int days = passed/86400;
     passed = passed % 86400;
@@ -57,7 +60,7 @@ char *get_uptime(char *buf, size_t len) {
     unsigned int mins = passed/60;
     passed = passed % 60;
     unsigned int secs = passed;
-    snprintf(buf, len, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
+    snprintf(buf, 32, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
     return buf;
 }
 
@@ -67,10 +70,10 @@ int crypto_sha1(char *s, const char *data) {
     sha1_input(&sha, (const unsigned char *)data, strlen(data));
 
     if (!sha1_result(&sha)) {
-        return 0;
+        return -1;
     }
     sha1_strsum(s, &sha);
-    return 1;
+    return 0;
 }
 
 unsigned long int stat_getkeys() {
@@ -117,18 +120,6 @@ int db_update(char *quid, const void *data, size_t len) {
 	}
 	return 0;
 }
-
-#if 0
-int db_update_(char *quid, struct microdata *nmd) {
-	if (!ready)
-		return -1;
-	quid_t key;
-	strtoquid(quid, &key);
-	if (engine_set_meta(&btx, &key, nmd)<0)
-		return -1;
-	return 0;
-}
-#endif // 0
 
 int db_delete(char *quid) {
 	if (!ready)

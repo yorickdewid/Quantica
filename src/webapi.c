@@ -24,14 +24,17 @@
 #include <log.h>
 #include "core.h"
 #include "time.h"
+#include "hashtable.h"
 #include "webapi.h"
 
 #define HEADER_SIZE			10240L
 #define VECTOR_RHEAD_SIZE	1024
 #define VECTOR_SHEAD_SIZE	512
+#define HASHTABLE_DATA_SIZE	10
 #define VERSION_STRING		"(WebAPI)"
 
 #define RLOGLINE_SIZE		256
+#define RESPONSE_SIZE		512
 
 int serversock4 = 0;
 int serversock6 = 0;
@@ -40,18 +43,35 @@ fd_set readfds;
 fd_set readsock;
 static unsigned long int client_requests = 0;
 
-enum method {
+typedef enum {
     HTTP_GET = 1,
     HTTP_POST,
     HTTP_HEAD,
     HTTP_OPTIONS
-};
+} http_method_t;
+
+typedef enum {
+	HTTP_OK = 200,
+	HTTP_NOT_FOUND = 404
+} http_status_t;
+
+typedef struct {
+    char *uri;
+    hashtable_t *data;
+    http_method_t method;
+} http_request_t;
 
 typedef struct {
 	void **buffer;
 	unsigned int size;
 	unsigned int alloc_size;
 } vector_t;
+
+struct webroute {
+	char uri[32];
+	http_status_t (*api_handler)(char *response, vector_t *headers, http_request_t *req);
+	int require_quid;
+};
 
 vector_t *alloc_vector(size_t sz) {
 	vector_t *v = (vector_t *)malloc(sizeof(vector_t));
@@ -157,6 +177,202 @@ void json_response(FILE *socket_stream, vector_t *headers, const char *status, c
         "%s\r\n", squid, message);
 }
 
+char *get_http_status(http_status_t status) {
+	static char buf[16];
+	switch (status) {
+		case HTTP_OK:
+			strcpy(buf, "200 OK");
+			break;
+		case HTTP_NOT_FOUND:
+			strcpy(buf, "404 NOT FOUND");
+			break;
+	}
+	return buf;
+}
+
+http_status_t api_not_found(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	strlcpy(response, "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_NOT_FOUND;
+}
+
+http_status_t api_root(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	strlcpy(response, "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_license(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	strlcpy(response, "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_help(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	strlcpy(response, "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_instance(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	if (req->method == HTTP_POST) {
+		char *param_name = (char *)hashtable_get(req->data, "name");
+		if (!param_name) {
+			strlcpy(response, "OUCH, NO NAME", RESPONSE_SIZE);
+			return HTTP_OK;
+		}
+		set_instance_name(param_name);
+		strlcpy(response, "SOME OKE MESSAGE", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, get_instance_name(), RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_sha(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char strsha[40];
+			if (crypto_sha1(strsha, param_data)<0) {
+				strlcpy(response, "{\"description\":\"Hashing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}", RESPONSE_SIZE);
+				return HTTP_OK;
+			}
+			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_vacuum(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	if(db_vacuum()<0) {
+		strlcpy(response, "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}", RESPONSE_SIZE);
+	} else {
+		strlcpy(response, "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
+	}
+	return HTTP_OK;
+}
+
+http_status_t api_version(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	snprintf(response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, get_version_string());
+	return HTTP_OK;
+}
+
+http_status_t api_status(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	(void)(req);
+	snprintf(response, RESPONSE_SIZE, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
+	return HTTP_OK;
+}
+
+http_status_t api_db_put(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char squid[QUID_LENGTH+1];
+			if (db_put(squid, param_data, strlen(param_data))<0) {
+				strlcpy(response, "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}", RESPONSE_SIZE);
+				return HTTP_OK;
+			}
+			snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_quid_get(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		size_t len;
+		char *data = db_get(param_quid, &len);
+		if (!data) {
+			snprintf(response, RESPONSE_SIZE, "{\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}");
+			return HTTP_OK;
+		}
+		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+		free(data);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_quid_delete(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		if (db_delete(param_quid)<0) {
+			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not delete record\",\"status\":\"QUID_NOT_DELETED\",\"success\":0}");
+			return HTTP_OK;
+		}
+		snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record deleted\",\"status\":\"COMMAND_OK\",\"success\":1}");
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_quid_update(char *response, vector_t *headers, http_request_t *req) {
+	(void)(headers);
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		char *param_quid = (char *)hashtable_get(req->data, "quid");
+		if (param_data && param_quid) {
+			if (db_update(param_quid, param_data, strlen(param_data))<0) {
+				strlcpy(response, "{\"description\":\"Update data failed\",\"status\":\"UPDATE_FAILED\",\"success\":0}", RESPONSE_SIZE);
+				return HTTP_OK;
+			}
+			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+const struct webroute route[] = {
+	{"/", api_root, FALSE},
+	{"/license", api_license, FALSE},
+	{"/help", api_help, FALSE},
+	{"/api", api_help, FALSE},
+	{"/instance", api_instance, FALSE},
+	{"/sha1", api_sha, FALSE},
+	{"/vacuum", api_vacuum, FALSE},
+	{"/version", api_version, FALSE},
+	{"/status", api_status, FALSE},
+	{"/put", api_db_put, FALSE},
+	{"/get", api_quid_get, TRUE},
+	{"/delete", api_quid_delete, TRUE},
+	{"/update", api_quid_update, TRUE},
+};
+
+char *parse_uri(char *uri) {
+	puts(uri);
+	return uri;
+}
+
 void handle_request(int sd, fd_set *set) {
 	FILE *socket_stream = fdopen(sd, "r+");
 	if (!socket_stream) {
@@ -172,6 +388,7 @@ void handle_request(int sd, fd_set *set) {
 
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
 	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);
+	hashtable_t *postdata = NULL;
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE-2, socket_stream);
@@ -411,7 +628,6 @@ unsupported:
 		free(_filename);
 		_filename = buf;
 	}
-	size_t fsz = strlen(_filename);
 
 	if (request_type == HTTP_OPTIONS) {
 		vector_append(headers, strdup("Allow: POST,OPTIONS,GET,HEAD\r\n"));
@@ -429,251 +645,54 @@ unsupported:
 			total_read += read;
 		}
 		c_buf[total_read] = '\0';
-	}
 
-	if (request_type == HTTP_POST) {
-		if (c_buf) {
-			int processed = 0;
-			if (!strcmp(_filename, "/store")) {
-				char squid[QUID_LENGTH+1] = {'\0'};
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "rdata")) {
-							int rtn = db_put(squid, value, strlen(value));
-							if (rtn<0) {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
-								goto done;
-							}
-							char jsonbuf[512] = {'\0'};
-							snprintf(jsonbuf, 512, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
-							json_response(socket_stream, headers, "200 OK", jsonbuf);
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-			} else if (!strcmp(_filename, "/update")) {
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "quid")) {
-							int rtn = db_update(value, "value", strlen("value"));
-							if (rtn<0) {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
-								goto done;
-							}
-							char jsonbuf[512] = {'\0'};
-							snprintf(jsonbuf, 512, "{\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}");
-							json_response(socket_stream, headers, "200 OK", jsonbuf);
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-			} else if (!strcmp(_filename, "/sha1")) {
-				char strsha[40] = {'\0'};
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "rdata")) {
-							int rtn = crypto_sha1(strsha, value);
-							if (!rtn) {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Hashing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}");
-								goto done;
-							}
-							char jsonbuf[512] = {'\0'};
-							snprintf(jsonbuf, 512, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
-							json_response(socket_stream, headers, "200 OK", jsonbuf);
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-			} else if (!strcmp(_filename, "/delete")) {
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "quid")) {
-							int rtn = db_delete(value);
-							if (rtn<0) {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to delete record\",\"status\":\"DELETE_FAILED\",\"success\":0}");
-							} else {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Record deleted from storage\",\"status\":\"COMMAND_OK\",\"success\":1}");
-							}
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-#if 0
-			} else if (!strcmp(_filename, "/update")) {
-				struct microdata md;
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "lifecycle")) {
-							md.lifecycle = atoi(value);
-						} else if (!strcmp(var, "importance")) {
-							md.importance = atoi(value);
-						} else if (!strcmp(var, "syslock")) {
-							md.syslock = atoi(value);
-						} else if (!strcmp(var, "exec")) {
-							md.exec = atoi(value);
-						} else if (!strcmp(var, "freeze")) {
-							md.freeze = atoi(value);
-						} else if (!strcmp(var, "error")) {
-							md.error = atoi(value);
-						} else if (!strcmp(var, "flag")) {
-							md.type = atoi(value);
-						} else if (!strcmp(var, "quid")) {
-							int rtn = db_update(value, &md);
-							if (rtn<0) {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Failed to update record\",\"status\":\"UPDATE_FAILED\",\"success\":0}");
-							} else {
-								json_response(socket_stream, headers, "200 OK", "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
-							}
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-#endif // 0
-			} else if (!strcmp(_filename, "/instance")) {
-				char *var = strtok(c_buf, "&");
-				while(var != NULL) {
-					char *value = strchr(var, '=');
-					if (value) {
-						value[0] = '\0';
-						value++;
-						if (!strcmp(var, "name")) {
-							set_instance_name(value);
-							json_response(socket_stream, headers, "200 OK", "{\"description\":\"Database instance name changed\",\"status\":\"COMMAND_OK\",\"success\":1}");
-							processed = 1;
-						}
-					}
-					var = strtok(NULL, "&");
-				}
-				if (!processed)
-					json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
-			} else {
-				json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
-			};
-		} else {
-			json_response(socket_stream, headers, "200 OK", "{\"description\":\"Requested method expects data\",\"status\":\"NO_DATA\",\"success\":0}");
+		postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
+		char *var = strtok(c_buf, "&");
+		while(var != NULL) {
+			char *value = strchr(var, '=');
+			if (value) {
+				value[0] = '\0';
+				value++;
+				hashtable_put(postdata, var, value);
+			}
+			var = strtok(NULL, "&");
 		}
-		goto done;
 	}
+	size_t nsz = RSIZE(route);
+	char *resp_message = (char *)malloc(RESPONSE_SIZE);
+	http_status_t status = 0;
+	http_request_t req;
+	req.data = postdata;
+	req.method = request_type;
+	while(nsz-->0) {
+		if (route[nsz].require_quid) {
+			char *_pfilename = _filename+QUID_LENGTH+1;
+			if (_pfilename) {
+				char *quid = 1+_filename;
+				_pfilename[-1] = '\0';
+				if (!strcmp(route[nsz].uri, _pfilename)) {
+					if (!postdata) {
+						postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
+						req.data = postdata;
+					}
+					hashtable_put(req.data, "quid", quid);
+					req.uri = _pfilename;
+					status = route[nsz].api_handler(resp_message, headers, &req);
+					goto respond;
+				}
+			}
+		} else if (!strcmp(route[nsz].uri, _filename)) {
+            req.uri = _filename;
+			status = route[nsz].api_handler(resp_message, headers, &req);
+			goto respond;
+        }
+	}
+	if (!status)
+		status = api_not_found(resp_message, headers, &req);
 
-	if (!strcmp(_filename, "/")) {
-		if (request_type == HTTP_HEAD)
-			raw_response(socket_stream, headers, "200 OK");
-		else
-			json_response(socket_stream, headers, "200 OK", "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}");
-	} else if (!strcmp(_filename, "/license")) {
-		if (request_type == HTTP_HEAD)
-			raw_response(socket_stream, headers, "200 OK");
-		else
-			json_response(socket_stream, headers, "200 OK", "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}");
-	} else if (!strcmp(_filename, "/help")) {
-		if (request_type == HTTP_HEAD)
-			raw_response(socket_stream, headers, "200 OK");
-		else
-			json_response(socket_stream, headers, "200 OK", "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}");
-	} else if (!strcmp(_filename, "/instance")) {
-		if (request_type == HTTP_HEAD) {
-			raw_response(socket_stream, headers, "200 OK");
-		} else {
-			char jsonbuf[128] = {'\0'};
-			snprintf(jsonbuf, 128, "{\"instance_name\":\"%s\",\"description\":\"The database instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
-			json_response(socket_stream, headers, "200 OK", jsonbuf);
-		}
-	} else if (!strcmp(_filename, "/vacuum")) {
-		if (request_type == HTTP_HEAD) {
-			raw_response(socket_stream, headers, "200 OK");
-		} else {
-			if(db_vacuum()<0) {
-				json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}");
-			} else {
-				json_response(socket_stream, headers, "200 OK", "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}");
-			}
-		}
-	} else if (!strcmp(_filename, "/version")) {
-		if (request_type == HTTP_HEAD) {
-			raw_response(socket_stream, headers, "200 OK");
-		} else {
-			char jsonbuf[512] = {'\0'};
-			snprintf(jsonbuf, 512, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, get_version_string());
-			json_response(socket_stream, headers, "200 OK", jsonbuf);
-		}
-	} else if (!strcmp(_filename, "/status")) {
-		if (request_type == HTTP_HEAD) {
-			raw_response(socket_stream, headers, "200 OK");
-		} else {
-			char jsonbuf[512] = {'\0'};
-			char suptime[32];
-			snprintf(jsonbuf, 512, "{\"cardinality\":%lu,\"cardinality_free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(suptime, 32), client_requests);
-			json_response(socket_stream, headers, "200 OK", jsonbuf);
-		}
-	} else if (fsz==37 || fsz==39) {
-		size_t len;
-		char rquid[39] = {'\0'};
-		if (fsz==37) {
-			strlcpy(rquid, _filename, 39);
-			rquid[0] = '{'; rquid[37] = '}'; rquid[38] = '\0';
-		} else {
-			strlcpy(rquid, _filename+1, 39);
-		}
-		char *data = db_get(rquid, &len);
-		if (data==NULL) {
-			if (request_type == HTTP_HEAD)
-				raw_response(socket_stream, headers, "200 OK");
-			else
-				json_response(socket_stream, headers, "200 OK", "{\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}");
-		} else{
-			if (request_type == HTTP_HEAD) {
-				raw_response(socket_stream, headers, "200 OK");
-			} else {
-				data = realloc(data, len+1);
-				data[len] = '\0';
-				char jsonbuf[512] = {'\0'};
-				snprintf(jsonbuf, 512, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
-				json_response(socket_stream, headers, "200 OK", jsonbuf);
-				free(data);
-			}
-		}
-	} else {
-		if (request_type == HTTP_HEAD) {
-			raw_response(socket_stream, headers, "404 Not Found");
-		} else {
-			json_response(socket_stream, headers, "404 Not Found", "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}");
-		}
-	}
+respond:
+	json_response(socket_stream, headers, get_http_status(status), resp_message);
+	free(resp_message);
 
 done:
 	fflush(socket_stream);
@@ -682,6 +701,9 @@ done:
 	free(_filename);
 	delete_vector(queue);
 	delete_vector(headers);
+	if (postdata) {
+		free_hashtable(postdata);
+	}
 
 disconnect:
 	if (socket_stream) {
@@ -705,7 +727,7 @@ int start_webapi() {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) { //TODO itoa
+	if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) {
 		lprintf("[erro] Failed to get address info\n");
 		return 1;
 	}
@@ -827,7 +849,7 @@ select_restart:
 			if (errno == EINTR) {
 				goto select_restart;
 			}
-            lprintf("[erro] Failed to select socket\n"); //TODO EINTR
+            lprintf("[erro] Failed to select socket\n");
             return 1;
         }
         for (sd=0; sd<=max_sd; ++sd) {
