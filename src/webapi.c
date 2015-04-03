@@ -181,10 +181,10 @@ char *get_http_status(http_status_t status) {
 	static char buf[16];
 	switch (status) {
 		case HTTP_OK:
-			strcpy(buf, "200 OK");
+			strlcpy(buf, "200 OK", 16);
 			break;
 		case HTTP_NOT_FOUND:
-			strcpy(buf, "404 NOT FOUND");
+			strlcpy(buf, "404 NOT FOUND", 16);
 			break;
 	}
 	return buf;
