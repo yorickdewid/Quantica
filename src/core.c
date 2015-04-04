@@ -150,8 +150,8 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	status->freeze = meta.freeze;
 	status->error = meta.error;
 	status->importance = meta.importance;
-	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), 24);
-	strlcpy(status->type, get_str_type(meta.type), 20);
+	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), STATUS_LIFECYCLE_SIZE);
+	strlcpy(status->type, get_str_type(meta.type), STATUS_TYPE_SIZE);
 	return 0;
 }
 
