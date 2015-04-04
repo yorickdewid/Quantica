@@ -662,7 +662,7 @@ unsupported:
 
 	size_t _filename_sz = strlen(filename)+2;
 	_filename = calloc(_filename_sz, 1);
-	strlcat(_filename, filename, _filename_sz);
+	strlcpy(_filename, filename, _filename_sz);
 	if (strstr(_filename, "%")) {
 		char *buf = malloc(strlen(_filename) + 1);
 		char *pstr = _filename;
@@ -684,6 +684,9 @@ unsupported:
 		free(_filename);
 		_filename = buf;
 	}
+	size_t fsz = strlen(_filename);
+	if (fsz>1 && _filename[fsz-1] == '/')
+		_filename[fsz-1] = '\0';
 
 	if (request_type == HTTP_OPTIONS) {
 		vector_append(headers, strdup("Allow: POST,OPTIONS,GET,HEAD\r\n"));
