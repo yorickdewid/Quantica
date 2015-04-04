@@ -217,15 +217,15 @@ http_status_t api_help(char *response, http_request_t *req) {
 http_status_t api_instance(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_name = (char *)hashtable_get(req->data, "name");
-		if (!param_name) {
-			strlcpy(response, "OUCH, NO NAME", RESPONSE_SIZE);
+		if (param_name) {
+			set_instance_name(param_name);
+			strlcpy(response, "{\"description\":\"Instance name set\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 			return HTTP_OK;
 		}
-		set_instance_name(param_name);
-		strlcpy(response, "SOME OKE MESSAGE", RESPONSE_SIZE);
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(response, get_instance_name(), RESPONSE_SIZE);
+	snprintf(response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":1}", get_instance_name());
 	return HTTP_OK;
 }
 
@@ -416,6 +416,7 @@ const struct webroute route[] = {
 	{"/quid",		api_gen_quid,	FALSE},
 	{"/now",		api_time_now,	FALSE},
 	{"/time",		api_time_now,	FALSE},
+	{"/date",		api_time_now,	FALSE},
 	{"/put",		api_db_put,		FALSE},
 	{"/get",		api_db_get,		TRUE},
 	{"/delete",		api_db_delete,	TRUE},
@@ -784,6 +785,7 @@ int start_webapi() {
 
     lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
     lprintf("[info] Current time: %lld\n", get_timestamp());
+    lprintf("[info] Storage core [" INITDB "]\n");
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
 
@@ -896,7 +898,7 @@ int start_webapi() {
 		}
 		lprintf("[info] Listening on :::%d\n", API_PORT);
 	}
-	lprintf("[info] Server version " PROGNAME "/%s " VERSION_STRING "\n", get_version_string());
+	lprintf("[info] Server agent " PROGNAME "/%s " VERSION_STRING "\n", get_version_string());
 
 	signal(SIGINT, handle_shutdown);
 
