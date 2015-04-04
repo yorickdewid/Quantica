@@ -162,5 +162,7 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);
+enum key_lifecycle get_meta_lifecycle(char *lifecycle);
+enum key_type get_meta_type(char *key_type);
 
 #endif // ENGINE_H_INCLUDED

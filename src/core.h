@@ -5,14 +5,17 @@
 #include "time.h"
 #include "engine.h"
 
+#define STATUS_LIFECYCLE_SIZE 10
+#define STATUS_TYPE_SIZE 12
+
 struct record_status {
-	char lifecycle[24];
+	char lifecycle[STATUS_LIFECYCLE_SIZE];
 	int importance;
 	uint8_t syslock;
 	uint8_t exec;
 	uint8_t freeze;
 	uint8_t error;
-	char type[20];
+	char type[STATUS_TYPE_SIZE];
 };
 
 /*
@@ -39,5 +42,6 @@ int db_delete(char *quid);
 int db_vacuum();
 
 int db_record_get_meta(char *quid, struct record_status *status);
+int db_record_set_meta(char *quid, struct record_status *status);
 
 #endif // CORE_H_INCLUDED

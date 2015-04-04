@@ -154,3 +154,30 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	strlcpy(status->type, get_str_type(meta.type), 20);
 	return 0;
 }
+
+int db_record_set_meta(char *quid, struct record_status *status) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	struct metadata meta;
+	strtoquid(quid, &key);
+
+	meta.syslock = status->syslock;
+	meta.exec = status->exec;
+	meta.freeze = status->freeze;
+	meta.error = status->error;
+	meta.importance = status->importance;
+	meta.lifecycle = get_meta_lifecycle(status->lifecycle);
+	meta.type = get_meta_type(status->type);
+	printf("quid: %s\n", quid);
+	printf("freeze %d\n", meta.freeze);
+	printf("syslock %d\n", meta.syslock);
+	printf("exec %d\n", meta.exec);
+	printf("error %d\n", meta.error);
+	printf("importance %d\n", meta.importance);
+	printf("type %d\n", meta.type);
+	printf("lifecycle %d\n", meta.lifecycle);
+	if (engine_setmeta(&btx, &key, &meta)<0)
+		return -1;
+	return 0;
+}

@@ -351,6 +351,39 @@ http_status_t api_rec_meta(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		struct record_status status;
+		if (req->method == HTTP_POST) {
+			if (db_record_get_meta(param_quid, &status)<0) {
+				snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not query metadata\",\"status\":\"NO_META\",\"success\":0}");
+				return HTTP_OK;
+			}
+			char *param_error = (char *)hashtable_get(req->data, "error");
+			if (param_error)
+				status.error = atoi(param_error);
+			char *param_exec = (char *)hashtable_get(req->data, "executable");
+			if (param_exec)
+				status.exec = atoi(param_exec);
+			char *param_freeze = (char *)hashtable_get(req->data, "freeze");
+			if (param_freeze)
+				status.freeze = atoi(param_freeze);
+			char *param_importance = (char *)hashtable_get(req->data, "importance");
+			if (param_importance)
+				status.importance = atoi(param_importance);
+			char *param_lifecycle = (char *)hashtable_get(req->data, "lifecycle");
+			if (param_lifecycle)
+				strlcpy(status.lifecycle, param_lifecycle, STATUS_LIFECYCLE_SIZE);
+			char *param_lock = (char *)hashtable_get(req->data, "system_lock");
+			if (param_lock)
+				status.syslock = atoi(param_lock);
+			char *param_type = (char *)hashtable_get(req->data, "type");
+			if (param_type)
+				strlcpy(status.type, param_type, STATUS_TYPE_SIZE);
+			if (db_record_set_meta(param_quid, &status)<0) {
+				snprintf(response, RESPONSE_SIZE, "{\"description\":\"Update metadata failed\",\"status\":\"SET_META_FAILED\",\"success\":0}");
+				return HTTP_OK;
+			}
+			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
+			return HTTP_OK;
+		}
 		if (db_record_get_meta(param_quid, &status)<0) {
 			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not query metadata\",\"status\":\"NO_META\",\"success\":0}");
 			return HTTP_OK;

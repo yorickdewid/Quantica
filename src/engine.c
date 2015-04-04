@@ -9,6 +9,7 @@
 #include "track.h"
 #include "quid.h"
 #include "engine.h"
+#include "core.h"
 
 static int delete_larger = 0;
 static struct etrace error = {.code = NO_ERROR};
@@ -925,50 +926,78 @@ done:
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {
-	static char buf[24];
+	static char buf[STATUS_LIFECYCLE_SIZE];
 	switch (lifecycle) {
 		case MD_LIFECYCLE_FINITE:
-			strlcpy(buf, "MD_LIFECYCLE_FINITE", 24);
+			strlcpy(buf, "FINITE", STATUS_LIFECYCLE_SIZE);
 			break;
 		case MD_LIFECYCLE_INVALID:
-			strlcpy(buf, "MD_LIFECYCLE_INVALID", 24);
+			strlcpy(buf, "INVALID", STATUS_LIFECYCLE_SIZE);
 			break;
 		case MD_LIFECYCLE_CORRUPT:
-			strlcpy(buf, "MD_LIFECYCLE_CORRUPT", 24);
+			strlcpy(buf, "CORRUPT", STATUS_LIFECYCLE_SIZE);
 			break;
 		case MD_LIFECYCLE_RECYCLE:
-			strlcpy(buf, "MD_LIFECYCLE_RECYCLE", 24);
+			strlcpy(buf, "RECYCLE", STATUS_LIFECYCLE_SIZE);
 			break;
 		case MD_LIFECYCLE_INACTIVE:
-			strlcpy(buf, "MD_LIFECYCLE_INACTIVE", 24);
+			strlcpy(buf, "INACTIVE", STATUS_LIFECYCLE_SIZE);
 			break;
 		case MD_LIFECYCLE_UNKNOWN:
 		default:
-			strlcpy(buf, "MD_LIFECYCLE_UNKNOWN", 24);
+			strlcpy(buf, "UNKNOWN", STATUS_LIFECYCLE_SIZE);
 			break;
 	}
 	return buf;
 }
 
 char *get_str_type(enum key_type key_type) {
-	static char buf[20];
+	static char buf[STATUS_TYPE_SIZE];
 	switch (key_type) {
 		case MD_TYPE_SIGNED:
-			strlcpy(buf, "MD_TYPE_SIGNED", 20);
+			strlcpy(buf, "SIGNED", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_BOOL_FALSE:
-			strlcpy(buf, "MD_TYPE_BOOL_FALSE", 20);
+			strlcpy(buf, "BOOL_FALSE", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_BOOL_TRUE:
-			strlcpy(buf, "MD_TYPE_BOOL_TRUE", 20);
+			strlcpy(buf, "BOOL_TRUE", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_POINTER:
-			strlcpy(buf, "MD_TYPE_POINTER", 20);
+			strlcpy(buf, "POINTER", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_DATA:
 		default:
-			strlcpy(buf, "MD_TYPE_DATA", 20);
+			strlcpy(buf, "DATA", STATUS_TYPE_SIZE);
 			break;
 	}
 	return buf;
+}
+
+enum key_lifecycle get_meta_lifecycle(char *lifecycle) {
+	if (!strcmp(lifecycle, "FINITE"))
+		return MD_LIFECYCLE_FINITE;
+	else if (!strcmp(lifecycle, "INVALID"))
+		return MD_LIFECYCLE_INVALID;
+	else if (!strcmp(lifecycle, "CORRUPT"))
+		return MD_LIFECYCLE_CORRUPT;
+	else if (!strcmp(lifecycle, "RECYCLE"))
+		return MD_LIFECYCLE_RECYCLE;
+	else if (!strcmp(lifecycle, "INACTIVE"))
+		return MD_LIFECYCLE_INACTIVE;
+	else
+		return MD_LIFECYCLE_UNKNOWN;
+}
+
+enum key_type get_meta_type(char *key_type) {
+	if (!strcmp(key_type, "SIGNED"))
+		return MD_TYPE_SIGNED;
+	else if (!strcmp(key_type, "BOOL_FALSE"))
+		return MD_TYPE_BOOL_FALSE;
+	else if (!strcmp(key_type, "BOOL_TRUE"))
+		return MD_TYPE_BOOL_TRUE;
+	else if (!strcmp(key_type, "POINTER"))
+		return MD_TYPE_POINTER;
+	else
+		return MD_TYPE_DATA;
 }
