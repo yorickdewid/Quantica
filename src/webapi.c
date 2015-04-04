@@ -278,6 +278,14 @@ http_status_t api_gen_quid(char *response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_time_now(char *response, http_request_t *req) {
+	(void)(req);
+	char buf[26];
+	char *htime = tstostrf(buf, 32, get_timestamp(), "%d/%m/%Y %H:%M:%S %z");
+	snprintf(response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":1}", get_timestamp(), htime);
+	return HTTP_OK;
+}
+
 http_status_t api_db_put(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
@@ -406,6 +414,8 @@ const struct webroute route[] = {
 	{"/version",	api_version,	FALSE},
 	{"/status",		api_status,		FALSE},
 	{"/quid",		api_gen_quid,	FALSE},
+	{"/now",		api_time_now,	FALSE},
+	{"/time",		api_time_now,	FALSE},
 	{"/put",		api_db_put,		FALSE},
 	{"/get",		api_db_get,		TRUE},
 	{"/delete",		api_db_delete,	TRUE},
@@ -772,7 +782,7 @@ disconnect:
 int start_webapi() {
 	start_core();
 
-    lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n",get_version_string());
+    lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
     lprintf("[info] Current time: %lld\n", get_timestamp());
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
