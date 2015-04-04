@@ -101,3 +101,7 @@ char *get_version_string() {
 long get_version() {
 	return sizeof(int)*VERSION_RELESE + sizeof(int)*VERSION_MAJOR + sizeof(int)*VERSION_MINOR;
 }
+
+char *str_bool(uint8_t b) {
+	return b ? "TRUE" : "FALSE";
+}

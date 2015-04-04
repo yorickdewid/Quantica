@@ -508,7 +508,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	memmove(&table->items[i + 1], &table->items[i], (table->size - i) * sizeof(struct engine_item));
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
-	memset(&table->items[i].meta, 0, sizeof(struct microdata));
+	memset(&table->items[i].meta, 0, sizeof(struct metadata));
 	table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
@@ -701,7 +701,7 @@ int engine_purge(struct engine *e, quid_t *quid) {
 	return 0;
 }
 
-static struct microdata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid) {
+static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -729,18 +729,18 @@ static struct microdata *get_meta(struct engine *e, uint64_t table_offset, const
 	return 0;
 }
 
-int engine_getmeta(struct engine *e, const quid_t *quid, struct microdata *md) {
+int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return -1;
-	struct microdata *umd = get_meta(e, e->top, quid);
+	struct metadata *umd = get_meta(e, e->top, quid);
 	if (error.code != NO_ERROR)
 		return -1;
 	*md = *umd;
 	return 0;
 }
 
-static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, const struct microdata *md) {
+static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, const struct metadata *md) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -752,7 +752,7 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 					error.code = QUID_LOCKED;
 					return -1;
 				}
-				memcpy(&table->items[i].meta, md, sizeof(struct microdata));
+				memcpy(&table->items[i].meta, md, sizeof(struct metadata));
 				flush_table(e, table, table_offset);
 				return 0;
 			}
@@ -770,7 +770,7 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 	return -1;
 }
 
-int engine_setmeta(struct engine *e, const quid_t *quid, const struct microdata *data) {
+int engine_setmeta(struct engine *e, const quid_t *quid, const struct metadata *data) {
 	error.code = NO_ERROR;
 	if (e->lock == LOCK)
 		return -1;
@@ -785,7 +785,7 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 	if (e->lock == LOCK)
 		return -1;
 
-	struct microdata *nmd = get_meta(e, e->top, quid);
+	struct metadata *nmd = get_meta(e, e->top, quid);
 	if (error.code != NO_ERROR)
 		return -1;
 
@@ -924,3 +924,51 @@ done:
 	return 0;
 }
 
+char *get_str_lifecycle(enum key_lifecycle lifecycle) {
+	static char buf[24];
+	switch (lifecycle) {
+		case MD_LIFECYCLE_FINITE:
+			strlcpy(buf, "MD_LIFECYCLE_FINITE", 24);
+			break;
+		case MD_LIFECYCLE_INVALID:
+			strlcpy(buf, "MD_LIFECYCLE_INVALID", 24);
+			break;
+		case MD_LIFECYCLE_CORRUPT:
+			strlcpy(buf, "MD_LIFECYCLE_CORRUPT", 24);
+			break;
+		case MD_LIFECYCLE_RECYCLE:
+			strlcpy(buf, "MD_LIFECYCLE_RECYCLE", 24);
+			break;
+		case MD_LIFECYCLE_INACTIVE:
+			strlcpy(buf, "MD_LIFECYCLE_INACTIVE", 24);
+			break;
+		case MD_LIFECYCLE_UNKNOWN:
+		default:
+			strlcpy(buf, "MD_LIFECYCLE_UNKNOWN", 24);
+			break;
+	}
+	return buf;
+}
+
+char *get_str_type(enum key_type key_type) {
+	static char buf[20];
+	switch (key_type) {
+		case MD_TYPE_SIGNED:
+			strlcpy(buf, "MD_TYPE_SIGNED", 20);
+			break;
+		case MD_TYPE_BOOL_FALSE:
+			strlcpy(buf, "MD_TYPE_BOOL_FALSE", 20);
+			break;
+		case MD_TYPE_BOOL_TRUE:
+			strlcpy(buf, "MD_TYPE_BOOL_TRUE", 20);
+			break;
+		case MD_TYPE_POINTER:
+			strlcpy(buf, "MD_TYPE_POINTER", 20);
+			break;
+		case MD_TYPE_DATA:
+		default:
+			strlcpy(buf, "MD_TYPE_DATA", 20);
+			break;
+	}
+	return buf;
+}

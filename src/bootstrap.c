@@ -10,11 +10,11 @@
 #define BS_MAGIC "__zero()__"
 
 quid_t key;
-struct microdata md;
+struct metadata md;
 
 void bootstrap(struct engine *e) {
 	memset(&key, 0, sizeof(quid_t));
-	memset(&md, 0, sizeof(struct microdata));
+	memset(&md, 0, sizeof(struct metadata));
 
 	/* Verify bootstrap signature */
 	size_t len;

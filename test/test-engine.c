@@ -108,7 +108,7 @@ static void test_engine_meta(){
 	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 
-	const struct microdata md = {
+	const struct metadata md = {
 		.lifecycle = MD_LIFECYCLE_FINITE,
 		.importance = MD_IMPORTANT_LEVEL3,
 		.syslock = 0,
@@ -122,10 +122,10 @@ static void test_engine_meta(){
 	engine_close(&e);
 
 	engine_init(&e, fname);
-	struct microdata md2;
+	struct metadata md2;
 	int r3 = engine_getmeta(&e, &quid, &md2);
 	ASSERT(!r3);
-	ASSERT(!memcmp(&md, &md2, sizeof(struct microdata)));
+	ASSERT(!memcmp(&md, &md2, sizeof(struct metadata)));
 	engine_close(&e);
 	engine_unlink(fname);
 }

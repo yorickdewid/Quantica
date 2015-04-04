@@ -347,6 +347,21 @@ http_status_t api_db_update(char *response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_rec_meta(char *response, http_request_t *req) {
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		struct record_status status;
+		if (db_record_get_meta(param_quid, &status)<0) {
+			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not query metadata\",\"status\":\"NO_META\",\"success\":0}");
+			return HTTP_OK;
+		}
+		snprintf(response, RESPONSE_SIZE, "{\"error\":%u,\"freeze\":%u,\"executable\":%u,\"system_lock\":%u,\"lifecycle\":\"%s\",\"importance\":%u,\"type\":\"%s\",\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":1}", status.error, status.freeze, status.exec, status.syslock, status.lifecycle, status.importance, status.type);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 const struct webroute route[] = {
 	{"/",			api_root,		FALSE},
 	{"/license",	api_license,	FALSE},
@@ -362,6 +377,7 @@ const struct webroute route[] = {
 	{"/get",		api_db_get,		TRUE},
 	{"/delete",		api_db_delete,	TRUE},
 	{"/update",		api_db_update,	TRUE},
+	{"/meta",		api_rec_meta,	TRUE},
 };
 
 char *parse_uri(char *uri) {

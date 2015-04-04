@@ -136,3 +136,21 @@ int db_vacuum() {
 		return -1;
 	return engine_vacuum(&btx, INITDB);
 }
+
+int db_record_get_meta(char *quid, struct record_status *status) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	struct metadata meta;
+	strtoquid(quid, &key);
+	if (engine_getmeta(&btx, &key, &meta)<0)
+		return -1;
+	status->syslock = meta.syslock;
+	status->exec = meta.exec;
+	status->freeze = meta.freeze;
+	status->error = meta.error;
+	status->importance = meta.importance;
+	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), 24);
+	strlcpy(status->type, get_str_type(meta.type), 20);
+	return 0;
+}
