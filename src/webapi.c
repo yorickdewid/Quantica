@@ -726,6 +726,8 @@ unsupported:
 	while(nsz-->0) {
 		if (route[nsz].require_quid) {
 			char squid[QUID_LENGTH+1];
+			if (fsz < QUID_LENGTH+1)
+				continue;
 			char *_pfilename = _filename+QUID_LENGTH+1;
 			strlcpy(squid, _filename+1, QUID_LENGTH+1);
 			if (_pfilename[0] != '/') {
