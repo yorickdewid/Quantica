@@ -87,28 +87,28 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 }
 
 static void create_backup(const char *fname) {
-	char ddbname[1024], didxname[1024], dwalname[1024];
-	char sdbname[1024], sidxname[1024], swalname[1024];
-	snprintf(sidxname, 1024, "%s%s", fname, IDXEXT);
-	snprintf(sdbname, 1024, "%s%s", fname, DBEXT);
-	snprintf(swalname, 1024, "%s%s", fname, LOGEXT);
-	snprintf(didxname, 1024, "%s%s", fname, BIDXEXT);
-	snprintf(ddbname, 1024, "%s%s", fname, BDBEXT);
-	snprintf(dwalname, 1024, "%s%s", fname, BLOGEXT);
+	char ddbname[DBNAME_SIZE], didxname[DBNAME_SIZE], dwalname[DBNAME_SIZE];
+	char sdbname[DBNAME_SIZE], sidxname[DBNAME_SIZE], swalname[DBNAME_SIZE];
+	snprintf(sidxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
+	snprintf(sdbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
+	snprintf(swalname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
+	snprintf(didxname, DBNAME_SIZE, "%s.%s1", fname, IDXEXT);
+	snprintf(ddbname, DBNAME_SIZE, "%s.%s1", fname, DBEXT);
+	snprintf(dwalname, DBNAME_SIZE, "%s.%s1", fname, LOGEXT);
 	rename(sidxname, didxname);
 	rename(sdbname, ddbname);
 	rename(swalname, dwalname);
 }
 
 static void restore_tmpdb(const char *fname) {
-	char ddbname[1024], didxname[1024], dwalname[1024];
-	char sdbname[1024], sidxname[1024], swalname[1024];
-	snprintf(sidxname, 1024, "%s%s", fname, CIDXEXT);
-	snprintf(sdbname, 1024, "%s%s", fname, CDBEXT);
-	snprintf(swalname, 1024, "%s%s", fname, CLOGEXT);
-	snprintf(didxname, 1024, "%s%s", fname, IDXEXT);
-	snprintf(ddbname, 1024, "%s%s", fname, DBEXT);
-	snprintf(dwalname, 1024, "%s%s", fname, LOGEXT);
+	char ddbname[DBNAME_SIZE], didxname[DBNAME_SIZE], dwalname[DBNAME_SIZE];
+	char sdbname[DBNAME_SIZE], sidxname[DBNAME_SIZE], swalname[DBNAME_SIZE];
+	snprintf(sidxname, DBNAME_SIZE, "%s._%s", fname, IDXEXT);
+	snprintf(sdbname, DBNAME_SIZE, "%s._%s", fname, DBEXT);
+	snprintf(swalname, DBNAME_SIZE, "%s._%s", fname, LOGEXT);
+	snprintf(didxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
+	snprintf(ddbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
+	snprintf(dwalname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
 	rename(sidxname, didxname);
 	rename(sdbname, ddbname);
 	rename(swalname, dwalname);
@@ -164,10 +164,10 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 }
 
 void engine_init(struct engine *e, const char *fname) {
-	char dbname[1024], idxname[1024], walname[1024];
-	snprintf(idxname, 1024, "%s%s", fname, IDXEXT);
-	snprintf(dbname, 1024, "%s%s", fname, DBEXT);
-	snprintf(walname, 1024, "%s%s", fname, LOGEXT);
+	char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
+	snprintf(idxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
+	snprintf(dbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
+	snprintf(walname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
 
 	restore_tmpdb(fname);
 	if(file_exists(idxname) && file_exists(dbname)) {
@@ -192,10 +192,10 @@ void engine_close(struct engine *e) {
 }
 
 void engine_unlink(const char *fname) {
-	char dbname[1024],idxname[1024],walname[1024];
-	snprintf(idxname, 1024, "%s%s", fname, IDXEXT);
-	snprintf(dbname, 1024, "%s%s", fname, DBEXT);
-	snprintf(walname, 1024, "%s%s", fname, LOGEXT);
+	char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
+	snprintf(idxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
+	snprintf(dbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
+	snprintf(walname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
 	unlink(idxname);
 	unlink(dbname);
 	unlink(walname);
@@ -901,7 +901,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 }
 
 int engine_vacuum(struct engine *e, const char *fname) {
-    char dbname[1024], idxname[1024], walname[1024];
+    char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
 	struct engine ce;
 	struct engine tmp;
 
@@ -915,9 +915,9 @@ int engine_vacuum(struct engine *e, const char *fname) {
 		return 0;
 
 	e->lock = LOCK;
-	snprintf(idxname, 1024, "%s%s", fname, CIDXEXT);
-	snprintf(dbname, 1024, "%s%s", fname, CDBEXT);
-	snprintf(walname, 1024, "%s%s", fname, CLOGEXT);
+	snprintf(idxname, DBNAME_SIZE, "%s._%s", fname, IDXEXT);
+	snprintf(dbname, DBNAME_SIZE, "%s._%s", fname, DBEXT);
+	snprintf(walname, DBNAME_SIZE, "%s._%s", fname, LOGEXT);
 
 	engine_create(&ce, idxname, dbname, walname);
 	tree_traversal(e, &ce, e->top);

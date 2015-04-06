@@ -9,15 +9,11 @@
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
 
-#define DBEXT	".db"
-#define IDXEXT	".idx"
-#define LOGEXT	".log"
-#define CDBEXT	"._db"
-#define CIDXEXT	"._idx"
-#define CLOGEXT	"._log"
-#define BDBEXT	".db1"
-#define BIDXEXT	".idx1"
-#define BLOGEXT	".log1"
+#define DBEXT	"db"
+#define IDXEXT	"idx"
+#define LOGEXT	"log"
+
+#define DBNAME_SIZE	64
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
