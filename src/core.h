@@ -5,29 +5,43 @@
 #include "time.h"
 #include "engine.h"
 
-#define INSTANCE_LENGTH 32
+#define STATUS_LIFECYCLE_SIZE 10
+#define STATUS_TYPE_SIZE 12
 
-struct stats {
-	unsigned int commit;
+struct record_status {
+	char lifecycle[STATUS_LIFECYCLE_SIZE];
+	int importance;
+	uint8_t syslock;
+	uint8_t exec;
+	uint8_t freeze;
+	uint8_t error;
+	char type[STATUS_TYPE_SIZE];
 };
 
+/*
+ * Core controll
+ */
 void start_core();
-int store(char *quid, const void *data, size_t len);
-void *request_quid(char *quid, size_t *len);
-unsigned long int stat_getkeys();
-unsigned long int stat_getfreekeys();
-int test(void *param[]);
-void debugstats();
-char *get_uptime(char *buf, size_t len);
+void detach_core();
+
 void set_instance_name(char name[]);
 char *get_instance_name();
-void generate_quid(char *quid);
-int update_key(char *quid, const void *data, size_t len);
-int debugkey(char *quid);
-int sha1(char *s, const char *data);
-int update(char *quid, struct microdata *nmd);
-int delete(char *quid);
-int vacuum();
-void detach_core();
+char *get_uptime();
+int crypto_sha1(char *s, const char *data);
+unsigned long int stat_getkeys();
+unsigned long int stat_getfreekeys();
+void quid_generate(char *quid);
+
+/*
+ * Database operations
+ */
+int db_put(char *quid, const void *data, size_t len);
+void *db_get(char *quid, size_t *len);
+int db_update(char *quid, const void *data, size_t len);
+int db_delete(char *quid);
+int db_vacuum();
+
+int db_record_get_meta(char *quid, struct record_status *status);
+int db_record_set_meta(char *quid, struct record_status *status);
 
 #endif // CORE_H_INCLUDED

@@ -15,6 +15,7 @@
 #include <time.h>
 
 #include <config.h>
+#include <common.h>
 
 #include "quid.h"
 
@@ -37,7 +38,6 @@ void get_system_time(cuuid_time_t *uid_time) {
 /* Get hardware tick count */
 double get_tick_count(void) {
 	struct timespec now;
-
 	if (clock_gettime(CLOCK_MONOTONIC, &now))
 		return 0;
 
@@ -47,13 +47,15 @@ double get_tick_count(void) {
 /* Create true random as prescribed by the IEEE */
 static unsigned short true_random(void) {
 	static int rnd_seed_count = 0;
-	cuuid_time_t time_now;
 
+#ifndef OBSD
+	cuuid_time_t time_now;
 	if (!rnd_seed_count) {
 		get_system_time(&time_now);
 		time_now = time_now / UIDS_PER_TICK;
 		srand((unsigned int)(((time_now >> 32) ^ time_now) & 0xffffffff));
 	}
+#endif // OBSD
 
 	if(rnd_seed_count == rnd_seed) {
 		rnd_seed_count = 0;
@@ -61,7 +63,7 @@ static unsigned short true_random(void) {
 		rnd_seed_count++;
 	}
 
-	return (rand()+get_tick_count());
+	return (RANDOM()+get_tick_count());
 }
 
 /* Construct QUID */
@@ -151,16 +153,33 @@ void quidtostr(char *s, quid_t *u) {
 }
 
 void strtoquid(const char *s, quid_t *u) {
-	sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
-			, &u->time_low
-			, &u->time_mid
-			, &u->time_hi_and_version
-			, (unsigned short int *)&u->clock_seq_hi_and_reserved
-			, (unsigned short int *)&u->clock_seq_low
-			, (unsigned int *)&u->node[0]
-			, (unsigned int *)&u->node[1]
-			, (unsigned int *)&u->node[2]
-			, (unsigned int *)&u->node[3]
-			, (unsigned int *)&u->node[4]
-			, (unsigned int *)&u->node[5]);
+	size_t ssz = strlen(s);
+	if (ssz == QUID_LENGTH) {
+		sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
+				, &u->time_low
+				, &u->time_mid
+				, &u->time_hi_and_version
+				, (unsigned short int *)&u->clock_seq_hi_and_reserved
+				, (unsigned short int *)&u->clock_seq_low
+				, (unsigned int *)&u->node[0]
+				, (unsigned int *)&u->node[1]
+				, (unsigned int *)&u->node[2]
+				, (unsigned int *)&u->node[3]
+				, (unsigned int *)&u->node[4]
+				, (unsigned int *)&u->node[5]);
+	} else if (ssz == QUID_SHORT_LENGTH) {
+		sscanf(s, "%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x"
+				, &u->time_low
+				, &u->time_mid
+				, &u->time_hi_and_version
+				, (unsigned short int *)&u->clock_seq_hi_and_reserved
+				, (unsigned short int *)&u->clock_seq_low
+				, (unsigned int *)&u->node[0]
+				, (unsigned int *)&u->node[1]
+				, (unsigned int *)&u->node[2]
+				, (unsigned int *)&u->node[3]
+				, (unsigned int *)&u->node[4]
+				, (unsigned int *)&u->node[5]);
+
+	}
 }
