@@ -4,6 +4,7 @@
 #include <config.h>
 #include <common.h>
 #include <log.h>
+#include <error.h>
 #include "quid.h"
 #include "sha1.h"
 #include "aes.h"
@@ -20,9 +21,11 @@ static struct engine btx;
 static uint8_t ready = FALSE;
 char ins_name[INSTANCE_LENGTH];
 static qtime_t uptime;
+struct error _eglobal;
 
 void start_core() {
 	start_log();
+	ERRORZEOR();
     set_instance_name(INSTANCE);
 	engine_init(&btx, INITDB);
 	bootstrap(&btx);

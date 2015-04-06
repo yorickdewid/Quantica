@@ -26,6 +26,7 @@
 #define LOCK 0x1
 
 #define RSIZE(e) sizeof(e)/sizeof(e[0])
+#define unused(v) (void)(v)
 
 #ifdef LINUX
 size_t strlcpy(char *dst, const char *src, size_t siz);

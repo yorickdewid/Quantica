@@ -22,6 +22,7 @@
 #include <config.h>
 #include <common.h>
 #include <log.h>
+#include <error.h>
 #include "core.h"
 #include "time.h"
 #include "hashtable.h"
@@ -131,50 +132,50 @@ void handle_shutdown(int sigal) {
 }
 
 void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
-    char squid[QUID_LENGTH+1] = {'\0'};
-    quid_generate(squid);
+	char squid[QUID_LENGTH+1] = {'\0'};
+	quid_generate(squid);
 
 	fprintf(socket_stream,
-        "HTTP/1.1 %s\r\n"
-        "Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: 0\r\n", status, get_version_string());
+		"HTTP/1.1 %s\r\n"
+		"Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
+		"Content-Type: application/json\r\n"
+		"Content-Length: 0\r\n", status, get_version_string());
 
-    size_t i;
-    for (i=0; i<headers->size; ++i) {
-			char *str = (char*)(vector_at(headers, i));
-			fprintf(socket_stream, "%s", str);
-    }
+	size_t i;
+	for (i=0; i<headers->size; ++i) {
+		char *str = (char*)(vector_at(headers, i));
+		fprintf(socket_stream, "%s", str);
+	}
 
 	fprintf(socket_stream,
-        "Access-Control-Allow-Origin: *\r\n"
-        "Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
-        "X-QUID: %s\r\n"
-        "\r\n", squid);
+		"Access-Control-Allow-Origin: *\r\n"
+		"Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
+		"X-QUID: %s\r\n"
+		"\r\n", squid);
 }
 
 void json_response(FILE *socket_stream, vector_t *headers, const char *status, const char *message) {
-    char squid[QUID_LENGTH+1] = {'\0'};
-    quid_generate(squid);
+	char squid[QUID_LENGTH+1] = {'\0'};
+	quid_generate(squid);
 
 	fprintf(socket_stream,
-        "HTTP/1.1 %s\r\n"
-        "Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %zu\r\n", status, get_version_string(), strlen(message)+2);
+		"HTTP/1.1 %s\r\n"
+		"Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
+		"Content-Type: application/json\r\n"
+		"Content-Length: %zu\r\n", status, get_version_string(), strlen(message)+2);
 
-    size_t i;
-    for (i=0; i<headers->size; ++i) {
-			char *str = (char*)(vector_at(headers, i));
-			fprintf(socket_stream, "%s", str);
-    }
+	size_t i;
+	for (i=0; i<headers->size; ++i) {
+		char *str = (char*)(vector_at(headers, i));
+		fprintf(socket_stream, "%s", str);
+	}
 
 	fprintf(socket_stream,
-        "Access-Control-Allow-Origin: *\r\n"
-        "Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
-        "X-QUID: %s\r\n"
-        "\r\n"
-        "%s\r\n", squid, message);
+		"Access-Control-Allow-Origin: *\r\n"
+		"Access-Control-Allow-Methods: GET,POST,HEAD,OPTIONS\r\n"
+		"X-QUID: %s\r\n"
+		"\r\n"
+		"%s\r\n", squid, message);
 }
 
 char *get_http_status(http_status_t status) {
@@ -235,7 +236,7 @@ http_status_t api_sha(char *response, http_request_t *req) {
 		if (param_data) {
 			char strsha[40];
 			if (crypto_sha1(strsha, param_data)<0) {
-				strlcpy(response, "{\"description\":\"Hashing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}", RESPONSE_SIZE);
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
 				return HTTP_OK;
 			}
 			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
@@ -251,7 +252,13 @@ http_status_t api_sha(char *response, http_request_t *req) {
 http_status_t api_vacuum(char *response, http_request_t *req) {
 	(void)(req);
 	if(db_vacuum()<0) {
-		strlcpy(response, "{\"description\":\"Vacuum failed\",\"status\":\"VACUUM_FAILED\",\"success\":0}", RESPONSE_SIZE);
+		if(IFERROR(EDB_LOCKED)) {
+			snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Database is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+			return HTTP_OK;
+		} else {
+			snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+			return HTTP_OK;
+		}
 	} else {
 		strlcpy(response, "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	}
@@ -292,7 +299,7 @@ http_status_t api_db_put(char *response, http_request_t *req) {
 		if (param_data) {
 			char squid[QUID_LENGTH+1];
 			if (db_put(squid, param_data, strlen(param_data))<0) {
-				strlcpy(response, "{\"description\":\"Storing data failed\",\"status\":\"STORE_FAILED\",\"success\":0}", RESPONSE_SIZE);
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
 				return HTTP_OK;
 			}
 			snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
@@ -311,8 +318,13 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 		size_t len;
 		char *data = db_get(param_quid, &len);
 		if (!data) {
-			snprintf(response, RESPONSE_SIZE, "{\"description\":\"The requested key does not exist\",\"status\":\"QUID_NOT_FOUND\",\"success\":0}");
-			return HTTP_OK;
+			if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			}
 		}
 		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
 		free(data);
@@ -326,8 +338,16 @@ http_status_t api_db_delete(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		if (db_delete(param_quid)<0) {
-			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not delete record\",\"status\":\"QUID_NOT_DELETED\",\"success\":0}");
-			return HTTP_OK;
+			if(IFERROR(EREC_LOCKED)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			}
 		}
 		snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record deleted\",\"status\":\"COMMAND_OK\",\"success\":1}");
 		return HTTP_OK;
@@ -342,8 +362,16 @@ http_status_t api_db_update(char *response, http_request_t *req) {
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_data && param_quid) {
 			if (db_update(param_quid, param_data, strlen(param_data))<0) {
-				strlcpy(response, "{\"description\":\"Update data failed\",\"status\":\"UPDATE_FAILED\",\"success\":0}", RESPONSE_SIZE);
-				return HTTP_OK;
+				if(IFERROR(EREC_LOCKED)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				}
 			}
 			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
 			return HTTP_OK;
@@ -361,8 +389,16 @@ http_status_t api_rec_meta(char *response, http_request_t *req) {
 		struct record_status status;
 		if (req->method == HTTP_POST) {
 			if (db_record_get_meta(param_quid, &status)<0) {
-				snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not query metadata\",\"status\":\"NO_META\",\"success\":0}");
-				return HTTP_OK;
+				if(IFERROR(EREC_LOCKED)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				}
 			}
 			char *param_error = (char *)hashtable_get(req->data, "error");
 			if (param_error)
@@ -386,14 +422,22 @@ http_status_t api_rec_meta(char *response, http_request_t *req) {
 			if (param_type)
 				strlcpy(status.type, param_type, STATUS_TYPE_SIZE);
 			if (db_record_set_meta(param_quid, &status)<0) {
-				snprintf(response, RESPONSE_SIZE, "{\"description\":\"Update metadata failed\",\"status\":\"SET_META_FAILED\",\"success\":0}");
-				return HTTP_OK;
+				if(IFERROR(EREC_LOCKED)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+					return HTTP_OK;
+				}
 			}
 			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":1}");
 			return HTTP_OK;
 		}
 		if (db_record_get_meta(param_quid, &status)<0) {
-			snprintf(response, RESPONSE_SIZE, "{\"description\":\"Cloud not query metadata\",\"status\":\"NO_META\",\"success\":0}");
+			snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
 			return HTTP_OK;
 		}
 		snprintf(response, RESPONSE_SIZE, "{\"error\":%u,\"freeze\":%u,\"executable\":%u,\"system_lock\":%u,\"lifecycle\":\"%s\",\"importance\":%u,\"type\":\"%s\",\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":1}", status.error, status.freeze, status.exec, status.syslock, status.lifecycle, status.importance, status.type);
@@ -788,9 +832,9 @@ disconnect:
 int start_webapi() {
 	start_core();
 
-    lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
-    lprintf("[info] Current time: %lld\n", get_timestamp());
-    lprintf("[info] Storage core [" INITDB "]\n");
+	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
+	lprintf("[info] Current time: %lld\n", get_timestamp());
+	lprintf("[info] Storage core [" INITDB "]\n");
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
 
@@ -907,47 +951,47 @@ int start_webapi() {
 
 	signal(SIGINT, handle_shutdown);
 
-    FD_ZERO(&readfds);
-    FD_SET(serversock4, &readfds);
-    FD_SET(serversock6, &readfds);
-    max_sd = serversock4;
-    if (serversock6 > max_sd)
+	FD_ZERO(&readfds);
+	FD_SET(serversock4, &readfds);
+	FD_SET(serversock6, &readfds);
+	max_sd = serversock4;
+	if (serversock6 > max_sd)
 		max_sd = serversock6;
 
-    while (1) {
-        int sd;
-        readsock = readfds;
+	while (1) {
+		int sd;
+		readsock = readfds;
 select_restart:
-        if (select(max_sd+1, &readsock, NULL, NULL, NULL) < 0) {
+		if (select(max_sd+1, &readsock, NULL, NULL, NULL) < 0) {
 			if (errno == EINTR) {
 				goto select_restart;
 			}
-            lprintf("[erro] Failed to select socket\n");
-            return 1;
-        }
-        for (sd=0; sd<=max_sd; ++sd) {
-            if (FD_ISSET(sd, &readsock)) {
-                if (sd == serversock4 || sd == serversock6) {
+			lprintf("[erro] Failed to select socket\n");
+			return 1;
+		}
+		for (sd=0; sd<=max_sd; ++sd) {
+			if (FD_ISSET(sd, &readsock)) {
+				if (sd == serversock4 || sd == serversock6) {
 					struct sockaddr_storage addr;
-                    socklen_t size = sizeof(struct sockaddr_storage);
-                    int nsock = accept(sd, (struct sockaddr*)&addr, &size);
-                    if (nsock == -1) {
-                        lprintf("[erro] Failed to acccept connection\n");
-                        return 1;
-                    }
+					socklen_t size = sizeof(struct sockaddr_storage);
+					int nsock = accept(sd, (struct sockaddr*)&addr, &size);
+					if (nsock == -1) {
+						lprintf("[erro] Failed to acccept connection\n");
+						return 1;
+					}
 					FD_SET(nsock, &readfds);
 					if (nsock > max_sd) {
 						max_sd = nsock;
 					}
-                } else {
-                    handle_request(sd, &readfds);
-                }
-            }
-        }
-    }
+				} else {
+					handle_request(sd, &readfds);
+				}
+			}
+		}
+	}
 
-    close(serversock4);
-    close(serversock6);
+	close(serversock4);
+	close(serversock6);
 
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
