@@ -26,7 +26,7 @@ struct error _eglobal;
 void start_core() {
 	start_log();
 	ERRORZEOR();
-    set_instance_name(INSTANCE);
+	set_instance_name(INSTANCE);
 	engine_init(&btx, INITDB);
 	bootstrap(&btx);
 	uptime = get_timestamp();
@@ -42,49 +42,49 @@ void detach_core() {
 }
 
 void set_instance_name(char name[]) {
-    if (strlen(name) > INSTANCE_LENGTH)
-        return;
+	if (strlen(name) > INSTANCE_LENGTH)
+		return;
 
-    strlcpy(ins_name, name, INSTANCE_LENGTH);
-    ins_name[INSTANCE_LENGTH-1] = '\0';
+	strlcpy(ins_name, name, INSTANCE_LENGTH);
+	ins_name[INSTANCE_LENGTH-1] = '\0';
 }
 
 char *get_instance_name() {
-    return ins_name;
+	return ins_name;
 }
 
 char *get_uptime() {
 	static char buf[32];
-    qtime_t passed = get_timestamp()-uptime;
-    unsigned int days = passed/86400;
-    passed = passed % 86400;
-    unsigned int hours = passed/3600;
-    passed = passed % 3600;
-    unsigned int mins = passed/60;
-    passed = passed % 60;
-    unsigned int secs = passed;
-    snprintf(buf, 32, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
-    return buf;
+	qtime_t passed = get_timestamp()-uptime;
+	unsigned int days = passed/86400;
+	passed = passed % 86400;
+	unsigned int hours = passed/3600;
+	passed = passed % 3600;
+	unsigned int mins = passed/60;
+	passed = passed % 60;
+	unsigned int secs = passed;
+	snprintf(buf, 32, "%u days, %.2u:%.2u:%.2u", days, hours, mins, secs);
+	return buf;
 }
 
 int crypto_sha1(char *s, const char *data) {
-    struct sha sha;
-    sha1_reset(&sha);
-    sha1_input(&sha, (const unsigned char *)data, strlen(data));
+	struct sha sha;
+	sha1_reset(&sha);
+	sha1_input(&sha, (const unsigned char *)data, strlen(data));
 
-    if (!sha1_result(&sha)) {
-        return -1;
-    }
-    sha1_strsum(s, &sha);
-    return 0;
+	if (!sha1_result(&sha)) {
+		return -1;
+	}
+	sha1_strsum(s, &sha);
+	return 0;
 }
 
 unsigned long int stat_getkeys() {
-    return btx.stats.keys;
+	return btx.stats.keys;
 }
 
 unsigned long int stat_getfreekeys() {
-    return btx.stats.free_tables;
+	return btx.stats.free_tables;
 }
 
 void quid_generate(char *quid) {
@@ -117,7 +117,7 @@ int db_update(char *quid, const void *data, size_t len) {
 	if (!ready)
 		return -1;
 	quid_t key;
-    strtoquid(quid, &key);
+	strtoquid(quid, &key);
 	if (engine_update(&btx, &key, data, len)<0) {
 		return -1;
 	}
