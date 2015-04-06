@@ -736,7 +736,7 @@ int engine_purge(struct engine *e, quid_t *quid) {
 	return 0;
 }
 
-static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid) {
+static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, struct metadata *meta) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -748,7 +748,9 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 					ERROR(EREC_NOTFOUND, EL_WARN);
 					return 0;
 				}
-				return &table->items[i].meta;
+				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
+				put_table(e, table, table_offset);
+				return meta;//&table->items[i].meta;
 			}
 			if (cmp < 0) {
 				right = i;
@@ -770,11 +772,12 @@ int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return -1;
 	}
-	struct metadata *umd = get_meta(e, e->top, quid);
+	get_meta(e, e->top, quid, md);
 	if(ISERROR())
 		return -1;
 
-	*md = *umd;
+	//*md = *umd;
+	//memcpy(md, umd, sizeof(struct metadata));
 	return 0;
 }
 
@@ -827,12 +830,13 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 		return -1;
 	}
 
-	struct metadata *nmd = get_meta(e, e->top, quid);
+	struct metadata nmd;
+	get_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 
-    nmd->lifecycle = MD_LIFECYCLE_RECYCLE;
-	set_meta(e, e->top, quid, nmd);
+    nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
+	set_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 

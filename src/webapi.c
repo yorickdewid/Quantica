@@ -447,8 +447,12 @@ http_status_t api_rec_meta(char *response, http_request_t *req) {
 			return HTTP_OK;
 		}
 		if (db_record_get_meta(param_quid, &status)<0) {
-			snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
-			return HTTP_OK;
+			if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+			}
 		}
 		snprintf(response, RESPONSE_SIZE, "{\"error\":%u,\"freeze\":%u,\"executable\":%u,\"system_lock\":%u,\"lifecycle\":\"%s\",\"importance\":%u,\"type\":\"%s\",\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":1}", status.error, status.freeze, status.exec, status.syslock, status.lifecycle, status.importance, status.type);
 		return HTTP_OK;
