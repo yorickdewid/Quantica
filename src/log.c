@@ -33,6 +33,6 @@ void lprintf(const char *format, ...) {
 }
 
 void stop_log() {
-	if (!fp)
+	if (fp)
 		fclose(fp);
 }

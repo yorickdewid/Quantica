@@ -43,6 +43,7 @@ int max_sd;
 fd_set readfds;
 fd_set readsock;
 static unsigned long int client_requests = 0;
+static unsigned int run = 1;
 
 typedef enum {
     HTTP_GET = 1,
@@ -192,25 +193,25 @@ char *get_http_status(http_status_t status) {
 }
 
 http_status_t api_not_found(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	strlcpy(response, "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":0}", RESPONSE_SIZE);
 	return HTTP_NOT_FOUND;
 }
 
 http_status_t api_root(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	strlcpy(response, "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_license(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	strlcpy(response, "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_help(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	strlcpy(response, "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
@@ -250,7 +251,7 @@ http_status_t api_sha(char *response, http_request_t *req) {
 }
 
 http_status_t api_vacuum(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	if(db_vacuum()<0) {
 		if(IFERROR(EDB_LOCKED)) {
 			snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Database is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
@@ -266,19 +267,19 @@ http_status_t api_vacuum(char *response, http_request_t *req) {
 }
 
 http_status_t api_version(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	snprintf(response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":1}", API_VERSION, get_version_string());
 	return HTTP_OK;
 }
 
 http_status_t api_status(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	snprintf(response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":1}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
 	return HTTP_OK;
 }
 
 http_status_t api_gen_quid(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	char squid[QUID_LENGTH+1];
 	quid_generate(squid);
 	snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"COMMAND_OK\",\"success\":1}", squid);
@@ -286,10 +287,17 @@ http_status_t api_gen_quid(char *response, http_request_t *req) {
 }
 
 http_status_t api_time_now(char *response, http_request_t *req) {
-	(void)(req);
+	unused(req);
 	char buf[26];
 	char *htime = tstostrf(buf, 32, get_timestamp(), "%d/%m/%Y %H:%M:%S %z");
 	snprintf(response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":1}", get_timestamp(), htime);
+	return HTTP_OK;
+}
+
+http_status_t api_shutdown(char *response, http_request_t *req) {
+	unused(req);
+	run = 0;
+	strlcpy(response, "{\"description\":\"Shutting down database\",\"status\":\"COMMAND_OK\",\"success\":1}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
@@ -463,6 +471,7 @@ const struct webroute route[] = {
 	{"/now",		api_time_now,	FALSE},
 	{"/time",		api_time_now,	FALSE},
 	{"/date",		api_time_now,	FALSE},
+	{"/shutdown",	api_shutdown,	FALSE},
 	{"/put",		api_db_put,		FALSE},
 	{"/get",		api_db_get,		TRUE},
 	{"/delete",		api_db_delete,	TRUE},
@@ -641,7 +650,7 @@ void handle_request(int sd, fd_set *set) {
 
 			if (!strcmp(str, "host")) {
 				host = colon;
-				(void)(host);
+				unused(host);
 			} else if (!strcmp(str, "content-length")) {
 				c_length = atol(colon);
 			} else if (!strcmp(str, "user-agent")) {
@@ -960,7 +969,7 @@ int start_webapi() {
 	if (serversock6 > max_sd)
 		max_sd = serversock6;
 
-	while (1) {
+	while (run) {
 		int sd;
 		readsock = readfds;
 select_restart:
