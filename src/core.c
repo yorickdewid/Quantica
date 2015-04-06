@@ -15,18 +15,14 @@
 #include "bootstrap.h"
 #include "core.h"
 
-#define INSTANCE_LENGTH 32
-
 static struct engine btx;
 static uint8_t ready = FALSE;
-char ins_name[INSTANCE_LENGTH];
 static qtime_t uptime;
 struct error _eglobal;
 
 void start_core() {
 	start_log();
 	ERRORZEOR();
-	set_instance_name(INSTANCE);
 	engine_init(&btx, INITDB);
 	bootstrap(&btx);
 	uptime = get_timestamp();
@@ -42,15 +38,14 @@ void detach_core() {
 }
 
 void set_instance_name(char name[]) {
-	if (strlen(name) > INSTANCE_LENGTH)
-		return;
-
-	strlcpy(ins_name, name, INSTANCE_LENGTH);
-	ins_name[INSTANCE_LENGTH-1] = '\0';
+	strtoupper(name);
+	strlcpy(btx.ins_name, name, INSTANCE_LENGTH);
+	btx.ins_name[INSTANCE_LENGTH-1] = '\0';
+	engine_flush(&btx);
 }
 
 char *get_instance_name() {
-	return ins_name;
+	return btx.ins_name;
 }
 
 char *get_uptime() {

@@ -41,6 +41,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 
 char from_hex(char ch);
 char *strtolower(char *str);
+char *strtoupper(char *str);
 char *itoa(long i);
 char *strdup(const char *str);
 

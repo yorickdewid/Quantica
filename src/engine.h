@@ -14,6 +14,7 @@
 #define LOGEXT	"log"
 
 #define DBNAME_SIZE	64
+#define INSTANCE_LENGTH 32
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
@@ -89,6 +90,7 @@ struct engine_super {
 	__be64 free_top;
 	__be64 nkey;
 	__be64 nfree_table;
+	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
 struct engine_dbsuper {
@@ -101,17 +103,18 @@ struct engine_stats {
 };
 
 struct engine {
-     uint64_t top;
-     uint64_t free_top;
-     uint64_t alloc;
-     uint64_t db_alloc;
-     int fd;
-     int db_fd;
-     int wal_fd;
-     bool lock;
-     struct engine_stats stats;
-     struct engine_cache cache[CACHE_SLOTS];
-     struct engine_dbcache dbcache[DBCACHE_SLOTS];
+	uint64_t top;
+	uint64_t free_top;
+	uint64_t alloc;
+	uint64_t db_alloc;
+	int fd;
+	int db_fd;
+	int wal_fd;
+	bool lock;
+	char ins_name[INSTANCE_LENGTH];
+	struct engine_stats stats;
+	struct engine_cache cache[CACHE_SLOTS];
+	struct engine_dbcache dbcache[DBCACHE_SLOTS];
 };
 
 /*
@@ -146,6 +149,8 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len);
  * Remove item with the given key 'quid' from the database file.
  */
 int engine_purge(struct engine *e, quid_t *quid);
+
+void engine_flush(struct engine *e);
 
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md);
 

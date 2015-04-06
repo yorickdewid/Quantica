@@ -15,6 +15,12 @@ char *strtolower(char *str){
     return str;
 }
 
+char *strtoupper(char *str){
+    for (; *str; ++str)
+        *str = toupper(*str);
+    return str;
+}
+
 uint16_t _ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;
