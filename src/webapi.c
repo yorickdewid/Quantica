@@ -326,6 +326,8 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 				return HTTP_OK;
 			}
 		}
+		data = (char *)realloc(data, len+1);
+		data[len] = '\0';
 		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
 		free(data);
 		return HTTP_OK;
