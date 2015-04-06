@@ -36,7 +36,7 @@ void get_system_time(cuuid_time_t *uid_time) {
 }
 
 /* Get hardware tick count */
-double get_tick_count(void) {
+double get_tick_count() {
 	struct timespec now;
 	if (clock_gettime(CLOCK_MONOTONIC, &now))
 		return 0;
@@ -45,7 +45,7 @@ double get_tick_count(void) {
 }
 
 /* Create true random as prescribed by the IEEE */
-static unsigned short true_random(void) {
+static unsigned short true_random() {
 	static int rnd_seed_count = 0;
 
 #ifndef OBSD

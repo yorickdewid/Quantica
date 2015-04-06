@@ -565,6 +565,7 @@ static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *qu
 			/* found */
 			if (table->items[i].meta.syslock || table->items[i].meta.freeze) {
 				ERROR(EREC_LOCKED, EL_WARN);
+				put_table(e, table, table_offset);
 				return 0;
 			}
 			uint64_t ret = remove_table(e, table, i, quid);
@@ -669,6 +670,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 				/* found */
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					ERROR(EREC_NOTFOUND, EL_WARN);
+					put_table(e, table, table_offset);
 					return 0;
 				}
 				uint64_t ret = from_be64(table->items[i].offset);
@@ -754,6 +756,7 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 			if (cmp == 0) {
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					ERROR(EREC_NOTFOUND, EL_WARN);
+					put_table(e, table, table_offset);
 					return 0;
 				}
 				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
@@ -796,6 +799,7 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
 					ERROR(EREC_LOCKED, EL_WARN);
+					put_table(e, table, table_offset);
 					return -1;
 				}
 				memcpy(&table->items[i].meta, md, sizeof(struct metadata));
@@ -864,9 +868,9 @@ static void walk_dbstorage(struct engine *e) {
 }
 #endif // 0
 
-static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset) {
+static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
-	struct engine_table *table = get_table(e, offset);
+	struct engine_table *table = get_table(e, table_offset);
 	size_t sz = table->size;
 	for(i=0; i<(int)sz; ++i) {
 		uint64_t child = from_be64(table->items[i].child);
@@ -878,6 +882,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 			lprintf("[erro] Failed to read disk\n");
 			ERROR(EIO_READ, EL_FATAL);
+			put_table(e, table, table_offset);
 			return;
 		}
 		size_t len = from_be32(info.len);
@@ -885,6 +890,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 		if (!data) {
 			lprintf("[erro] Failed to request memory\n");
 			ERROR(EM_ALLOC, EL_FATAL);
+			put_table(e, table, table_offset);
 			return;
 		}
 		if (read(e->db_fd, data, len) != (ssize_t) len) {
@@ -892,6 +898,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 			ERROR(EIO_READ, EL_FATAL);
 			free(data);
 			data = NULL;
+			put_table(e, table, table_offset);
 			return;
 		}
 
@@ -907,6 +914,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 		if (right)
 			tree_traversal(e, ce, right);
 	}
+	put_table(e, table, table_offset);
 }
 
 int engine_vacuum(struct engine *e, const char *fname) {
@@ -958,6 +966,7 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
 					ERROR(EREC_LOCKED, EL_WARN);
+					put_table(e, table, table_offset);
 					return -1;
 				}
 				offset = from_be64(table->items[i].offset);
