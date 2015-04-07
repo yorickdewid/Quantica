@@ -4,7 +4,7 @@ TESTDIR=test
 BINDIR=bin
 VALGRIND=valgrind
 VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
-CFLAGS=-c -g -std=c99 -Wall -Werror -Wextra -DDEBUG
+CFLAGS=-c -g -O0 -std=c99 -Wall -Werror -Wextra -DDEBUG
 LDFLAGS=
 SOURCES=$(SRCDIR)/common.c $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/strlcpy.c $(SRCDIR)/strlcat.c $(SRCDIR)/itoa.c $(SRCDIR)/strdup.c $(SRCDIR)/quid.c $(SRCDIR)/sha1.c \
         $(SRCDIR)/aes.c $(SRCDIR)/base64.c $(SRCDIR)/crc32.c $(SRCDIR)/engine.c $(SRCDIR)/core.c $(SRCDIR)/hashtable.c \
