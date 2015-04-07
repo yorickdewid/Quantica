@@ -366,6 +366,28 @@ http_status_t api_db_delete(char *response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_db_purge(char *response, http_request_t *req) {
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		if (db_purge(param_quid)<0) {
+			if(IFERROR(EREC_LOCKED)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			}
+		}
+		snprintf(response, RESPONSE_SIZE, "{\"description\":\"Record purged\",\"status\":\"COMMAND_OK\",\"success\":1}");
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_db_update(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
@@ -479,6 +501,7 @@ const struct webroute route[] = {
 	{"/put",		api_db_put,		FALSE},
 	{"/get",		api_db_get,		TRUE},
 	{"/delete",		api_db_delete,	TRUE},
+	{"/purge",		api_db_purge,	TRUE},
 	{"/update",		api_db_update,	TRUE},
 	{"/meta",		api_rec_meta,	TRUE},
 };

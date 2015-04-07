@@ -129,6 +129,16 @@ int db_delete(char *quid) {
 	return 0;
 }
 
+int db_purge(char *quid) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	strtoquid(quid, &key);
+	if (engine_purge(&btx, &key)<0)
+		return -1;
+	return 0;
+}
+
 int db_vacuum() {
 	if (!ready)
 		return -1;

@@ -554,7 +554,10 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
  * Please note that 'quid' is overwritten when called inside the allocator.
  */
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid) {
-	assert(table_offset);
+	if (!table_offset) {
+		ERROR(EREC_NOTFOUND, EL_WARN);
+		return 0;
+	}
 	struct engine_table *table = get_table(e, table_offset);
 
 	size_t left = 0, right = table->size;
