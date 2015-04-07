@@ -48,13 +48,14 @@ enum key_type {
 };
 
 struct metadata {
-	uint16_t lifecycle	: 5;	/* Record lifecycle */
-	uint16_t importance	: 4;	/* Relative importance */
-	uint16_t syslock	: 1;	/* System lock */
-	uint16_t exec		: 1;	/* Is executable */
-	uint16_t freeze		: 1;	/* Management lock */
-	uint16_t error		: 1;	/* Indicates eror */
-	uint16_t type	    : 3;	/* Additional flags */
+	unsigned int lifecycle	: 5;	/* Record lifecycle */
+	unsigned int importance	: 4;	/* Relative importance */
+	unsigned int syslock	: 1;	/* System lock */
+	unsigned int exec		: 1;	/* Is executable */
+	unsigned int freeze		: 1;	/* Management lock */
+	unsigned int error		: 1;	/* Indicates eror */
+	unsigned int type		: 3;	/* Additional flags */
+	unsigned int _res		: 16;	/* Reserved */
 };
 
 struct engine_item {
