@@ -290,7 +290,13 @@ http_status_t api_time_now(char *response, http_request_t *req) {
 	unused(req);
 	char buf[26];
 	char *htime = tstostrf(buf, 32, get_timestamp(), "%d/%m/%Y %H:%M:%S %z");
+#if TN12
+	char buf2[TIMENAME_SIZE+1];
+	buf2[TIMENAME_SIZE] = '\0';
+	snprintf(response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":1}", get_timestamp(), htime, timename_now(buf2));
+#else
 	snprintf(response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":1}", get_timestamp(), htime);
+#endif // TN12
 	return HTTP_OK;
 }
 
