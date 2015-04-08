@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <common.h>
+#include "zmalloc.h"
 #include "quid.h"
 #include "engine.h"
 #include "bootstrap.h"
@@ -20,7 +21,7 @@ void bootstrap(struct engine *e) {
 	size_t len;
 	void *rdata = engine_get(e, &key, &len);
 	if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
-		free(rdata);
+		zfree(rdata);
 		return;
     }
 

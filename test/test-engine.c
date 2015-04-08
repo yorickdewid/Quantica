@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "test.h"
+#include "../src/zmalloc.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
@@ -49,7 +50,7 @@ static void test_engine_crud(){
 	size_t len;
 	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
-	free(rdata);
+	zfree(rdata);
 	engine_close(&e);
 
 	engine_init(&e, fname);
@@ -91,7 +92,7 @@ static void test_engine_clean(){
 	size_t len;
 	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
-	free(rdata);
+	zfree(rdata);
 	engine_close(&e);
 	engine_unlink(fname);
 	unlink_backup(fname);

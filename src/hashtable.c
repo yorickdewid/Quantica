@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <common.h>
+#include "zmalloc.h"
 #include "hashtable.h"
 
 /* dictionary initialization code used in both DictCreate and grow */
@@ -10,11 +11,11 @@ hashtable_t *alloc_hashtable(int size) {
 	hashtable_t *d;
 	int i;
 
-	d = malloc(sizeof(hashtable_t));
+	d = (hashtable_t *)tree_zmalloc(sizeof(hashtable_t), NULL);
 	assert(d != 0);
 	d->size = size;
 	d->n = 0;
-	d->table = malloc(sizeof(struct item *) * d->size);
+	d->table = (struct item **)tree_zmalloc(sizeof(struct item *) * d->size, d);
 	assert(d->table != 0);
 
 	for(i=0; i<d->size; ++i) {
@@ -32,15 +33,10 @@ void free_hashtable(hashtable_t *d) {
 	for(i=0; i<d->size; ++i) {
 		for(e=d->table[i]; e!=0; e=next) {
 			next = e->next;
-
-			free(e->key);
-			free(e->value);
-			free(e);
+			tree_zfree(e);
 		}
 	}
-
-	free(d->table);
-	free(d);
+	tree_zfree(d);
 }
 
 static unsigned long int hash_generate(const char *s) {
@@ -89,12 +85,12 @@ void hashtable_put(hashtable_t *d, const char *key, const char *value) {
 	assert(key);
 	assert(value);
 
-	e = malloc(sizeof(struct item));
+	e = (struct item *)tree_zmalloc(sizeof(struct item), NULL);
 	assert(e);
 
 	h = hash_generate(key) % d->size;
-	e->key = strdup(key);
-	e->value = strdup(value);
+	e->key = tree_zstrdup(key, e);
+	e->value = tree_zstrdup(value, e);
 	e->next = d->table[h];
 	d->table[h] = e;
 	d->n++;
@@ -133,11 +129,7 @@ void hashtable_delete(hashtable_t *d, const char *key) {
 			/* got it */
 			e = *prev;
 			*prev = e->next;
-
-			free(e->key);
-			free(e->value);
-			free(e);
-
+			tree_zfree(e);
 			return;
 		}
 	}

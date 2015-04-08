@@ -23,6 +23,7 @@
 #include <common.h>
 #include <log.h>
 #include <error.h>
+#include "zmalloc.h"
 #include "core.h"
 #include "time.h"
 #include "hashtable.h"
@@ -76,8 +77,8 @@ struct webroute {
 };
 
 vector_t *alloc_vector(size_t sz) {
-	vector_t *v = (vector_t *)malloc(sizeof(vector_t));
-	v->buffer = (void **)malloc(sz * sizeof(void *));
+	vector_t *v = (vector_t *)tree_zmalloc(sizeof(vector_t), NULL);
+	v->buffer = (void **)tree_zmalloc(sz * sizeof(void *), v);
 	v->size = 0;
 	v->alloc_size = sz;
 
@@ -85,14 +86,13 @@ vector_t *alloc_vector(size_t sz) {
 }
 
 void free_vector(vector_t *v) {
-	free(v->buffer);
-	free(v);
+	zfree(v->buffer);
 }
 
 void vector_append(vector_t *v, void *item) {
 	if(v->size == v->alloc_size) {
 		v->alloc_size = v->alloc_size * 2;
-		v->buffer = (void **)realloc(v->buffer, v->alloc_size * sizeof(void *));
+		v->buffer = (void **)tree_zrealloc(v->buffer, v->alloc_size *sizeof(void *));
 	}
 
 	v->buffer[v->size] = item;
@@ -101,14 +101,6 @@ void vector_append(vector_t *v, void *item) {
 
 void *vector_at(vector_t *v, unsigned int idx) {
 	return idx >= v->size ? NULL : v->buffer[idx];
-}
-
-void delete_vector(vector_t * vector) {
-	unsigned int i = 0;
-	for (i = 0; i < vector->size; ++i) {
-		free(vector_at(vector, i));
-	}
-	free_vector(vector);
 }
 
 void *get_in_addr(struct sockaddr *sa) {
@@ -343,7 +335,7 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 		data = (char *)realloc(data, len+1);
 		data[len] = '\0';
 		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
-		free(data);
+		zfree(data);
 		return HTTP_OK;
 	}
 	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
@@ -545,20 +537,20 @@ void handle_request(int sd, fd_set *set) {
 		if (!strstr(in, "\n")) {
 			raw_response(socket_stream, headers, "400 Bad Request");
 			fflush(socket_stream);
-			delete_vector(queue);
-			delete_vector(headers);
+			tree_zfree(queue);
+			tree_zfree(headers);
 			goto disconnect;
 		}
 
 		size_t request_sz = (strlen(buf)+1) * sizeof(char);
-		char *request_line = malloc(request_sz);
+		char *request_line = tree_zmalloc(request_sz, queue);
 		strlcpy(request_line, buf, request_sz);
 		vector_append(queue, (void *)request_line);
 	}
 
 	if (feof(socket_stream)) {
-		delete_vector(queue);
-		delete_vector(headers);
+		tree_zfree(queue);
+		tree_zfree(headers);
 		goto disconnect;
 	}
 
@@ -584,8 +576,8 @@ void handle_request(int sd, fd_set *set) {
 			if (i > 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				delete_vector(queue);
-				delete_vector(headers);
+				tree_zfree(queue);
+				tree_zfree(headers);
 				goto disconnect;
 			}
 
@@ -631,8 +623,8 @@ void handle_request(int sd, fd_set *set) {
 			if (filename[0] == ' ' || filename[0] == '\r' || filename[0] == '\n') {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				delete_vector(queue);
-				delete_vector(headers);
+				tree_zfree(queue);
+				tree_zfree(headers);
 				goto disconnect;
 			}
 
@@ -640,8 +632,8 @@ void handle_request(int sd, fd_set *set) {
 			if (!http_version) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				delete_vector(queue);
-				delete_vector(headers);
+				tree_zfree(queue);
+				tree_zfree(headers);
 				goto disconnect;
 			}
 			http_version[-1] = '\0';
@@ -662,8 +654,8 @@ void handle_request(int sd, fd_set *set) {
 			if (i == 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				delete_vector(queue);
-				delete_vector(headers);
+				tree_zfree(queue);
+				tree_zfree(headers);
 				goto disconnect;
 			}
 
@@ -725,9 +717,9 @@ void handle_request(int sd, fd_set *set) {
 
 	if (c_connection) {
 		if(!strcmp(c_connection, "close")){
-			vector_append(headers, strdup("Connection: close\r\n"));
+			vector_append(headers, tree_zstrdup("Connection: close\r\n", headers));
 		} else if(!strcmp(c_connection, "keep-alive")){
-			vector_append(headers, strdup("Connection: keep-alive\r\n"));
+			vector_append(headers, tree_zstrdup("Connection: keep-alive\r\n", headers));
 		}
 	}
 
@@ -735,16 +727,16 @@ void handle_request(int sd, fd_set *set) {
 unsupported:
 		raw_response(socket_stream, headers, "405 Method Not Allowed");
 		fflush(socket_stream);
-		delete_vector(queue);
-		delete_vector(headers);
+		tree_zfree(queue);
+		tree_zfree(headers);
 		goto disconnect;
 	}
 
 	if (!filename || strstr(filename, "'") || strstr(filename, " ") || (querystring && strstr(querystring," "))) {
 		raw_response(socket_stream, headers, "400 Bad Request");
 		fflush(socket_stream);
-		delete_vector(queue);
-		delete_vector(headers);
+		tree_zfree(queue);
+		tree_zfree(headers);
 		goto disconnect;
 	}
 
@@ -752,7 +744,7 @@ unsupported:
 	_filename = calloc(_filename_sz, 1);
 	strlcpy(_filename, filename, _filename_sz);
 	if (strstr(_filename, "%")) {
-		char *buf = malloc(strlen(_filename) + 1);
+		char *buf = zmalloc(strlen(_filename) + 1);
 		char *pstr = _filename;
 		char *pbuf = buf;
 		while (*pstr) {
@@ -769,7 +761,7 @@ unsupported:
 			pstr++;
 		}
 		*pbuf = '\0';
-		free(_filename);
+		zfree(_filename);
 		_filename = buf;
 	}
 	size_t fsz = strlen(_filename);
@@ -777,14 +769,14 @@ unsupported:
 		_filename[fsz-1] = '\0';
 
 	if (request_type == HTTP_OPTIONS) {
-		vector_append(headers, strdup("Allow: POST,OPTIONS,GET,HEAD\r\n"));
+		vector_append(headers, tree_zstrdup("Allow: POST,OPTIONS,GET,HEAD\r\n", headers));
 		raw_response(socket_stream, headers, "200 OK");
 		goto done;
 	}
 
 	if (c_length > 0) {
 		size_t total_read = 0;
-		c_buf = (char *)malloc(c_length+1);
+		c_buf = (char *)zmalloc(c_length+1);
 		while ((total_read < c_length) && (!feof(socket_stream))) {
 			size_t diff = c_length - total_read;
 			if (diff > 1024) diff = 1024;
@@ -806,7 +798,7 @@ unsupported:
 		}
 	}
 	size_t nsz = RSIZE(route);
-	char *resp_message = (char *)malloc(RESPONSE_SIZE);
+	char *resp_message = (char *)zmalloc(RESPONSE_SIZE);
 	http_status_t status = 0;
 	http_request_t req;
 	req.data = postdata;
@@ -852,15 +844,15 @@ respond:
 	} else {
 		json_response(socket_stream, headers, get_http_status(status), resp_message);
 	}
-	free(resp_message);
+	zfree(resp_message);
 
 done:
 	fflush(socket_stream);
 	if(c_buf)
-		free(c_buf);
-	free(_filename);
-	delete_vector(queue);
-	delete_vector(headers);
+		zfree(c_buf);
+	zfree(_filename);
+	tree_zfree(queue);
+	tree_zfree(headers);
 	if (postdata) {
 		free_hashtable(postdata);
 	}

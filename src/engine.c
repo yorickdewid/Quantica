@@ -7,6 +7,7 @@
 #include <common.h>
 #include <log.h>
 #include <error.h>
+#include "zmalloc.h"
 #include "quid.h"
 #include "engine.h"
 #include "core.h"
@@ -24,7 +25,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
-	struct engine_table *table = malloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof *table);
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -44,7 +45,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 		return slot->table;
 	}
 
-	struct engine_table *table = malloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof *table);
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -714,7 +715,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	*len = from_be32(info.len);
 	assert(*len > 0);
 
-	void *data = malloc(*len);
+	void *data = zmalloc(*len);
 	if (!data) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -723,7 +724,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	if (read(e->db_fd, data, *len) != (ssize_t) *len) {
 		lprintf("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
-		free(data);
+		zfree(data);
 		data = NULL;
 		return NULL;
 	}
@@ -889,7 +890,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_o
 			return;
 		}
 		size_t len = from_be32(info.len);
-		void *data = malloc(len);
+		void *data = zmalloc(len);
 		if (!data) {
 			lprintf("[erro] Failed to request memory\n");
 			ERROR(EM_ALLOC, EL_FATAL);
@@ -899,7 +900,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_o
 		if (read(e->db_fd, data, len) != (ssize_t) len) {
 			lprintf("[erro] Failed to read disk\n");
 			ERROR(EIO_READ, EL_FATAL);
-			free(data);
+			zfree(data);
 			data = NULL;
 			put_table(e, table, table_offset);
 			return;
@@ -911,7 +912,7 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_o
             flush_super(ce);
 		}
 
-		free(data);
+		zfree(data);
 		if (child)
 			tree_traversal(e, ce, child);
 		if (right)

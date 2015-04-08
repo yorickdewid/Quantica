@@ -27,15 +27,15 @@ static void *tree_zmalloc_init(void *mem, void *parent) {
 }
 
 void *tree_zmalloc(size_t size, void *parent) {
-	return tree_zmalloc_init(malloc(size + HEADER_SIZE), parent);
+	return tree_zmalloc_init(zmalloc(size + HEADER_SIZE), parent);
 }
 
 void *tree_zcalloc(size_t size, void *parent) {
-	return tree_zmalloc_init(calloc(1, size + HEADER_SIZE), parent);
+	return tree_zmalloc_init(zcalloc(1, size + HEADER_SIZE), parent);
 }
 
 void *tree_zrealloc(void *usr, size_t size) {
-	void *mem = realloc(usr ? usr2raw(usr) : NULL, size + HEADER_SIZE);
+	void *mem = zrealloc(usr ? usr2raw(usr) : NULL, size + HEADER_SIZE);
 
 	if (!usr || !mem)
 		return tree_zmalloc_init(mem, NULL);
@@ -61,6 +61,19 @@ void *tree_zrealloc(void *usr, size_t size) {
 	return mem;
 }
 
+char *tree_zstrdup(const char *str, void *parent) {
+	size_t size;
+	char *copy;
+
+	size = strlen(str) + 1;
+	if ((copy = tree_zmalloc(size, parent)) == NULL) {
+		return NULL;
+	}
+	memcpy(copy, str, size);
+
+	return copy;
+}
+
 static void __zfree(void *mem) {
     if (!mem)
         return;
@@ -71,17 +84,17 @@ static void __zfree(void *mem) {
 
     __zfree(child(mem));
     __zfree(next(mem));
-    free(usr2raw(mem));
+    zfree(usr2raw(mem));
 }
 
-void *zfree(void *mem) {
+void *tree_zfree(void *mem) {
 	if (!mem)
 		return NULL;
 
 	tree_set_parent(mem, NULL);
 
 	__zfree(child(mem));
-	free(usr2raw(mem));
+	zfree(usr2raw(mem));
 
 	return NULL;
 }

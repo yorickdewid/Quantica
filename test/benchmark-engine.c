@@ -12,6 +12,7 @@
 #include <time.h>
 
 #include "test.h"
+#include "../src/zmalloc.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
@@ -94,7 +95,7 @@ static void db_read_seq_test() {
 			FATAL("Key not found");
 		}
 
-		free(data);
+		zfree(data);
 
 		if(!(i%10000))
 			LOGF("finished %d ops%30s\r",i,"");
@@ -127,7 +128,7 @@ static void db_read_random_test() {
 			FATAL("Key not found");
 		}
 
-		free(data);
+		zfree(data);
 
 		if((i%10000)==0)
 			LOGF("finished %d ops%30s\r",i,"");
@@ -159,7 +160,7 @@ static void db_read_bounds_test() {
 			FATAL("Key not found");
 		}
 
-		free(data);
+		zfree(data);
 
 		if((i%10000)==0)
 			LOGF("finished %d ops%30s\r",i,"");
@@ -195,7 +196,7 @@ static void db_delete_random_test() {
 			FATAL("Key found");
 		}
 
-		free(data);
+		zfree(data);
 
 		if((i%10000)==0)
 			LOGF("finished %d ops%30s\r",i,"");
@@ -222,7 +223,7 @@ static void db_read_test() {
 			all++;
 		}
 
-		free(data);
+		zfree(data);
 
 		if((i%10000)==0)
 			LOGF("finished %d ops%30s\r",i,"");
