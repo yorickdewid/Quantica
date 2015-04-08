@@ -1,8 +1,7 @@
 language: c
-notifications:
-  email:
-    on_success: always
-    on_failure: always
+os:
+  - linux
+  - osx
 compiler:
   - clang
   - gcc
