@@ -5,6 +5,7 @@
 #include <common.h>
 #include <log.h>
 #include <error.h>
+#include "zmalloc.h"
 #include "quid.h"
 #include "sha1.h"
 #include "aes.h"
@@ -72,6 +73,22 @@ int crypto_sha1(char *s, const char *data) {
 	}
 	sha1_strsum(s, &sha);
 	return 0;
+}
+
+char *crypto_base64_enc(const char *data) {
+	size_t encsz = base64_encode_len(strlen(data));
+	char *s = (char *)zmalloc(encsz+1);
+	base64_encode(s, data, strlen(data));
+	s[encsz] = '\0';
+	return s;
+}
+
+char *crypto_base64_dec(const char *data) {
+	size_t decsz = base64_decode_len(data);
+	char *s = (char *)zmalloc(decsz+1);
+	base64_decode(s, data);
+	s[decsz] = '\0';
+	return s;
 }
 
 unsigned long int stat_getkeys() {

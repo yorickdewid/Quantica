@@ -94,6 +94,13 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/engine.h" />
+		<Unit filename="../src/hashtable.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/hashtable.h" />
+		<Unit filename="../src/itoa.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../src/log.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -108,6 +115,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/sha1.h" />
+		<Unit filename="../src/strdup.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../src/strlcat.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -122,6 +132,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/webapi.h" />
+		<Unit filename="../src/zmalloc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/zmalloc.h" />
 		<Unit filename="../test/benchmark-engine.c">
 			<Option compilerVar="CC" />
 		</Unit>

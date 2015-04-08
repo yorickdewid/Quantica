@@ -28,6 +28,8 @@ void set_instance_name(char name[]);
 char *get_instance_name();
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);
+char *crypto_base64_enc(const char *data);
+char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 void quid_generate(char *quid);

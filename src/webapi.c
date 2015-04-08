@@ -299,6 +299,38 @@ http_status_t api_shutdown(char *response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_base64_enc(char *response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char *enc = crypto_base64_enc(param_data);
+			snprintf(response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"COMMAND_OK\",\"success\":1}", enc);
+			zfree(enc);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_base64_dec(char *response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char *enc = crypto_base64_dec(param_data);
+			snprintf(response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"COMMAND_OK\",\"success\":1}", enc);
+			zfree(enc);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_db_put(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
@@ -495,6 +527,9 @@ const struct webroute route[] = {
 	{"/now",		api_time_now,	FALSE},
 	{"/time",		api_time_now,	FALSE},
 	{"/date",		api_time_now,	FALSE},
+	{"/shutdown",	api_shutdown,	FALSE},
+	{"/base64/enc",	api_base64_enc,	FALSE},
+	{"/base64/dec",	api_base64_dec,	FALSE},
 	{"/shutdown",	api_shutdown,	FALSE},
 	{"/put",		api_db_put,		FALSE},
 	{"/get",		api_db_get,		TRUE},
