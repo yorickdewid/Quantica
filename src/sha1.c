@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "config.h"
+#include <config.h>
 #include "sha1.h"
 
 #define SHA1SHIFT(bits,word) \
@@ -174,7 +174,7 @@ void sha1_padmessage(struct sha *ctx) {
 }
 
 void sha1_strsum(char *s, struct sha *ctx) {
-	snprintf(s, 41, "%.8x%.8x%.8x%.8x%.8x"
+	snprintf(s, SHA1_LENGTH+1, "%.8x%.8x%.8x%.8x%.8x"
 			, ctx->digest[0]
 			, ctx->digest[1]
 			, ctx->digest[2]

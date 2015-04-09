@@ -1,6 +1,8 @@
 #ifndef SHA1_H_INCLUDED
 #define SHA1_H_INCLUDED
 
+#define SHA1_LENGTH		40
+
 struct sha {
     unsigned int digest[5]; /* Message Digest (output)          */
     unsigned int szlow;        /* Message length in bits           */

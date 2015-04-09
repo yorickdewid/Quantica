@@ -25,6 +25,8 @@
 #include <error.h>
 #include "zmalloc.h"
 #include "core.h"
+#include "sha1.h"
+#include "md5.h"
 #include "time.h"
 #include "hashtable.h"
 #include "webapi.h"
@@ -227,12 +229,30 @@ http_status_t api_sha(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
-			char strsha[40];
+			char strsha[SHA1_LENGTH+1];
 			if (crypto_sha1(strsha, param_data)<0) {
+				strsha[SHA1_LENGTH] = '\0';
 				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
 				return HTTP_OK;
 			}
 			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_md5(char *response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char strmd5[MD5_LENGTH+1];
+			strmd5[MD5_LENGTH] = '\0';
+			crypto_md5(strmd5, param_data);
+			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with MD5\",\"status\":\"COMMAND_OK\",\"success\":1}", strmd5);
 			return HTTP_OK;
 		}
 		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
@@ -520,6 +540,7 @@ const struct webroute route[] = {
 	{"/api",		api_help,		FALSE},
 	{"/instance",	api_instance,	FALSE},
 	{"/sha1",		api_sha,		FALSE},
+	{"/md5",		api_md5,		FALSE},
 	{"/vacuum",		api_vacuum,		FALSE},
 	{"/version",	api_version,	FALSE},
 	{"/status",		api_status,		FALSE},

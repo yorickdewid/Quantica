@@ -8,6 +8,7 @@
 #include "zmalloc.h"
 #include "quid.h"
 #include "sha1.h"
+#include "md5.h"
 #include "aes.h"
 #include "crc32.h"
 #include "base64.h"
@@ -72,6 +73,16 @@ int crypto_sha1(char *s, const char *data) {
 		return -1;
 	}
 	sha1_strsum(s, &sha);
+	return 0;
+}
+
+int crypto_md5(char *s, const char *data) {
+	unsigned char digest[16];
+	md5_ctx md5;
+	md5_init(&md5);
+	md5_update(&md5, data, strlen(data));
+	md5_final(digest, &md5);
+	md5_strsum(s, digest);
 	return 0;
 }
 
