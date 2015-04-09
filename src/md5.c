@@ -233,5 +233,5 @@ void md5_final(unsigned char *result, md5_ctx *ctx) {
 void md5_strsum(char *s, unsigned char *digest) {
 	int i;
 	for(i=0; i<16; ++i)
-		sprintf(&s[i*2], "%02x", (unsigned int)digest[i]);
+		snprintf(&s[i*2], MD5_LENGTH, "%02x", (unsigned int)digest[i]);
 }
