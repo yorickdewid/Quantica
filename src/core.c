@@ -9,6 +9,7 @@
 #include "quid.h"
 #include "sha1.h"
 #include "md5.h"
+#include "sha256.h"
 #include "aes.h"
 #include "crc32.h"
 #include "base64.h"
@@ -83,6 +84,16 @@ int crypto_md5(char *s, const char *data) {
 	md5_update(&md5, data, strlen(data));
 	md5_final(digest, &md5);
 	md5_strsum(s, digest);
+	return 0;
+}
+
+int crypto_sha256(char *s, const char *data) {
+	unsigned char digest[SHA256_BLOCK_SIZE];
+	sha256_ctx ctx;
+	sha256_init(&ctx);
+	sha256_update(&ctx, (const unsigned char *)data, strlen(data));
+	sha256_final(&ctx, digest);
+	sha256_strsum(s, digest);
 	return 0;
 }
 

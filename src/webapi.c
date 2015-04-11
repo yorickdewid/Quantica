@@ -27,6 +27,7 @@
 #include "core.h"
 #include "sha1.h"
 #include "md5.h"
+#include "sha256.h"
 #include "time.h"
 #include "hashtable.h"
 #include "webapi.h"
@@ -253,6 +254,23 @@ http_status_t api_md5(char *response, http_request_t *req) {
 			strmd5[MD5_LENGTH] = '\0';
 			crypto_md5(strmd5, param_data);
 			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with MD5\",\"status\":\"COMMAND_OK\",\"success\":1}", strmd5);
+			return HTTP_OK;
+		}
+		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_sha256(char *response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char strsha256[SHA256_SIZE+1];
+			strsha256[SHA256_SIZE] = '\0';
+			crypto_sha256(strsha256, param_data);
+			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA256\",\"status\":\"COMMAND_OK\",\"success\":1}", strsha256);
 			return HTTP_OK;
 		}
 		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
@@ -541,6 +559,7 @@ const struct webroute route[] = {
 	{"/instance",	api_instance,	FALSE},
 	{"/sha1",		api_sha,		FALSE},
 	{"/md5",		api_md5,		FALSE},
+	{"/sha256",		api_sha256,		FALSE},
 	{"/vacuum",		api_vacuum,		FALSE},
 	{"/version",	api_version,	FALSE},
 	{"/status",		api_status,		FALSE},
