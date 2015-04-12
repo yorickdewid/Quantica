@@ -204,7 +204,7 @@ void engine_unlink(const char *fname) {
 	unlink(walname);
 }
 
-void engine_flush(struct engine *e) {
+void engine_sync(struct engine *e) {
 	flush_super(e);
 	flush_dbsuper(e);
 }

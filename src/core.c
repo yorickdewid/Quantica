@@ -44,7 +44,7 @@ void set_instance_name(char name[]) {
 	strtoupper(name);
 	strlcpy(btx.ins_name, name, INSTANCE_LENGTH);
 	btx.ins_name[INSTANCE_LENGTH-1] = '\0';
-	engine_flush(&btx);
+	engine_sync(&btx);
 }
 
 char *get_instance_name() {

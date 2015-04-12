@@ -151,7 +151,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len);
  */
 int engine_purge(struct engine *e, quid_t *quid);
 
-void engine_flush(struct engine *e);
+void engine_sync(struct engine *e);
 
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md);
 
