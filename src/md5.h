@@ -3,13 +3,14 @@
 
 #include <stdint.h>
 
-#define MD5_LENGTH		32
+#define MD5_BLOCK_SIZE		16
+#define MD5_SIZE			32
 
 typedef struct {
 	uint32_t lo, hi;
 	uint32_t a, b, c, d;
 	unsigned char buffer[64];
-	uint32_t block[16];
+	uint32_t block[MD5_BLOCK_SIZE];
 } md5_ctx;
 
 void md5_init(md5_ctx *ctx);

@@ -250,8 +250,8 @@ http_status_t api_md5(char *response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
-			char strmd5[MD5_LENGTH+1];
-			strmd5[MD5_LENGTH] = '\0';
+			char strmd5[MD5_SIZE+1];
+			strmd5[MD5_SIZE] = '\0';
 			crypto_md5(strmd5, param_data);
 			snprintf(response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with MD5\",\"status\":\"COMMAND_OK\",\"success\":1}", strmd5);
 			return HTTP_OK;
