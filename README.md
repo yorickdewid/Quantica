@@ -5,9 +5,7 @@ Quantica is one of the few databases that is both modular, polymorfistic and is 
 There is no genetic data architecture, structure or storage convention but rather an implicit model based on the existing data.
 
 ## Features
-- 64bit processing and storage
 - Fast data insert (200,000 records/s)
-- Persistent storage on disk
 - Globally unique keys
 - Store data regardless of type and size
 - Event-driven / non-blocking network (8700 req/s)
