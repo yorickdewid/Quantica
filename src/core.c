@@ -14,6 +14,7 @@
 #include "crc32.h"
 #include "base64.h"
 #include "time.h"
+#include "slay.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
@@ -132,8 +133,10 @@ int db_put(char *quid, const void *data, size_t len) {
 		return -1;
 	quid_t key;
 	quid_create(&key);
-	if (engine_insert(&btx, &key, data, len)<0)
+	void *val_data = slay_wrap((void *)data, &len, DT_TEXT);
+	if (engine_insert(&btx, &key, val_data, len)<0)
 		return -1;
+	zfree(val_data);
 	quidtostr(quid, &key);
 	return 0;
 }
@@ -142,8 +145,10 @@ void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	quid_t key;
+	datatype_t dt;
 	strtoquid(quid, &key);
-	void *data = engine_get(&btx, &key, len);
+	void *val_data = engine_get(&btx, &key, len);
+	void *data = slay_unwrap(val_data, len, &dt);
 	return data;
 }
 
@@ -152,9 +157,11 @@ int db_update(char *quid, const void *data, size_t len) {
 		return -1;
 	quid_t key;
 	strtoquid(quid, &key);
-	if (engine_update(&btx, &key, data, len)<0) {
+	void *val_data = slay_wrap((void *)data, &len, DT_TEXT);
+	if (engine_update(&btx, &key, val_data, len)<0) {
 		return -1;
 	}
+	zfree(val_data);
 	return 0;
 }
 
