@@ -15,13 +15,11 @@ void *slay_wrap(void *data, size_t *len, dstype_t dt) {
 	struct value_slay *slay = zmalloc(slay_size);
 	slay->val_type = dt;
 	slay->size = data_size;
-	printf("dsize %ld\n", sizeof(struct value_slay));
 	if (!slay->size)
 		goto done;
 
-	uintptr_t *dest = ((uintptr_t *)slay)+sizeof(struct value_slay);
+	uint8_t *dest = ((uint8_t *)slay)+sizeof(struct value_slay);
 	memcpy(dest, data, data_size);
-	puts("copy data");
 
 done:
 	*len = slay_size;
@@ -33,10 +31,9 @@ void *slay_unwrap(void *value_slay, size_t *len, dstype_t *dt) {
 	void *data = NULL;
 
 	if (slay->size) {
-		void *src = ((uintptr_t *)value_slay)+sizeof(struct value_slay);
+		void *src = ((uint8_t *)value_slay)+sizeof(struct value_slay);
 		data = zmalloc(slay->size);
 		memcpy(data, src, slay->size);
-		puts("copy data");
 	}
 
 	*dt = slay->val_type;

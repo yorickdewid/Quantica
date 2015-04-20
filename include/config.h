@@ -5,7 +5,7 @@
 #define INSTANCE		"SERVER01"
 #define VERSION_RELESE	0
 #define VERSION_MAJOR	2
-#define VERSION_MINOR	4
+#define VERSION_MINOR	5
 #define LOGFILE			"quantica.log"
 #define INITDB			"i1"
 
