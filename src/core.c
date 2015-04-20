@@ -145,7 +145,7 @@ void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	quid_t key;
-	datatype_t dt;
+	dstype_t dt;
 	strtoquid(quid, &key);
 	void *val_data = engine_get(&btx, &key, len);
 	void *data = slay_unwrap(val_data, len, &dt);
