@@ -15,6 +15,8 @@ typedef enum {
 	DT_JSON
 } dstype_t;
 
+bool isdata(dstype_t ds);
+dstype_t autotype(const void *data, size_t len);
 char *datatotype(dstype_t dt);
 char *str_bool(bool b);
 char *str_null();

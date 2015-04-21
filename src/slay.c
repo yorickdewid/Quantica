@@ -8,7 +8,7 @@
 
 void *slay_wrap(void *data, size_t *len, dstype_t dt) {
 	size_t data_size = *len;
-	if (dt < DT_INT)
+	if (isdata(dt))
 		data_size = 0;
 
 	size_t slay_size = sizeof(struct value_slay)+data_size;

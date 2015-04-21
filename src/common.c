@@ -21,6 +21,13 @@ char *strtoupper(char *str){
     return str;
 }
 
+bool strisdigit(char *str) {
+	for (; *str; ++str)
+		if(!isdigit(*str))
+			return FALSE;
+	return TRUE;
+}
+
 uint16_t _ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;

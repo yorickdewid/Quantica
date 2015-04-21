@@ -133,7 +133,8 @@ int db_put(char *quid, const void *data, size_t len) {
 		return -1;
 	quid_t key;
 	quid_create(&key);
-	void *val_data = slay_wrap((void *)data, &len, DT_BOOL_F);
+	dstype_t adt = autotype(data, len);
+	void *val_data = slay_wrap((void *)data, &len, adt);
 	if (engine_insert(&btx, &key, val_data, len)<0)
 		return -1;
 	zfree(val_data);
