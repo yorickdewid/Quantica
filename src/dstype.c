@@ -3,6 +3,7 @@
 #include <common.h>
 
 #include "zmalloc.h"
+#include "quid.h"
 #include "dstype.h"
 
 struct dsinfo {
@@ -49,8 +50,10 @@ dstype_t autotype(const void *data, size_t len) {
 		if(isalpha(fchar))
 			return DT_CHAR;
 	}
-    if(strisdigit((char *)data))
+	if(strisdigit((char *)data))
 		return DT_INT;
+	if (strquid_format((char *)data)>0)
+		return DT_QUID;
     return DT_TEXT;
 }
 
