@@ -42,4 +42,6 @@ void quidtostr(char *s, quid_t *u);
  */
 void strtoquid(const char *s, quid_t *u);
 
+int8_t strquid_format(const char *s);
+
 #endif // QUID_H_INCLUDED

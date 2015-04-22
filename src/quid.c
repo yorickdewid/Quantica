@@ -183,3 +183,46 @@ void strtoquid(const char *s, quid_t *u) {
 
 	}
 }
+
+/* Determine QUID format or return -1 if invalid */
+int8_t strquid_format(const char *s) {
+	size_t ssz = strlen(s);
+	int phyp, nhyp = 0;
+	if (ssz == QUID_LENGTH) {
+		if (s[0] != '{' || s[QUID_LENGTH-1] != '}')
+			return -1;
+		if (s[strspn(s, "{}-0123456789abcdefABCDEF")])
+			return -1;
+
+		char *pch = strchr(s, '-');
+		while (pch != NULL) {
+			nhyp++;
+			phyp = pch-s;
+			if (phyp!=9&&phyp!=14&&phyp!=19&&phyp!=24)
+				return -1;
+			pch = strchr(pch+1, '-');
+		}
+		if (nhyp!=4)
+			return -1;
+
+		return 1;
+	} else if (ssz == QUID_SHORT_LENGTH) {
+		if (s[strspn(s, "{}-0123456789abcdefABCDEF")])
+			return -1;
+
+		char *pch = strchr(s, '-');
+		while (pch != NULL) {
+			nhyp++;
+			phyp = pch-s;
+			if (phyp!=8&&phyp!=13&&phyp!=18&&phyp!=23)
+				return -1;
+			pch = strchr(pch+1, '-');
+		}
+		if (nhyp!=4)
+			return -1;
+
+		return 2;
+	} else {
+		return -1;
+	}
+}
