@@ -25,13 +25,13 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
-	struct engine_table *table = zmalloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
 	}
-	memset(table, 0, sizeof *table);
+	memset(table, 0, sizeof(struct engine_table));
 	return table;
 }
 
@@ -45,7 +45,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 		return slot->table;
 	}
 
-	struct engine_table *table = zmalloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -325,7 +325,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 
 static void flush_super(struct engine *e) {
 	struct engine_super super;
-	memset(&super, 0, sizeof super);
+	memset(&super, 0, sizeof(struct engine_super));
 	super.version = to_be64(VERSION_RELESE);
 	super.top = to_be64(e->top);
 	super.free_top = to_be64(e->free_top);
@@ -334,7 +334,7 @@ static void flush_super(struct engine *e) {
 	strlcpy(super.instance, e->ins_name, INSTANCE_LENGTH);
 
 	lseek(e->fd, 0, SEEK_SET);
-	if (write(e->fd, &super, sizeof super) != sizeof super) {
+	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
 		lprintf("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
 		return;
@@ -361,7 +361,7 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	}
 
 	struct blob_info info;
-	memset(&info, 0, sizeof info);
+	memset(&info, 0, sizeof(struct blob_info));
 	info.len = to_be32(len);
 	info.free = 0;
 
@@ -394,7 +394,7 @@ static uint64_t split_table(struct engine *e, struct engine_table *table, quid_t
 	table->size = TABLE_SIZE / 2;
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct engine_item));
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	return new_table_offset;
@@ -632,7 +632,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
@@ -707,7 +707,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 
 	lseek(e->db_fd, offset, SEEK_SET);
 	struct blob_info info;
-	if (read(e->db_fd, &info, sizeof info) != (ssize_t) sizeof info) {
+	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
 		lprintf("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;

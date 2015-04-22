@@ -67,7 +67,7 @@ struct engine_item {
 
 struct engine_table {
      struct engine_item items[TABLE_SIZE];
-     uint8_t size;
+     uint16_t size;
 } __attribute__((packed));
 
 struct engine_cache {
@@ -82,7 +82,7 @@ struct engine_dbcache {
 
 struct blob_info {
      __be32 len;
-	uint8_t free;
+	bool free;
 } __attribute__((packed));
 
 struct engine_super {
