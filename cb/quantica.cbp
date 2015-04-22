@@ -14,7 +14,7 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Option use_console_runner="0" />
-				<Option parameters="-d" />
+				<Option parameters="-f" />
 				<Compiler>
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
@@ -26,6 +26,9 @@
 				<Linker>
 					<Add library="rt" />
 				</Linker>
+				<ExtraCommands>
+					<Add before="rm -rf bin/*" />
+				</ExtraCommands>
 			</Target>
 			<Target title="test">
 				<Option output="../bin/quantica_test" prefix_auto="1" extension_auto="1" />
@@ -90,6 +93,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/crc32.h" />
+		<Unit filename="../src/dstype.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/dstype.h" />
 		<Unit filename="../src/engine.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -115,6 +122,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/sha1.h" />
+		<Unit filename="../src/slay.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/slay.h" />
 		<Unit filename="../src/strdup.c">
 			<Option compilerVar="CC" />
 		</Unit>
