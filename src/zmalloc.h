@@ -1,6 +1,8 @@
 #ifndef ZMALLOC_H_INCLUDED
 #define ZMALLOC_H_INCLUDED
 
+#include <stdlib.h>
+
 #define zmalloc(sz) malloc(sz)
 #define zcalloc(n, sz) calloc(n, sz)
 #define zrealloc(ptr, sz) realloc(ptr, sz)

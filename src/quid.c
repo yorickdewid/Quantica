@@ -152,6 +152,7 @@ void quidtostr(char *s, quid_t *u) {
 			, u->node[5]);
 }
 
+/* Convert string into QUID */
 void strtoquid(const char *s, quid_t *u) {
 	size_t ssz = strlen(s);
 	if (ssz == QUID_LENGTH) {

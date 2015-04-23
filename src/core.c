@@ -134,6 +134,12 @@ int db_put(char *quid, const void *data, size_t len) {
 	quid_t key;
 	quid_create(&key);
 	dstype_t adt = autotype(data, len);
+	if (adt == DT_QUID) {
+		quid_t pu;
+		strtoquid((char *)data, &pu);
+		data = (void *)&pu;
+		len = sizeof(quid_t);
+	}
 	void *val_data = slay_wrap((void *)data, &len, adt);
 	if (engine_insert(&btx, &key, val_data, len)<0)
 		return -1;
@@ -148,11 +154,17 @@ void *db_get(char *quid, size_t *len) {
 	quid_t key;
 	dstype_t dt;
 	strtoquid(quid, &key);
-	void *val_data = engine_get(&btx, &key, len);
+	void *val_data = NULL;
+
+lookup:
+	val_data = engine_get(&btx, &key, len);
 	if (!val_data)
 		return NULL;
 	void *data = slay_unwrap(val_data, len, &dt);
-
+	if (dt == DT_QUID) {
+		memcpy(&key, data, sizeof(quid_t));
+		goto lookup;
+	}
 	char *stype = datatotype(dt);
 	if (stype) {
 		zfree(data);
