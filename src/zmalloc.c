@@ -30,8 +30,8 @@ void *tree_zmalloc(size_t size, void *parent) {
 	return tree_zmalloc_init(zmalloc(size + HEADER_SIZE), parent);
 }
 
-void *tree_zcalloc(size_t size, void *parent) {
-	return tree_zmalloc_init(zcalloc(1, size + HEADER_SIZE), parent);
+void *tree_zcalloc(size_t num, size_t size, void *parent) {
+	return tree_zmalloc_init(zcalloc(num, size + HEADER_SIZE), parent);
 }
 
 void *tree_zrealloc(void *usr, size_t size) {
