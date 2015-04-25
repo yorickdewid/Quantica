@@ -71,6 +71,9 @@ static void quid_convertio(){
 }
 
 TEST_IMPL(quid) {
+
+	TESTCASE("quid");
+
 	/* Run testcase */
 	quid_compare();
 	quid_generate();

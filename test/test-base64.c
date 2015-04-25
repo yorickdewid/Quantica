@@ -32,6 +32,9 @@ static void base64(){
 }
 
 TEST_IMPL(base64) {
+
+	TESTCASE("base64");
+
 	/* Run testcase */
 	base64_enc();
 	base64_dec();

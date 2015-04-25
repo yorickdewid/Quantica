@@ -32,7 +32,7 @@ bool isdata(dstype_t ds) {
 	}
 	return FALSE;
 }
-#include <stdio.h>
+
 dstype_t autotype(const void *data, size_t len) {
 	if (!len)
 		return DT_NULL;

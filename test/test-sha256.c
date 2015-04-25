@@ -46,6 +46,9 @@ static void sha256_3(){
 }
 
 TEST_IMPL(sha256) {
+
+	TESTCASE("sha256");
+
 	/* Run testcase */
 	sha256_1();
 	sha256_2();

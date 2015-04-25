@@ -46,6 +46,9 @@ static void md5_3(){
 }
 
 TEST_IMPL(md5) {
+
+	TESTCASE("md5");
+
 	/* Run testcase */
 	md5_1();
 	md5_2();

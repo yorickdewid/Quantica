@@ -132,6 +132,9 @@ static void test_engine_meta(){
 }
 
 TEST_IMPL(engine) {
+
+	TESTCASE("engine");
+
 	/* Run testcase */
 	test_engine_create();
 	test_engine_crud();

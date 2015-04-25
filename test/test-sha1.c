@@ -43,6 +43,9 @@ static void sha1_3(){
 }
 
 TEST_IMPL(sha1) {
+
+    TESTCASE("sha1");
+
 	/* Run testcase */
 	sha1_1();
 	sha1_2();

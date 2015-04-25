@@ -71,6 +71,9 @@ static void aes_crypt_cbc(){
 }
 
 TEST_IMPL(aes) {
+
+	TESTCASE("aes");
+
 	/* Run testcase */
 	aes_encrypt_ecb();
 	aes_decrypt_ecb();

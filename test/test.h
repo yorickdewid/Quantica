@@ -45,6 +45,12 @@
     abort();                                              \
   } while (0)
 
+#define TESTCASE(str)                       \
+  do {                                      \
+    fprintf(stderr, "Testcase: %s\n", str); \
+    fflush(stderr);                         \
+  } while (0)
+
 /* Have our own assert, so we are sure it does not get optimized away in
  * a release build.
  */
