@@ -3,6 +3,7 @@
 #include <common.h>
 
 #include "zmalloc.h"
+#include "json_check.h"
 #include "quid.h"
 #include "dstype.h"
 
@@ -31,7 +32,7 @@ bool isdata(dstype_t ds) {
 	}
 	return FALSE;
 }
-
+#include <stdio.h>
 dstype_t autotype(const void *data, size_t len) {
 	if (!len)
 		return DT_NULL;
@@ -54,6 +55,8 @@ dstype_t autotype(const void *data, size_t len) {
 		return DT_INT;
 	if (strquid_format((char *)data)>0)
 		return DT_QUID;
+	if (json_valid((char *)data))
+		return DT_JSON;
     return DT_TEXT;
 }
 
