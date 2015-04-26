@@ -47,6 +47,7 @@ char *strtoupper(char *str);
 bool strisdigit(char *str);
 char *itoa(long i);
 char *strdup(const char *str);
+char *stresc(char *src);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
