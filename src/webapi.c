@@ -402,6 +402,8 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 				return HTTP_OK;
 			}
 		}
+		data = (char *)realloc(data, len+1);
+		data[len] = '\0';
 		char *escdata = stresc(data);
 		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", escdata);
 		zfree(escdata);
@@ -957,6 +959,8 @@ int start_webapi() {
 
 	if (getaddrinfo(NULL, itoa(API_PORT), &hints, &servinfo) != 0) {
 		lprintf("[erro] Failed to get address info\n");
+		freeaddrinfo(servinfo);
+		detach_core();
 		return 1;
 	}
 
@@ -966,30 +970,42 @@ int start_webapi() {
 				serversock4 = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 				if (serversock4 < 0) {
 					lprintf("[erro] Failed to create socket4\n");
+					freeaddrinfo(servinfo);
+					detach_core();
 					return 1;
 				}
 
 				int _true = 1;
 				if (setsockopt(serversock4, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
-					close(serversock4);
 					lprintf("[erro] Failed to set socket option\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock4);
 					return 1;
 				}
 
 				int opts = fcntl(serversock4, F_GETFL);
 				if (opts < 0){
 					lprintf("[erro] Failed to set nonblock on sock4\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock4);
 					return 1;
 				}
 
 				opts = (opts | O_NONBLOCK);
 				if (fcntl(serversock4, F_SETFL, opts) < 0){
 					lprintf("[erro] Failed to set nonblock on sock4\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock4);
 					return 1;
 				}
 
 				if (bind(serversock4, p->ai_addr, p->ai_addrlen) < 0) {
 					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
+					freeaddrinfo(servinfo);
+					detach_core();
 					close(serversock4);
 					return 1;
 				}
@@ -1004,31 +1020,43 @@ int start_webapi() {
 
 				int _true = 1;
 				if (setsockopt(serversock6, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) < 0) {
-					close(serversock6);
 					lprintf("[erro] Failed to set socket option\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock6);
 					return 1;
 				}
 
 				if (setsockopt(serversock6, IPPROTO_IPV6, IPV6_V6ONLY, &_true, sizeof(int)) < 0) {
-					close(serversock6);
 					lprintf("[erro] Failed to set socket option\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock6);
 					return 1;
 				}
 
 				int opts = fcntl(serversock6, F_GETFL);
 				if (opts < 0){
 					lprintf("[erro] Failed to set nonblock on sock6\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock6);
 					return 1;
 				}
 
 				opts = (opts | O_NONBLOCK);
 				if (fcntl(serversock6, F_SETFL, opts) < 0){
 					lprintf("[erro] Failed to set nonblock on sock6\n");
+					freeaddrinfo(servinfo);
+					detach_core();
+					close(serversock6);
 					return 1;
 				}
 
 				if (bind(serversock6, p->ai_addr, p->ai_addrlen) < 0) {
 					lprintf("[erro] Failed to bind socket to port %d\n", API_PORT);
+					freeaddrinfo(servinfo);
+					detach_core();
 					close(serversock6);
 					return 1;
 				}
@@ -1040,12 +1068,15 @@ int start_webapi() {
 
 	if (serversock4 == 0 && serversock6 == 0) {
 		lprintf("[erro] Failed to bind any protocol\n");
+		detach_core();
 		return 1;
 	}
 
 	if (serversock4 != 0) {
 		if (listen(serversock4, SOMAXCONN) < 0) {
 			lprintf("[erro] Failed to listen on socket4\n");
+			detach_core();
+			close(serversock4);
 			return 1;
 		}
 		lprintf("[info] Listening on 0.0.0.0:%d\n", API_PORT);
@@ -1054,6 +1085,8 @@ int start_webapi() {
 	if (serversock6 != 0) {
 		if (listen(serversock6, SOMAXCONN) < 0) {
 			lprintf("[erro] Failed to listen on socket6\n");
+			detach_core();
+			close(serversock6);
 			return 1;
 		}
 		lprintf("[info] Listening on :::%d\n", API_PORT);
@@ -1078,6 +1111,9 @@ select_restart:
 				goto select_restart;
 			}
 			lprintf("[erro] Failed to select socket\n");
+			detach_core();
+			close(serversock4);
+			close(serversock6);
 			return 1;
 		}
 		for (sd=0; sd<=max_sd; ++sd) {
@@ -1088,6 +1124,9 @@ select_restart:
 					int nsock = accept(sd, (struct sockaddr*)&addr, &size);
 					if (nsock == -1) {
 						lprintf("[erro] Failed to acccept connection\n");
+						detach_core();
+						close(serversock4);
+						close(serversock6);
 						return 1;
 					}
 					FD_SET(nsock, &readfds);

@@ -12,7 +12,7 @@ void *slay_wrap(void *data, size_t *len, dstype_t dt) {
 		data_size = 0;
 
 	size_t slay_size = sizeof(struct value_slay)+data_size;
-	struct value_slay *slay = zmalloc(slay_size);
+	struct value_slay *slay = zcalloc(1, slay_size);
 	slay->val_type = dt;
 	slay->size = data_size;
 	if (!slay->size)
