@@ -13,6 +13,7 @@
 
 #include "test.h"
 #include "../src/zmalloc.h"
+#include "../src/arc4random.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
@@ -43,7 +44,7 @@ static void random_value() {
 	char salt[10] = {'1','2','3','4','5','6','7','8','a','b'};
 	int i;
 	for(i=0; i<VALSIZE; ++i) {
-		val[i] = salt[RANDOM()%10];
+		val[i] = salt[arc4random()%10];
 	}
 }
 
@@ -239,9 +240,6 @@ static void db_read_test() {
 
 BENCHMARK_IMPL(engine) {
 	print_header();
-#ifndef OBSD
-	srand(time(NULL));
-#endif // OBSD
 	random_value();
 
 	/* Create new database */

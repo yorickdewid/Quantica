@@ -33,12 +33,6 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
 #endif // LINUX
 
-#ifdef OBSD
-#define RANDOM() arc4random()
-#else
-#define RANDOM() rand()
-#endif // OBSD
-
 typedef uint8_t bool;
 
 char from_hex(char ch);
