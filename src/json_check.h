@@ -1,6 +1,8 @@
 #ifndef JSON_CHECK_H_INCLUDED
 #define JSON_CHECK_H_INCLUDED
 
+#include <common.h>
+
 #define JSON_CHECK_DEPTH	15
 
 typedef struct {

@@ -15,6 +15,7 @@ TEST_IMPL(sha1);
 TEST_IMPL(md5);
 TEST_IMPL(sha256);
 TEST_IMPL(bootstrap);
+TEST_IMPL(json_check);
 BENCHMARK_IMPL(engine);
 BENCHMARK_IMPL(quid);
 
