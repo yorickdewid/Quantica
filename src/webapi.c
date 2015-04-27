@@ -27,6 +27,7 @@
 #include "core.h"
 #include "sha1.h"
 #include "md5.h"
+#include "dstype.h"
 #include "sha256.h"
 #include "time.h"
 #include "hashtable.h"
@@ -392,7 +393,8 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		size_t len;
-		char *data = db_get(param_quid, &len);
+		dstype_t dt;
+		char *data = db_get(param_quid, &len, &dt);
 		if (!data) {
 			if(IFERROR(EREC_NOTFOUND)) {
 				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
@@ -404,9 +406,15 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 		}
 		data = (char *)realloc(data, len+1);
 		data[len] = '\0';
-		char *escdata = stresc(data);
-		snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", escdata);
-		zfree(escdata);
+		if (dt == DT_TEXT) {
+			char *escdata = stresc(data);
+			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", escdata);
+			zfree(escdata);
+		} else if (dt == DT_JSON) {
+			snprintf(response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+		} else {
+			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
+		}
 		zfree(data);
 		return HTTP_OK;
 	}

@@ -3,6 +3,7 @@
 
 #include "quid.h"
 #include "time.h"
+#include "dstype.h"
 #include "engine.h"
 
 #define STATUS_LIFECYCLE_SIZE 10
@@ -40,7 +41,7 @@ void quid_generate(char *quid);
  * Database operations
  */
 int db_put(char *quid, const void *data, size_t len);
-void *db_get(char *quid, size_t *len);
+void *db_get(char *quid, size_t *len, dstype_t *dt);
 char *db_get_type(char *quid);
 int db_update(char *quid, const void *data, size_t len);
 int db_delete(char *quid);
