@@ -4,8 +4,8 @@
 #define PROGNAME		"Quantica"
 #define INSTANCE		"SERVER01"
 #define VERSION_RELESE	0
-#define VERSION_MAJOR	2
-#define VERSION_MINOR	8
+#define VERSION_MAJOR	3
+#define VERSION_MINOR	0
 #define LOGFILE			"quantica.log"
 #define INITDB			"i1"
 
