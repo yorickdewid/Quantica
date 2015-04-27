@@ -174,6 +174,22 @@ lookup:
 	return data;
 }
 
+char *db_get_type(char *quid) {
+	if (!ready)
+		return NULL;
+	size_t len;
+	quid_t key;
+	dstype_t dt;
+	strtoquid(quid, &key);
+
+	void *val_data = engine_get(&btx, &key, &len);
+	if (!val_data)
+		return NULL;
+	void *data = slay_unwrap(val_data, &len, &dt);
+	zfree(data);
+	return str_type(dt);
+}
+
 int db_update(char *quid, const void *data, size_t len) {
 	if (!ready)
 		return -1;

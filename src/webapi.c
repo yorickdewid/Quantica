@@ -414,6 +414,26 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_db_get_type(char *response, http_request_t *req) {
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		char *type = db_get_type(param_quid);
+		if (!type) {
+			if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":0}", GETERROR());
+				return HTTP_OK;
+			}
+		}
+		snprintf(response, RESPONSE_SIZE, "{\"datatype\":\"%s\",\"description\":\"Datatype of record value\",\"status\":\"COMMAND_OK\",\"success\":1}", type);
+		return HTTP_OK;
+	}
+	strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":0}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_db_delete(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
@@ -554,31 +574,32 @@ http_status_t api_rec_meta(char *response, http_request_t *req) {
 }
 
 const struct webroute route[] = {
-	{"/",			api_root,		FALSE},
-	{"/license",	api_license,	FALSE},
-	{"/help",		api_help,		FALSE},
-	{"/api",		api_help,		FALSE},
-	{"/instance",	api_instance,	FALSE},
-	{"/sha1",		api_sha,		FALSE},
-	{"/md5",		api_md5,		FALSE},
-	{"/sha256",		api_sha256,		FALSE},
-	{"/vacuum",		api_vacuum,		FALSE},
-	{"/version",	api_version,	FALSE},
-	{"/status",		api_status,		FALSE},
-	{"/quid",		api_gen_quid,	FALSE},
-	{"/now",		api_time_now,	FALSE},
-	{"/time",		api_time_now,	FALSE},
-	{"/date",		api_time_now,	FALSE},
-	{"/shutdown",	api_shutdown,	FALSE},
-	{"/base64/enc",	api_base64_enc,	FALSE},
-	{"/base64/dec",	api_base64_dec,	FALSE},
-	{"/shutdown",	api_shutdown,	FALSE},
-	{"/put",		api_db_put,		FALSE},
-	{"/get",		api_db_get,		TRUE},
-	{"/delete",		api_db_delete,	TRUE},
-	{"/purge",		api_db_purge,	TRUE},
-	{"/update",		api_db_update,	TRUE},
-	{"/meta",		api_rec_meta,	TRUE},
+	{"/",			api_root,			FALSE},
+	{"/license",	api_license,		FALSE},
+	{"/help",		api_help,			FALSE},
+	{"/api",		api_help,			FALSE},
+	{"/instance",	api_instance,		FALSE},
+	{"/sha1",		api_sha,			FALSE},
+	{"/md5",		api_md5,			FALSE},
+	{"/sha256",		api_sha256,			FALSE},
+	{"/vacuum",		api_vacuum,			FALSE},
+	{"/version",	api_version,		FALSE},
+	{"/status",		api_status,			FALSE},
+	{"/quid",		api_gen_quid,		FALSE},
+	{"/now",		api_time_now,		FALSE},
+	{"/time",		api_time_now,		FALSE},
+	{"/date",		api_time_now,		FALSE},
+	{"/shutdown",	api_shutdown,		FALSE},
+	{"/base64/enc",	api_base64_enc,		FALSE},
+	{"/base64/dec",	api_base64_dec,		FALSE},
+	{"/shutdown",	api_shutdown,		FALSE},
+	{"/put",		api_db_put,			FALSE},
+	{"/get",		api_db_get,			TRUE},
+	{"/get/type",	api_db_get_type,	TRUE},
+	{"/delete",		api_db_delete,		TRUE},
+	{"/purge",		api_db_purge,		TRUE},
+	{"/update",		api_db_update,		TRUE},
+	{"/meta",		api_rec_meta,		TRUE},
 };
 
 char *parse_uri(char *uri) {

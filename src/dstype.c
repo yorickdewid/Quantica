@@ -81,3 +81,27 @@ char *str_bool(bool b) {
 char *str_null() {
 	return "NULL";
 }
+
+char *str_type(dstype_t dt) {
+	switch(dt) {
+		case DT_NULL:
+			return "NULL";
+		case DT_BOOL_T:
+		case DT_BOOL_F:
+			return "BOOLEAN";
+		case DT_INT:
+			return "INT";
+		case DT_FLOAT:
+			return "FLOAT";
+		case DT_TEXT:
+			return "TEXT";
+		case DT_CHAR:
+			return "CHAR";
+		case DT_QUID:
+			return "QUID";
+		case DT_JSON:
+			return "JSON";
+		default:
+			return "NULL";
+	}
+}
