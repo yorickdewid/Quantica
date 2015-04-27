@@ -28,6 +28,9 @@ static void crc32_3(){
 }
 
 TEST_IMPL(crc32) {
+
+	TESTCASE("crc32");
+
 	/* Run testcase */
 	crc32_1();
 	crc32_2();

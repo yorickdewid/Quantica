@@ -14,6 +14,7 @@
 #define LOGEXT	"log"
 
 #define DBNAME_SIZE	64
+#define INSTANCE_LENGTH 32
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
@@ -47,13 +48,14 @@ enum key_type {
 };
 
 struct metadata {
-	uint16_t lifecycle	: 5;	/* Record lifecycle */
-	uint16_t importance	: 4;	/* Relative importance */
-	uint16_t syslock	: 1;	/* System lock */
-	uint16_t exec		: 1;	/* Is executable */
-	uint16_t freeze		: 1;	/* Management lock */
-	uint16_t error		: 1;	/* Indicates eror */
-	uint16_t type	    : 3;	/* Additional flags */
+	unsigned int lifecycle	: 5;	/* Record lifecycle */
+	unsigned int importance	: 4;	/* Relative importance */
+	unsigned int syslock	: 1;	/* System lock */
+	unsigned int exec		: 1;	/* Is executable */
+	unsigned int freeze		: 1;	/* Management lock */
+	unsigned int error		: 1;	/* Indicates eror */
+	unsigned int type		: 3;	/* Additional flags */
+	unsigned int _res		: 16;	/* Reserved */
 };
 
 struct engine_item {
@@ -65,7 +67,7 @@ struct engine_item {
 
 struct engine_table {
      struct engine_item items[TABLE_SIZE];
-     uint8_t size;
+     uint16_t size;
 } __attribute__((packed));
 
 struct engine_cache {
@@ -80,7 +82,7 @@ struct engine_dbcache {
 
 struct blob_info {
      __be32 len;
-	uint8_t free;
+	bool free;
 } __attribute__((packed));
 
 struct engine_super {
@@ -89,6 +91,7 @@ struct engine_super {
 	__be64 free_top;
 	__be64 nkey;
 	__be64 nfree_table;
+	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
 struct engine_dbsuper {
@@ -101,17 +104,18 @@ struct engine_stats {
 };
 
 struct engine {
-     uint64_t top;
-     uint64_t free_top;
-     uint64_t alloc;
-     uint64_t db_alloc;
-     int fd;
-     int db_fd;
-     int wal_fd;
-     bool lock;
-     struct engine_stats stats;
-     struct engine_cache cache[CACHE_SLOTS];
-     struct engine_dbcache dbcache[DBCACHE_SLOTS];
+	uint64_t top;
+	uint64_t free_top;
+	uint64_t alloc;
+	uint64_t db_alloc;
+	int fd;
+	int db_fd;
+	int wal_fd;
+	bool lock;
+	char ins_name[INSTANCE_LENGTH];
+	struct engine_stats stats;
+	struct engine_cache cache[CACHE_SLOTS];
+	struct engine_dbcache dbcache[DBCACHE_SLOTS];
 };
 
 /*
@@ -146,6 +150,8 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len);
  * Remove item with the given key 'quid' from the database file.
  */
 int engine_purge(struct engine *e, quid_t *quid);
+
+void engine_sync(struct engine *e);
 
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md);
 

@@ -1,6 +1,9 @@
 #ifndef QUID_H_INCLUDED
 #define QUID_H_INCLUDED
 
+#include <config.h>
+#include <common.h>
+
 #define UIDS_PER_TICK 1024			/* Generate identifiers per tick interval */
 #define EPOCH_DIFF 11644473600LL	/* Conversion needed for EPOCH to UTC */
 #define RND_SEED_CYCLE 4096			/* Generate new random seed after interval */
@@ -41,5 +44,7 @@ void quidtostr(char *s, quid_t *u);
  * Convert string to QUID key
  */
 void strtoquid(const char *s, quid_t *u);
+
+uint8_t strquid_format(const char *s);
 
 #endif // QUID_H_INCLUDED

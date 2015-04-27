@@ -33,22 +33,19 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
 #endif // LINUX
 
-#ifdef OBSD
-#define RANDOM() arc4random()
-#else
-#define RANDOM() rand()
-#endif // OBSD
+typedef uint8_t bool;
 
 char from_hex(char ch);
 char *strtolower(char *str);
+char *strtoupper(char *str);
+bool strisdigit(char *str);
 char *itoa(long i);
 char *strdup(const char *str);
+char *stresc(char *src);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */
 typedef uint64_t BITWISE __be64; /* big endian, 64 bits */
-
-typedef uint8_t bool;
 
 __be32 to_be32(uint32_t x);
 __be16 to_be16(uint16_t x);

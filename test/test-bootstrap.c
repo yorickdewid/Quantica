@@ -47,6 +47,9 @@ static void bootstrap_init(){
 }
 
 TEST_IMPL(bootstrap) {
+
+	TESTCASE("bootstrap");
+
 	/* Run testcase */
 	bootstrap_zero();
 	bootstrap_init();

@@ -37,3 +37,4 @@ bin/quantica*
 # Workspace specific
 *.layout
 *.depend
+*.cfg

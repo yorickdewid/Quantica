@@ -15,6 +15,19 @@ char *strtolower(char *str){
     return str;
 }
 
+char *strtoupper(char *str){
+    for (; *str; ++str)
+        *str = toupper(*str);
+    return str;
+}
+
+bool strisdigit(char *str) {
+	for (; *str; ++str)
+		if(!isdigit(*str))
+			return FALSE;
+	return TRUE;
+}
+
 uint16_t _ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;
@@ -100,8 +113,4 @@ char *get_version_string() {
 
 long get_version() {
 	return sizeof(int)*VERSION_RELESE + sizeof(int)*VERSION_MAJOR + sizeof(int)*VERSION_MINOR;
-}
-
-char *str_bool(uint8_t b) {
-	return b ? "TRUE" : "FALSE";
 }

@@ -7,6 +7,8 @@
 #include <common.h>
 #include <log.h>
 #include <error.h>
+#include "zmalloc.h"
+#include "arc4random.h"
 #include "quid.h"
 #include "engine.h"
 #include "core.h"
@@ -24,13 +26,13 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
-	struct engine_table *table = malloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
 	}
-	memset(table, 0, sizeof *table);
+	memset(table, 0, sizeof(struct engine_table));
 	return table;
 }
 
@@ -44,7 +46,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 		return slot->table;
 	}
 
-	struct engine_table *table = malloc(sizeof *table);
+	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -133,6 +135,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
 	assert(from_be64(super.version)==VERSION_RELESE);
+	strlcpy(e->ins_name, super.instance, INSTANCE_LENGTH);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -160,6 +163,7 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 
 	e->alloc = sizeof(struct engine_super);
 	e->db_alloc = sizeof(struct engine_dbsuper);
+	strlcpy(e->ins_name, INSTANCE, INSTANCE_LENGTH);
 	return 0;
 }
 
@@ -199,6 +203,11 @@ void engine_unlink(const char *fname) {
 	unlink(idxname);
 	unlink(dbname);
 	unlink(walname);
+}
+
+void engine_sync(struct engine *e) {
+	flush_super(e);
+	flush_dbsuper(e);
 }
 
 /* Return a value that is greater or equal to 'val' and is power-of-two. */
@@ -317,15 +326,16 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 
 static void flush_super(struct engine *e) {
 	struct engine_super super;
-	memset(&super, 0, sizeof super);
+	memset(&super, 0, sizeof(struct engine_super));
 	super.version = to_be64(VERSION_RELESE);
 	super.top = to_be64(e->top);
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+	strlcpy(super.instance, e->ins_name, INSTANCE_LENGTH);
 
 	lseek(e->fd, 0, SEEK_SET);
-	if (write(e->fd, &super, sizeof super) != sizeof super) {
+	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
 		lprintf("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
 		return;
@@ -352,7 +362,7 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	}
 
 	struct blob_info info;
-	memset(&info, 0, sizeof info);
+	memset(&info, 0, sizeof(struct blob_info));
 	info.len = to_be32(len);
 	info.free = 0;
 
@@ -385,7 +395,7 @@ static uint64_t split_table(struct engine *e, struct engine_table *table, quid_t
 	table->size = TABLE_SIZE / 2;
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct engine_item));
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	return new_table_offset;
@@ -457,7 +467,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 		/* replace the removed item by taking an item from one of the
 		   child tables */
 		uint64_t new_offset;
-		if (RANDOM() & 1) {
+		if (arc4random() & 1) {
 			new_offset = take_largest(e, left_child, &table->items[i].quid);
 			table->items[i].child = to_be64(table_join(e, left_child));
 		} else {
@@ -546,7 +556,10 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
  * Please note that 'quid' is overwritten when called inside the allocator.
  */
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid) {
-	assert(table_offset);
+	if (!table_offset) {
+		ERROR(EREC_NOTFOUND, EL_WARN);
+		return 0;
+	}
 	struct engine_table *table = get_table(e, table_offset);
 
 	size_t left = 0, right = table->size;
@@ -557,6 +570,7 @@ static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *qu
 			/* found */
 			if (table->items[i].meta.syslock || table->items[i].meta.freeze) {
 				ERROR(EREC_LOCKED, EL_WARN);
+				put_table(e, table, table_offset);
 				return 0;
 			}
 			uint64_t ret = remove_table(e, table, i, quid);
@@ -619,7 +633,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof *new_table);
+	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
@@ -661,6 +675,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 				/* found */
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					ERROR(EREC_NOTFOUND, EL_WARN);
+					put_table(e, table, table_offset);
 					return 0;
 				}
 				uint64_t ret = from_be64(table->items[i].offset);
@@ -693,7 +708,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 
 	lseek(e->db_fd, offset, SEEK_SET);
 	struct blob_info info;
-	if (read(e->db_fd, &info, sizeof info) != (ssize_t) sizeof info) {
+	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
 		lprintf("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;
@@ -701,7 +716,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	*len = from_be32(info.len);
 	assert(*len > 0);
 
-	void *data = malloc(*len);
+	void *data = zmalloc(*len);
 	if (!data) {
 		lprintf("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
@@ -710,7 +725,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	if (read(e->db_fd, data, *len) != (ssize_t) *len) {
 		lprintf("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
-		free(data);
+		zfree(data);
 		data = NULL;
 		return NULL;
 	}
@@ -736,7 +751,7 @@ int engine_purge(struct engine *e, quid_t *quid) {
 	return 0;
 }
 
-static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid) {
+static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, struct metadata *meta) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -746,9 +761,12 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 			if (cmp == 0) {
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					ERROR(EREC_NOTFOUND, EL_WARN);
+					put_table(e, table, table_offset);
 					return 0;
 				}
-				return &table->items[i].meta;
+				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
+				put_table(e, table, table_offset);
+				return meta;//&table->items[i].meta;
 			}
 			if (cmp < 0) {
 				right = i;
@@ -770,11 +788,9 @@ int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return -1;
 	}
-	struct metadata *umd = get_meta(e, e->top, quid);
+	get_meta(e, e->top, quid, md);
 	if(ISERROR())
 		return -1;
-
-	*md = *umd;
 	return 0;
 }
 
@@ -788,6 +804,7 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
 					ERROR(EREC_LOCKED, EL_WARN);
+					put_table(e, table, table_offset);
 					return -1;
 				}
 				memcpy(&table->items[i].meta, md, sizeof(struct metadata));
@@ -827,12 +844,13 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 		return -1;
 	}
 
-	struct metadata *nmd = get_meta(e, e->top, quid);
+	struct metadata nmd;
+	get_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 
-    nmd->lifecycle = MD_LIFECYCLE_RECYCLE;
-	set_meta(e, e->top, quid, nmd);
+    nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
+	set_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 
@@ -855,9 +873,9 @@ static void walk_dbstorage(struct engine *e) {
 }
 #endif // 0
 
-static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset) {
+static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
-	struct engine_table *table = get_table(e, offset);
+	struct engine_table *table = get_table(e, table_offset);
 	size_t sz = table->size;
 	for(i=0; i<(int)sz; ++i) {
 		uint64_t child = from_be64(table->items[i].child);
@@ -869,20 +887,23 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 			lprintf("[erro] Failed to read disk\n");
 			ERROR(EIO_READ, EL_FATAL);
+			put_table(e, table, table_offset);
 			return;
 		}
 		size_t len = from_be32(info.len);
-		void *data = malloc(len);
+		void *data = zmalloc(len);
 		if (!data) {
 			lprintf("[erro] Failed to request memory\n");
 			ERROR(EM_ALLOC, EL_FATAL);
+			put_table(e, table, table_offset);
 			return;
 		}
 		if (read(e->db_fd, data, len) != (ssize_t) len) {
 			lprintf("[erro] Failed to read disk\n");
 			ERROR(EIO_READ, EL_FATAL);
-			free(data);
+			zfree(data);
 			data = NULL;
+			put_table(e, table, table_offset);
 			return;
 		}
 
@@ -892,12 +913,13 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t offset)
             flush_super(ce);
 		}
 
-		free(data);
+		zfree(data);
 		if (child)
 			tree_traversal(e, ce, child);
 		if (right)
 			tree_traversal(e, ce, right);
 	}
+	put_table(e, table, table_offset);
 }
 
 int engine_vacuum(struct engine *e, const char *fname) {
@@ -949,6 +971,7 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
 					ERROR(EREC_LOCKED, EL_WARN);
+					put_table(e, table, table_offset);
 					return -1;
 				}
 				offset = from_be64(table->items[i].offset);

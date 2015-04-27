@@ -4,7 +4,7 @@
 	<Project>
 		<Option title="quantica" />
 		<Option makefile_is_custom="1" />
-		<Option execution_dir="../../Quantica" />
+		<Option execution_dir="../../quantica" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
@@ -14,7 +14,7 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Option use_console_runner="0" />
-				<Option parameters="-d" />
+				<Option parameters="-f" />
 				<Compiler>
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
@@ -26,6 +26,9 @@
 				<Linker>
 					<Add library="rt" />
 				</Linker>
+				<ExtraCommands>
+					<Add before="rm -rf bin/*" />
+				</ExtraCommands>
 			</Target>
 			<Target title="test">
 				<Option output="../bin/quantica_test" prefix_auto="1" extension_auto="1" />
@@ -63,14 +66,19 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="../Makefile" />
 		<Unit filename="../include/common.h" />
 		<Unit filename="../include/config.h" />
+		<Unit filename="../include/error.h" />
 		<Unit filename="../include/log.h" />
-		<Unit filename="../include/track.h" />
 		<Unit filename="../src/aes.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/aes.h" />
+		<Unit filename="../src/arc4random.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/arc4random.h" />
 		<Unit filename="../src/base64.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -90,16 +98,36 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/crc32.h" />
+		<Unit filename="../src/dstype.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/dstype.h" />
 		<Unit filename="../src/engine.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/engine.h" />
+		<Unit filename="../src/hashtable.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/hashtable.h" />
+		<Unit filename="../src/itoa.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/json_check.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/json_check.h" />
 		<Unit filename="../src/log.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../src/md5.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/md5.h" />
+		<Unit filename="../src/quantica.cfg" />
 		<Unit filename="../src/quid.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -108,6 +136,20 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/sha1.h" />
+		<Unit filename="../src/sha256.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/sha256.h" />
+		<Unit filename="../src/slay.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/slay.h" />
+		<Unit filename="../src/strdup.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/stresc.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../src/strlcat.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -122,6 +164,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/webapi.h" />
+		<Unit filename="../src/zmalloc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/zmalloc.h" />
 		<Unit filename="../test/benchmark-engine.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -146,11 +192,20 @@
 		<Unit filename="../test/test-engine.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../test/test-json_check.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../test/test-list.h" />
+		<Unit filename="../test/test-md5.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../test/test-quid.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../test/test-sha1.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../test/test-sha256.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../test/test.h" />

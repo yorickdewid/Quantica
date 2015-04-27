@@ -20,7 +20,10 @@ int main(int argc, char *argv[], char *envp[]) {
 	CALL_TEST(base64);
 	CALL_TEST(crc32);
 	CALL_TEST(sha1);
+	CALL_TEST(md5);
+	CALL_TEST(sha256);
 	CALL_TEST(bootstrap);
+	CALL_TEST(json_check);
 	LOG("All tests passed\n");
 	CALL_BENCHMARK(engine);
 	CALL_BENCHMARK(quid);

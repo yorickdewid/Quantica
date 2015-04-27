@@ -33,12 +33,12 @@ static void quid_sformat(){
 	char *pch;
 	int phyp, nhyp = 0;
 	quid_t quid;
-	char squid[39] = {'\0'};
+	char squid[QUID_LENGTH+1] = {'\0'};
 	quid_create(&quid);
 	quidtostr(squid, &quid);
 
-	ASSERT(strlen(squid)==38);
-	ASSERT(squid[0]=='{'&&squid[37]=='}');
+	ASSERT(strlen(squid)==QUID_LENGTH);
+	ASSERT(squid[0]=='{'&&squid[QUID_LENGTH-1]=='}');
 	ASSERT(squid[strspn(squid, "{}-0123456789abcdefABCDEF")]==0);
 
 	pch = strchr(squid, '-');
@@ -54,7 +54,7 @@ static void quid_sformat(){
 static void quid_convertoi(){
 	quid_t quido;
 	quid_t quidi;
-	char squid[39] = {'\0'};
+	char squid[QUID_LENGTH+1] = {'\0'};
 	quid_create(&quido);
 	quidtostr(squid, &quido);
 	strtoquid(squid, &quidi);
@@ -64,13 +64,16 @@ static void quid_convertoi(){
 static void quid_convertio(){
 	quid_t quid;
 	char squidi[] = "{00000000-0000-a150-8345-c649140dc096}";
-	char squido[39] = {'\0'};
+	char squido[QUID_LENGTH+1] = {'\0'};
 	strtoquid(squidi, &quid);
 	quidtostr(squido, &quid);
 	ASSERT(!strcmp(squidi, squido));
 }
 
 TEST_IMPL(quid) {
+
+	TESTCASE("quid");
+
 	/* Run testcase */
 	quid_compare();
 	quid_generate();
