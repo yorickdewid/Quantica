@@ -156,15 +156,15 @@ static int new_value(json_state *state, json_value **top, json_value **root, jso
 
 json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t length, char *error_buf) {
 	json_char error [json_error_max];
-	const json_char * end;
-	json_value * top, * root, * alloc = 0;
-	json_state state = { 0 };
+	const json_char *end;
+	json_value *top, *root, *alloc = 0;
+	json_state state;// = {0};
 	long flags;
 	long num_digits = 0, num_e = 0;
 	json_int_t num_fraction = 0;
 
 	/* Skip UTF-8 BOM */
-	if (length >= 3 && ((unsigned char) json [0]) == 0xEF && ((unsigned char) json [1]) == 0xBB && ((unsigned char) json [2]) == 0xBF) {
+	if (length >= 3 && ((unsigned char)json [0]) == 0xEF && ((unsigned char)json [1]) == 0xBB && ((unsigned char)json [2]) == 0xBF) {
 		json += 3;
 		length -= 3;
 	}
@@ -172,7 +172,7 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 	error[0] = '\0';
 	end = (json + length);
 
-	memcpy (&state.settings, settings, sizeof (json_settings));
+	memcpy(&state.settings, settings, sizeof(json_settings));
 
 	if (!state.settings.mem_alloc)
 		state.settings.mem_alloc = default_alloc;
@@ -862,7 +862,7 @@ e_failed:
 }
 
 json_value *json_parse(const json_char *json, size_t length) {
-	json_settings settings = {0};
+	json_settings settings;// = {0};
 	return json_parse_ex(&settings, json, length, 0);
 }
 
@@ -905,7 +905,7 @@ void json_value_free_ex(json_settings *settings, json_value *value) {
 }
 
 void json_value_free (json_value * value) {
-	json_settings settings = { 0 };
+	json_settings settings;// = { 0 };
 	settings.mem_free = default_free;
 	json_value_free_ex (&settings, value);
 }
