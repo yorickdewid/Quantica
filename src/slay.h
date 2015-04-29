@@ -11,6 +11,10 @@ struct value_slay {
 	__be64 size;
 };
 
+struct row_slay {
+	__be64 elements;
+};
+
 void *slay_wrap(void *data, size_t *len, dstype_t dt);
 void slay_print(void *data);
 void *slay_unwrap(void *value_slay, size_t *len, dstype_t *dt);

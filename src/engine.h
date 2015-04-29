@@ -55,7 +55,7 @@ struct metadata {
 	unsigned int freeze		: 1;	/* Management lock */
 	unsigned int error		: 1;	/* Indicates eror */
 	unsigned int type		: 3;	/* Additional flags */
-	unsigned int elmsz		: 16;	/* Number of elements */
+	unsigned int _res		: 16;	/* Reserved */
 };
 
 struct engine_item {
