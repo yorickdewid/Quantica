@@ -117,6 +117,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/json_check.h" />
+		<Unit filename="../src/json_parse.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/json_parse.h" />
 		<Unit filename="../src/log.c">
 			<Option compilerVar="CC" />
 		</Unit>

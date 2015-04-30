@@ -40,41 +40,41 @@ typedef struct _json_object_entry {
 } json_object_entry;
 
 typedef struct _json_value {
-   struct _json_value *parent;
-   json_type type;
+	struct _json_value *parent;
+	json_type type;
 
-   union {
-      int boolean;
-      json_int_t integer;
-      double dbl;
+	union {
+		int boolean;
+		json_int_t integer;
+		double dbl;
 
-      struct {
-         unsigned int length;
-         json_char *ptr; /* null terminated */
-      } string;
+		struct {
+			unsigned int length;
+			json_char *ptr; /* null terminated */
+		} string;
 
-      struct {
-         unsigned int length;
-         json_object_entry *values;
-      } object;
+		struct {
+			unsigned int length;
+			json_object_entry *values;
+		} object;
 
-      struct {
-         unsigned int length;
-         struct _json_value **values;
-      } array;
-   } u;
+		struct {
+			unsigned int length;
+			struct _json_value **values;
+		} array;
+	} u;
 
-   union {
-      struct _json_value *next_alloc;
-      void *object_mem;
-   } _reserved;
-   #ifdef JSON_TRACK_SOURCE
-      /* Location of the value in the source JSON */
-      unsigned int line, col;
-   #endif
+	union {
+		struct _json_value *next_alloc;
+		void *object_mem;
+	} _reserved;
+#ifdef JSON_TRACK_SOURCE
+	/* Location of the value in the source JSON */
+	unsigned int line, col;
+#endif
 } json_value;
 
-json_value * json_parse (const json_char *json, size_t length);
+json_value *json_parse(const json_char *json, size_t length);
 
 json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t length, char *error);
 
