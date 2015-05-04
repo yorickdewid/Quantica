@@ -25,6 +25,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/sha256.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/json_parse.c \
+		$(SRCDIR)/json_encode.c \
 		$(SRCDIR)/dstype.c \
 		$(SRCDIR)/slay.c \
 		$(SRCDIR)/engine.c \
