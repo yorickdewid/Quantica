@@ -128,22 +128,47 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
-int db_put(char *quid, const void *data, size_t len) {
+int db_put(char *quid, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 	quid_t key;
 	quid_create(&key);
-	dstype_t adt = autotype(data, len);
-	if (adt == DT_QUID) {
-		quid_t pu;
-		strtoquid((char *)data, &pu);
-		data = (void *)&pu;
-		len = sizeof(quid_t);
+	size_t len = 0;
+	void *slay = NULL;
+	dstype_t adt = autotype(data, data_len);
+
+	switch (adt) {
+		case DT_QUID:
+			slay = slay_parse_quid((char *)data, &len);
+			break;
+		case DT_JSON:
+			slay = slay_parse_object((char *)data, data_len, &len);
+			break;
+		case DT_NULL:
+		case DT_FLOAT:
+			/* Not implemented */
+			break;
+		case DT_CHAR:
+			slay = slay_char((char *)data, &len);
+			break;
+		case DT_BOOL_F:
+			slay = slay_bool(FALSE, &len);
+			break;
+		case DT_BOOL_T:
+			slay = slay_bool(TRUE, &len);
+			break;
+		case DT_INT:
+			slay = slay_integer((char *)data, data_len, &len);
+			break;
+		case DT_TEXT:
+			slay = slay_parse_text((char *)data, data_len, &len);
+			break;
 	}
-	void *val_data = slay_wrap((void *)data, &len, adt);
-	if (engine_insert(&btx, &key, val_data, len)<0)
+
+	if (engine_insert(&btx, &key, slay, len)<0)
 		return -1;
-	zfree(val_data);
+	zfree(slay);
+
 	quidtostr(quid, &key);
 	return 0;
 }
@@ -159,9 +184,29 @@ lookup:
 	val_data = engine_get(&btx, &key, len);
 	if (!val_data)
 		return NULL;
-	void *data = slay_unwrap(val_data, len, dt);
+	uint64_t elements;
+	void *slay = get_row(val_data, &elements);
+
+	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
+	void *data = slay_unwrap(next, len, dt);
+
+	/*size_t len2 = *len;
+	unsigned int i;
+	for (i=1; i<elements; ++i) {
+		dstype_t dt2;
+		next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+len2);
+		void *data2 = slay_unwrap(next, &len2, &dt2);
+
+		data2 = (char *)realloc(data2, len2+1);
+		((char *)data2)[len2] = '\0';
+		printf(">>2data %s\n", (char *)data2);
+		zfree(data2);
+	}*/
+
+	zfree(val_data);
 	if (*dt == DT_QUID) {
 		memcpy(&key, data, sizeof(quid_t));
+		zfree(data);
 		goto lookup;
 	}
 	char *stype = datatotype(*dt);
@@ -170,6 +215,7 @@ lookup:
 		data = (void *)stype;
 		*len = strlen(stype);
 	}
+
 	return data;
 }
 
@@ -192,13 +238,18 @@ char *db_get_type(char *quid) {
 int db_update(char *quid, const void *data, size_t len) {
 	if (!ready)
 		return -1;
-	quid_t key;
+	(void)quid;
+	(void)data;
+	(void)len;
+/*	quid_t key;
 	strtoquid(quid, &key);
-	void *val_data = slay_wrap((void *)data, &len, DT_TEXT);
+	void *slay = create_row(1, &len);
+	void *val_data = slay_wrap(slay, (void *)data, len, DT_TEXT);
 	if (engine_update(&btx, &key, val_data, len)<0) {
 		return -1;
 	}
-	zfree(val_data);
+	zfree(slay);
+	zfree(val_data);*/
 	return 0;
 }
 
