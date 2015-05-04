@@ -410,7 +410,7 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 			char *escdata = stresc(data);
 			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", escdata);
 			zfree(escdata);
-		} else if (dt == DT_JSON) {
+		} else if (dt == DT_JSON || dt == DT_INT || dt == DT_FLOAT) {
 			snprintf(response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
 		} else {
 			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":1}", data);
