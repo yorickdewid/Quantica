@@ -61,10 +61,10 @@ static int builderize(json_value *value) {
 		unsigned int i;
 
 		for (i=0; i<value->u.object.length; ++i) {
-			json_char *name_copy;
+			char *name_copy;
 			json_object_entry *entry = &value->u.object.values[i];
 
-			if (!(name_copy = (json_char *)zmalloc((entry->name_length + 1) * sizeof(json_char))))
+			if (!(name_copy = (char *)zmalloc((entry->name_length + 1) * sizeof(char))))
 				return 0;
 
 			memcpy(name_copy, entry->name, entry->name_length + 1);
@@ -153,30 +153,28 @@ json_value *json_object_new(size_t length) {
 	((json_builder_value *)value)->is_builder_value = 1;
 
 	value->type = json_object;
-
 	if (!(value->u.object.values = (json_object_entry *)zcalloc(length, sizeof(*value->u.object.values)))) {
 		zfree(value);
 		return NULL;
 	}
 
 	((json_builder_value *)value)->additional_length_allocated = length;
-
 	return value;
 }
 
-json_value *json_object_push(json_value *object, const json_char *name, json_value *value) {
+json_value *json_object_push(json_value *object, const char *name, json_value *value) {
 	return json_object_push_length(object, strlen(name), name, value);
 }
 
-json_value *json_object_push_length(json_value *object, unsigned int name_length, const json_char *name, json_value *value) {
-	json_char *name_copy;
+json_value *json_object_push_length(json_value *object, unsigned int name_length, const char *name, json_value *value) {
+	char *name_copy;
 
 	assert(object->type == json_object);
 
-	if (!(name_copy = (json_char *)zmalloc((name_length + 1) * sizeof(json_char))))
+	if (!(name_copy = (char *)zmalloc((name_length + 1) * sizeof(char))))
 		return NULL;
 
-	memcpy(name_copy, name, name_length * sizeof(json_char));
+	memcpy(name_copy, name, name_length * sizeof(char));
 	name_copy[name_length] = 0;
 
 	if (!json_object_push_nocopy(object, name_length, name_copy, value)) {
@@ -187,7 +185,7 @@ json_value *json_object_push_length(json_value *object, unsigned int name_length
 	return value;
 }
 
-json_value *json_object_push_nocopy(json_value *object, unsigned int name_length, json_char *name, json_value *value) {
+json_value *json_object_push_nocopy(json_value *object, unsigned int name_length, char *name, json_value *value) {
 	json_object_entry * entry;
 
 	assert(object->type == json_object);
@@ -207,30 +205,28 @@ json_value *json_object_push_nocopy(json_value *object, unsigned int name_length
 	}
 
 	entry = object->u.object.values + object->u.object.length;
-
 	entry->name_length = name_length;
 	entry->name = name;
 	entry->value = value;
 
 	++object->u.object.length;
-
 	value->parent = object;
 
 	return value;
 }
 
-json_value *json_string_new(const json_char *buf) {
+json_value *json_string_new(const char *buf) {
 	return json_string_new_length(strlen(buf), buf);
 }
 
-json_value *json_string_new_length(unsigned int length, const json_char *buf) {
+json_value *json_string_new_length(unsigned int length, const char *buf) {
 	json_value *value;
-	json_char *copy = (json_char *)zmalloc((length + 1) * sizeof (json_char));
+	char *copy = (char *)zmalloc((length + 1) * sizeof(char));
 
 	if (!copy)
 		return NULL;
 
-	memcpy(copy, buf, length * sizeof(json_char));
+	memcpy(copy, buf, length * sizeof(char));
 	copy[length] = 0;
 
 	if (!(value = json_string_new_nocopy(length, copy))) {
@@ -241,8 +237,8 @@ json_value *json_string_new_length(unsigned int length, const json_char *buf) {
 	return value;
 }
 
-json_value *json_string_new_nocopy(unsigned int length, json_char *buf) {
-	json_value *value = (json_value *)zcalloc(1, sizeof (json_builder_value));
+json_value *json_string_new_nocopy(unsigned int length, char *buf) {
+	json_value *value = (json_value *)zcalloc(1, sizeof(json_builder_value));
 
 	if (!value)
 		return NULL;
@@ -256,7 +252,7 @@ json_value *json_string_new_nocopy(unsigned int length, json_char *buf) {
 	return value;
 }
 
-json_value *json_integer_new(json_int_t integer) {
+json_value *json_integer_new(int64_t integer) {
 	json_value *value = (json_value *)zcalloc(1, sizeof(json_builder_value));
 
 	if (!value)
@@ -284,7 +280,7 @@ json_value *json_double_new(double dbl) {
 	return value;
 }
 
-json_value * json_boolean_new (int b) {
+json_value * json_boolean_new(bool b) {
 	json_value *value = (json_value *)zcalloc(1, sizeof(json_builder_value));
 
 	if (!value)
@@ -311,7 +307,7 @@ json_value *json_null_new() {
 	return value;
 }
 
-void json_object_sort (json_value * object, json_value * proto) {
+void json_object_sort(json_value *object, json_value *proto) {
 	unsigned int i, out_index = 0;
 
 	if (!builderize(object))
@@ -324,7 +320,7 @@ void json_object_sort (json_value * object, json_value * proto) {
 		unsigned int j;
 		json_object_entry proto_entry = proto->u.object.values[i];
 
-		for (j = 0; j < object->u.object.length; ++ j) {
+		for (j=0; j<object->u.object.length; ++j) {
 			json_object_entry entry = object->u.object.values[j];
 
 			if (entry.name_length != proto_entry.name_length)
@@ -358,9 +354,8 @@ json_value *json_object_merge(json_value *object_a, json_value *object_b){
 
 		unsigned int alloc = object_a->u.object.length + ((json_builder_value *)object_a)->additional_length_allocated + object_b->u.object.length;
 
-		if (!(values_new = (json_object_entry *)zrealloc(object_a->u.object.values, sizeof(json_object_entry) * alloc))) {
+		if (!(values_new = (json_object_entry *)zrealloc(object_a->u.object.values, sizeof(json_object_entry) * alloc)))
 			return NULL;
-		}
 
 		object_a->u.object.values = values_new;
 	}
@@ -380,12 +375,12 @@ json_value *json_object_merge(json_value *object_a, json_value *object_b){
 	return object_a;
 }
 
-static size_t measure_string(unsigned int length, const json_char *str) {
+static size_t measure_string(unsigned int length, const char *str) {
 	unsigned int i;
 	size_t measured_length = 0;
 
 	for(i=0; i<length; ++i) {
-		json_char c = str[i];
+		char c = str[i];
 
 		switch (c) {
 			case '"':
@@ -407,12 +402,12 @@ static size_t measure_string(unsigned int length, const json_char *str) {
 	return measured_length;
 }
 
-static size_t serialize_string(json_char *buf, unsigned int length, const json_char *str) {
-	json_char * orig_buf = buf;
+static size_t serialize_string(char *buf, unsigned int length, const char *str) {
+	char *orig_buf = buf;
 	unsigned int i;
 
 	for(i=0; i<length; ++i){
-		json_char c = str[i];
+		char c = str[i];
 
 		switch (c) {
 			case '"':
@@ -448,8 +443,8 @@ static size_t serialize_string(json_char *buf, unsigned int length, const json_c
 	return buf - orig_buf;
 }
 
-size_t json_measure (json_value *value) {
-	return json_measure_ex (value, default_opts);
+size_t json_measure(json_value *value) {
+	return json_measure_ex(value, default_opts);
 }
 
 size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
@@ -467,7 +462,7 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 	colon_size = flags & f_spaces_after_colons ? 2 : 1;
 
 	while (value) {
-		json_int_t integer;
+		int64_t integer;
 		json_object_entry * entry;
 
 		switch (value->type) {
@@ -485,7 +480,7 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 				}
 
 				if (((json_builder_value *)value)->length_iterated == value->u.array.length) {
-					-- depth;
+					--depth;
 					MEASURE_NEWLINE();
 					total += bracket_size;  /* `]` */
 
@@ -516,7 +511,7 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 				}
 
 				if (((json_builder_value *)value)->length_iterated == value->u.object.length) {
-					-- depth;
+					--depth;
 					MEASURE_NEWLINE();
 					total += bracket_size;  /* `}` */
 
@@ -530,7 +525,6 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 				}
 
 				entry = value->u.object.values + (((json_builder_value *)value)->length_iterated ++);
-
 				total += 2 + colon_size;  /* `"": ` */
 				total += measure_string(entry->name_length, entry->name);
 
@@ -542,14 +536,12 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 				break;
 			case json_integer:
 				integer = value->u.integer;
-
 				if (integer < 0) {
 					total += 1;  /* `-` */
 					integer = -integer;
 				}
 
 				++total;  /* first digit */
-
 				while (integer >= 10) {
 					++total;  /* another digit */
 					integer /= 10;
@@ -582,14 +574,14 @@ size_t json_measure_ex(json_value *value, json_serialize_opts opts) {
 	return total;
 }
 
-void json_serialize(json_char *buf, json_value *value) {
+void json_serialize(char *buf, json_value *value) {
 	json_serialize_ex(buf, value, default_opts);
 }
 
-void json_serialize_ex(json_char *buf, json_value *value, json_serialize_opts opts) {
-	json_int_t integer, orig_integer;
-	json_object_entry * entry;
-	json_char * ptr, * dot;
+void json_serialize_ex(char *buf, json_value *value, json_serialize_opts opts) {
+	int64_t integer, orig_integer;
+	json_object_entry *entry;
+	char *ptr, *dot;
 	int indent = 0;
 	char indent_char;
 	int i;
@@ -606,11 +598,9 @@ void json_serialize_ex(json_char *buf, json_value *value, json_serialize_opts op
 					if (value->u.array.length == 0) {
 						*buf ++ = '[';
 						*buf ++ = ']';
-
 						break;
 					}
-
-					PRINT_OPENING_BRACKET ('[');
+					PRINT_OPENING_BRACKET('[');
 
 					indent += opts.indent_size;
 					PRINT_NEWLINE();
@@ -698,7 +688,6 @@ void json_serialize_ex(json_char *buf, json_value *value, json_serialize_opts op
 				orig_integer = integer;
 
 				++buf;
-
 				while (integer >= 10) {
 					++buf;
 					integer /= 10;
@@ -708,14 +697,12 @@ void json_serialize_ex(json_char *buf, json_value *value, json_serialize_opts op
 				ptr = buf;
 
 				do {
-					*-- ptr = "0123456789"[integer % 10];
+					*--ptr = "0123456789"[integer % 10];
 				} while ((integer /= 10) > 0);
 				break;
 			case json_double:
 				ptr = buf;
-
 				buf += sprintf(buf, "%g", value->u.dbl);
-
 				if ((dot = strchr(ptr, ','))) {
 					*dot = '.';
 				} else if (!strchr(ptr, '.')) {
@@ -739,10 +726,8 @@ void json_serialize_ex(json_char *buf, json_value *value, json_serialize_opts op
 			default:
 				break;
 		};
-
 		value = value->parent;
 	}
-
 	*buf = 0;
 }
 
@@ -762,14 +747,13 @@ void json_builder_free(json_value *value) {
 					break;
 				}
 
-				value = value->u.array.values[-- value->u.array.length];
+				value = value->u.array.values[--value->u.array.length];
 				continue;
 			case json_object:
 				if (!value->u.object.length) {
 					zfree(value->u.object.values);
 					break;
 				}
-
 				--value->u.object.length;
 
 				if (((json_builder_value *) value)->is_builder_value) {

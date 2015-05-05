@@ -39,7 +39,7 @@ static const long flag_num_e_negative	= 1 << 12;
 static const long flag_line_comment		= 1 << 13;
 static const long flag_block_comment	= 1 << 14;
 
-static unsigned char hex_value(json_char c) {
+static unsigned char hex_value(char c) {
 	if (isdigit(c))
 		return c - '0';
 
@@ -73,7 +73,7 @@ typedef struct {
 	unsigned long ulong_max;
 	json_settings settings;
 	int first_pass;
-	const json_char * ptr;
+	const char * ptr;
 	unsigned int cur_line, cur_col;
 } json_state;
 
@@ -135,7 +135,7 @@ static int new_value(json_state *state, json_value **top, json_value **root, jso
 				break;
 				case json_string:
 
-				if (!(value->u.string.ptr = (json_char *)json_alloc(state, (value->u.string.length + 1) * sizeof(json_char), 0))) {
+				if (!(value->u.string.ptr = (char *)json_alloc(state, (value->u.string.length + 1) * sizeof(char), 0))) {
 					return 0;
 				}
 
@@ -158,11 +158,6 @@ static int new_value(json_state *state, json_value **top, json_value **root, jso
 	value->type = type;
 	value->parent = *top;
 
-#ifdef JSON_TRACK_SOURCE
-	value->line = state->cur_line;
-	value->col = state->cur_col;
-#endif
-
 	if (*alloc)
 		(*alloc)->_reserved.next_alloc = value;
 
@@ -171,14 +166,14 @@ static int new_value(json_state *state, json_value **top, json_value **root, jso
 	return 1;
 }
 
-json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t length, char *error_buf) {
-	json_char error [json_error_max];
-	const json_char *end;
+json_value *json_parse_ex(json_settings *settings, const char *json, size_t length, char *error_buf) {
+	char error [json_error_max];
+	const char *end;
 	json_value *top, *root, *alloc = 0;
 	json_state state;
 	long flags;
 	long num_digits = 0, num_e = 0;
-	json_int_t num_fraction = 0;
+	int64_t num_fraction = 0;
 
 	/* Skip UTF-8 BOM */
 	if (length >= 3 && ((unsigned char)json[0]) == 0xEF && ((unsigned char)json[1]) == 0xBB && ((unsigned char)json[2]) == 0xBF) {
@@ -207,7 +202,7 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 	for (state.first_pass=1; state.first_pass>=0; --state.first_pass) {
 		json_uchar uchar;
 		unsigned char uc_b1, uc_b2, uc_b3, uc_b4;
-		json_char *string = 0;
+		char *string = 0;
 		unsigned int string_length = 0;
 
 		top = root = 0;
@@ -216,7 +211,7 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 		state.cur_line = 1;
 
 		for (state.ptr = json ;; ++state.ptr) {
-			json_char b = (state.ptr == end ? 0 : *state.ptr);
+			char b = (state.ptr == end ? 0 : *state.ptr);
 
 			if (flags & flag_string) {
 				if (!b) {
@@ -279,8 +274,8 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 								uchar = 0x010000 | ((uchar & 0x3FF) << 10) | (uchar2 & 0x3FF);
 							}
 
-							if (sizeof(json_char) >= sizeof(json_uchar) || (uchar <= 0x7F)) {
-							   string_add((json_char)uchar);
+							if (sizeof(char) >= sizeof(json_uchar) || (uchar <= 0x7F)) {
+							   string_add((char)uchar);
 							   break;
 							}
 
@@ -340,11 +335,11 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 
 						case json_object:
 							if (state.first_pass) {
-								(*(json_char **)&top->u.object.values) += string_length + 1;
+								(*(char **)&top->u.object.values) += string_length + 1;
 							} else {
-								top->u.object.values[top->u.object.length].name = (json_char *)top->_reserved.object_mem;
+								top->u.object.values[top->u.object.length].name = (char *)top->_reserved.object_mem;
 								top->u.object.values[top->u.object.length].name_length = string_length;
-								(*(json_char **)&top->_reserved.object_mem) += string_length + 1;
+								(*(char **)&top->_reserved.object_mem) += string_length + 1;
 							}
 
 							flags |= flag_seek_value | flag_need_colon;
@@ -554,7 +549,7 @@ json_value *json_parse_ex(json_settings *settings, const json_char *json, size_t
 
 								flags |= flag_string;
 
-								string = (json_char *)top->_reserved.object_mem;
+								string = (char *)top->_reserved.object_mem;
 								string_length = 0;
 
 								break;
@@ -744,7 +739,7 @@ e_failed:
 	return 0;
 }
 
-json_value *json_parse(const json_char *json, size_t length) {
+json_value *json_parse(const char *json, size_t length) {
 	json_settings settings;
 	memset(&settings, 0, sizeof(json_settings));
 	return json_parse_ex(&settings, json, length, 0);
