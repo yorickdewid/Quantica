@@ -146,7 +146,7 @@ int db_put(char *quid, const void *data, size_t data_len) {
 			slay = slay_parse_object((char *)data, data_len, &len);
 			break;
 		case DT_NULL:
-			/* Not implemented */
+			slay = slay_null(&len);
 			break;
 		case DT_CHAR:
 			slay = slay_char((char *)data, &len);

@@ -67,6 +67,14 @@ void *slay_bool(bool boolean, size_t *slay_len) {
 	return slay;
 }
 
+void *slay_null(size_t *slay_len) {
+	void *slay = create_row(SCHEMA_FIELD, 1, 0, slay_len);
+
+	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
+	slay_wrap(next, NULL, 0, DT_NULL);
+	return slay;
+}
+
 void *slay_char(char *data, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, 1, slay_len);
 
