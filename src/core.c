@@ -146,7 +146,6 @@ int db_put(char *quid, const void *data, size_t data_len) {
 			slay = slay_parse_object((char *)data, data_len, &len);
 			break;
 		case DT_NULL:
-		case DT_FLOAT:
 			/* Not implemented */
 			break;
 		case DT_CHAR:
@@ -157,6 +156,9 @@ int db_put(char *quid, const void *data, size_t data_len) {
 			break;
 		case DT_BOOL_T:
 			slay = slay_bool(TRUE, &len);
+			break;
+		case DT_FLOAT:
+			slay = slay_float((char *)data, data_len, &len);
 			break;
 		case DT_INT:
 			slay = slay_integer((char *)data, data_len, &len);

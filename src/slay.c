@@ -76,6 +76,14 @@ void *slay_char(char *data, size_t *slay_len) {
 	return slay;
 }
 
+void *slay_float(char *data, size_t data_len, size_t *slay_len) {
+	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
+
+	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
+	slay_wrap(next, data, data_len, DT_FLOAT);
+	return slay;
+}
+
 void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 

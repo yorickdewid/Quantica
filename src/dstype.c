@@ -33,7 +33,7 @@ bool isdata(dstype_t ds) {
 	}
 	return FALSE;
 }
-#include <stdio.h>
+
 dstype_t autotype(const void *data, size_t len) {
 	if (!len)
 		return DT_NULL;
@@ -57,6 +57,11 @@ dstype_t autotype(const void *data, size_t len) {
 		return b ? DT_BOOL_T : DT_BOOL_F;
 	if (strisdigit((char *)data))
 		return DT_INT;
+	if (strismatch((char *)data, "1234567890.")) {
+		if(strccnt((char *)data, '.') == 1)
+			if (((char *)data)[0] != '.' && ((char *)data)[len-1] != '.')
+				return DT_FLOAT;
+	}
 	if (strquid_format((char *)data)>0)
 		return DT_QUID;
 	if (json_valid((char *)data))

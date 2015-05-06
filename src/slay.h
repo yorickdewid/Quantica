@@ -28,6 +28,7 @@ void *slay_parse_quid(char *data, size_t *slay_len);
 void *slay_parse_text(char *data, size_t data_len, size_t *slay_len);
 void *slay_bool(bool boolean, size_t *slay_len);
 void *slay_char(char *data, size_t *slay_len);
+void *slay_float(char *data, size_t data_len, size_t *slay_len);
 void *slay_integer(char *data, size_t data_len, size_t *slay_len);
 void *slay_get_data(void *data);
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
