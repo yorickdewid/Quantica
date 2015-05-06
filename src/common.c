@@ -28,6 +28,20 @@ bool strisdigit(char *str) {
 	return TRUE;
 }
 
+bool strismatch(const char *str, const char *tok) {
+	for (; *str; ++str) {
+		bool flag = FALSE;
+		const char *pt = tok;
+		for (; *tok; ++tok)
+			if (*str == *tok)
+				flag = TRUE;
+		tok = pt;
+		if (!flag)
+			return FALSE;
+	}
+	return TRUE;
+}
+
 uint16_t _ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;

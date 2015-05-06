@@ -39,6 +39,7 @@ char from_hex(char ch);
 char *strtolower(char *str);
 char *strtoupper(char *str);
 bool strisdigit(char *str);
+bool strismatch(const char *str, const char *tok);
 char *itoa(long i);
 char *strdup(const char *str);
 char *stresc(char *src);
