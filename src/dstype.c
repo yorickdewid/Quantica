@@ -60,26 +60,12 @@ dstype_t autotype(const void *data, size_t len) {
     return DT_TEXT;
 }
 
-char *datatotype(dstype_t dt) {
-	switch(dt) {
-		case DT_NULL:
-			return zstrdup(str_null());
-		case DT_BOOL_T:
-			return zstrdup(str_bool(TRUE));
-		case DT_BOOL_F:
-			return zstrdup(str_bool(FALSE));
-		default:
-			return NULL;
-	}
-	return NULL;
-}
-
 char *str_bool(bool b) {
-	return b ? "TRUE" : "FALSE";
+	return b ? "true" : "false";
 }
 
 char *str_null() {
-	return "NULL";
+	return "null";
 }
 
 char *str_type(dstype_t dt) {

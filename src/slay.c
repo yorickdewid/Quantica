@@ -15,7 +15,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 	if (!strcmp(json->u.object.values[0].name, "schema")) {
 		if (!strcmp(json->u.object.values[0].value->u.string.ptr, "ARRAY")) {
 			if (!strcmp(json->u.object.values[1].name, "data")) {
-				slay = create_row(json->u.object.values[1].value->u.array.length, data_len, slay_len);
+				slay = create_row(SCHEMA_ARRAY, json->u.object.values[1].value->u.array.length, data_len, slay_len);
 				void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 
 				unsigned int i;
@@ -28,7 +28,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 	}
 
 	if (!slay) {
-		slay = create_row(1, data_len, slay_len);
+		slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
 		void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 		slay_wrap(next, data, data_len, DT_JSON);
@@ -40,7 +40,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 
 void *slay_parse_quid(char *data, size_t *slay_len) {
 	quid_t pu;
-	void *slay = create_row(1, sizeof(quid_t), slay_len);
+	void *slay = create_row(SCHEMA_FIELD, 1, sizeof(quid_t), slay_len);
 
 	strtoquid(data, &pu);
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
@@ -50,7 +50,7 @@ void *slay_parse_quid(char *data, size_t *slay_len) {
 }
 
 void *slay_parse_text(char *data, size_t data_len, size_t *slay_len) {
-	void *slay = create_row(1, data_len, slay_len);
+	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 	slay_wrap(next, data, data_len, DT_TEXT);
@@ -58,7 +58,7 @@ void *slay_parse_text(char *data, size_t data_len, size_t *slay_len) {
 }
 
 void *slay_bool(bool boolean, size_t *slay_len) {
-	void *slay = create_row(1, 0, slay_len);
+	void *slay = create_row(SCHEMA_FIELD, 1, 0, slay_len);
 
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 	slay_wrap(next, NULL, 0, boolean ? DT_BOOL_T : DT_BOOL_F);
@@ -66,7 +66,7 @@ void *slay_bool(bool boolean, size_t *slay_len) {
 }
 
 void *slay_char(char *data, size_t *slay_len) {
-	void *slay = create_row(1, 1, slay_len);
+	void *slay = create_row(SCHEMA_FIELD, 1, 1, slay_len);
 
 	((uint8_t *)data)[1] = '\0';
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
@@ -75,23 +75,25 @@ void *slay_char(char *data, size_t *slay_len) {
 }
 
 void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
-	void *slay = create_row(1, data_len, slay_len);
+	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 	slay_wrap(next, data, data_len, DT_INT);
 	return slay;
 }
 
-void *create_row(uint64_t el, size_t data_len, size_t *len) {
+void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
 	struct row_slay *row = zcalloc(1, sizeof(struct row_slay)+(el * sizeof(struct value_slay))+data_len);
 	row->elements = el;
+	row->schema = schema;
 	*len = sizeof(struct row_slay)+(el * sizeof(struct value_slay))+data_len;
 	return (void *)row;
 }
 
-void *get_row(void *val, uint64_t *el) {
+void *get_row(void *val, schema_t *schema, uint64_t *el) {
 	struct row_slay *row = (struct row_slay *)val;
 	*el = row->elements;
+	*schema = row->schema;
 	return (void *)row;
 }
 

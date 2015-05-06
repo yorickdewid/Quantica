@@ -14,6 +14,7 @@
 #include "crc32.h"
 #include "base64.h"
 #include "time.h"
+#include "json_encode.h"
 #include "slay.h"
 #include "engine.h"
 #include "bootstrap.h"
@@ -173,50 +174,103 @@ int db_put(char *quid, const void *data, size_t data_len) {
 	return 0;
 }
 
-void *db_get(char *quid, size_t *len, dstype_t *dt) {
+void *db_get(char *quid) {
 	if (!ready)
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
-	void *val_data = NULL;
+	void *data = NULL;
 
-lookup:
-	val_data = engine_get(&btx, &key, len);
-	if (!val_data)
+	size_t len;
+	data = engine_get(&btx, &key, &len);
+	if (!data)
 		return NULL;
 	uint64_t elements;
-	void *slay = get_row(val_data, &elements);
-
+	schema_t schema;
+	void *slay = get_row(data, &schema, &elements);
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
-	void *data = slay_unwrap(next, len, dt);
 
-	/*size_t len2 = *len;
-	unsigned int i;
-	for (i=1; i<elements; ++i) {
-		dstype_t dt2;
-		next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+len2);
-		void *data2 = slay_unwrap(next, &len2, &dt2);
+	char *buf = NULL;
+	switch (schema) {
+		case SCHEMA_FIELD: {
+			if (elements != 1) {
+				break;
+			}
+			size_t val_len;
+			dstype_t val_dt;
 
-		data2 = (char *)realloc(data2, len2+1);
-		((char *)data2)[len2] = '\0';
-		printf(">>2data %s\n", (char *)data2);
-		zfree(data2);
-	}*/
+			void *val_data = slay_unwrap(next, &val_len, &val_dt);
+			next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
+			switch (val_dt) {
+				case DT_NULL:
+					buf = zstrdup(str_null());
+					break;
+				case DT_BOOL_T:
+					buf = zstrdup(str_bool(TRUE));
+					break;
+				case DT_BOOL_F:
+					buf = zstrdup(str_bool(FALSE));
+					break;
+				case DT_INT:
+				case DT_FLOAT:
+					val_data = (void *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					buf = zstrdup(val_data);
+					break;
+				case DT_CHAR:
+				case DT_TEXT: {
+					val_data = (char *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					char *escdata = stresc(val_data);
+					buf = zmalloc(val_len+3);
+					snprintf(buf, val_len+3, "\"%s\"", escdata);
+					zfree(escdata);
+					break;
+				}
+				case DT_JSON:
+					val_data = (void *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					buf = zstrdup(val_data);
+					break;
+				case DT_QUID: {
+					char squid[QUID_LENGTH+1];
+					quidtostr(squid, (quid_t *)val_data);
+					buf = db_get(squid);
+					break;
+				}
+			}
 
-	zfree(val_data);
-	if (*dt == DT_QUID) {
-		memcpy(&key, data, sizeof(quid_t));
-		zfree(data);
-		goto lookup;
+			zfree(val_data);
+			break;
+		}
+		case SCHEMA_ARRAY: {
+			size_t val_len;
+			dstype_t val_dt;
+			unsigned int i;
+			json_value *arr = json_array_new(0);
+			for (i=0; i<elements; ++i) {
+				void *val_data = slay_unwrap(next, &val_len, &val_dt);
+				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
+
+				val_data = (char *)zrealloc(val_data, val_len+1);
+				((char *)val_data)[val_len] = '\0';
+
+				json_array_push(arr, json_string_new(val_data));
+				zfree(val_data);
+			}
+
+			buf = malloc(json_measure(arr));
+			json_serialize(buf, arr);
+			json_builder_free(arr);
+			break;
+		}
+		case SCHEMA_OBJECTS:
+		case SCHEMA_TABLE:
+			break;
 	}
-	char *stype = datatotype(*dt);
-	if (stype) {
-		zfree(data);
-		data = (void *)stype;
-		*len = strlen(stype);
-	}
 
-	return data;
+	zfree(data);
+	return buf;
 }
 
 char *db_get_type(char *quid) {

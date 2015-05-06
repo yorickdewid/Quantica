@@ -393,9 +393,7 @@ http_status_t api_db_put(char *response, http_request_t *req) {
 http_status_t api_db_get(char *response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
-		size_t len;
-		dstype_t dt;
-		char *data = db_get(param_quid, &len, &dt);
+		char *data = db_get(param_quid);
 		if (!data) {
 			if(IFERROR(EREC_NOTFOUND)) {
 				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
@@ -405,17 +403,7 @@ http_status_t api_db_get(char *response, http_request_t *req) {
 				return HTTP_OK;
 			}
 		}
-		data = (char *)realloc(data, len+1);
-		data[len] = '\0';
-		if (dt == DT_TEXT) {
-			char *escdata = stresc(data);
-			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", escdata);
-			zfree(escdata);
-		} else if (dt == DT_JSON || dt == DT_INT || dt == DT_FLOAT) {
-			snprintf(response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
-		} else {
-			snprintf(response, RESPONSE_SIZE, "{\"data\":\"%s\",\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
-		}
+		snprintf(response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
 		zfree(data);
 		return HTTP_OK;
 	}
