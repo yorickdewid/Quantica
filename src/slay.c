@@ -6,6 +6,8 @@
 #include "slay.h"
 #include "quid.h"
 #include "json_parse.h"
+#include "json_encode.h"
+#include "core.h"
 #include "zmalloc.h"
 
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
@@ -80,6 +82,95 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 	slay_wrap(next, data, data_len, DT_INT);
 	return slay;
+}
+
+void *slay_get_data(void *data) {
+	uint64_t elements;
+	schema_t schema;
+	void *slay = get_row(data, &schema, &elements);
+	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
+
+	char *buf = NULL;
+	switch (schema) {
+		case SCHEMA_FIELD: {
+			if (elements != 1) {
+				break;
+			}
+			size_t val_len;
+			dstype_t val_dt;
+
+			void *val_data = slay_unwrap(next, &val_len, &val_dt);
+			next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
+			switch (val_dt) {
+				case DT_NULL:
+					buf = zstrdup(str_null());
+					break;
+				case DT_BOOL_T:
+					buf = zstrdup(str_bool(TRUE));
+					break;
+				case DT_BOOL_F:
+					buf = zstrdup(str_bool(FALSE));
+					break;
+				case DT_INT:
+				case DT_FLOAT:
+					val_data = (void *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					buf = zstrdup(val_data);
+					break;
+				case DT_CHAR:
+				case DT_TEXT: {
+					val_data = (char *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					char *escdata = stresc(val_data);
+					buf = zmalloc(val_len+3);
+					snprintf(buf, val_len+3, "\"%s\"", escdata);
+					zfree(escdata);
+					break;
+				}
+				case DT_JSON:
+					val_data = (void *)realloc(val_data, val_len+1);
+					((uint8_t *)val_data)[val_len] = '\0';
+					buf = zstrdup(val_data);
+					break;
+				case DT_QUID: {
+					char squid[QUID_LENGTH+1];
+					quidtostr(squid, (quid_t *)val_data);
+					buf = db_get(squid);
+					break;
+				}
+			}
+
+			zfree(val_data);
+			break;
+		}
+		case SCHEMA_ARRAY: {
+			size_t val_len;
+			dstype_t val_dt;
+			unsigned int i;
+			json_value *arr = json_array_new(0);
+			for (i=0; i<elements; ++i) {
+				void *val_data = slay_unwrap(next, &val_len, &val_dt);
+				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
+
+				val_data = (char *)zrealloc(val_data, val_len+1);
+				((char *)val_data)[val_len] = '\0';
+
+				json_array_push(arr, json_string_new(val_data));
+				zfree(val_data);
+			}
+
+			buf = malloc(json_measure(arr));
+			json_serialize(buf, arr);
+			json_builder_free(arr);
+			break;
+		}
+		case SCHEMA_OBJECTS:
+		case SCHEMA_TABLE:
+			/* Not implemented */
+			break;
+	}
+
+	return buf;
 }
 
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
