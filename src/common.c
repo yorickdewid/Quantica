@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <config.h>
 #include <common.h>
@@ -40,6 +41,15 @@ bool strismatch(const char *str, const char *tok) {
 			return FALSE;
 	}
 	return TRUE;
+}
+
+int strccnt(const char *str, char c) {
+	int cnt = 0;
+	while((str = strchr(str, c)) != NULL) {
+		cnt++;
+		str++;
+	}
+	return cnt;
 }
 
 uint16_t _ntohs(uint16_t x) {

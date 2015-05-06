@@ -40,6 +40,7 @@ char *strtolower(char *str);
 char *strtoupper(char *str);
 bool strisdigit(char *str);
 bool strismatch(const char *str, const char *tok);
+int strccnt(const char *str, char c);
 char *itoa(long i);
 char *strdup(const char *str);
 char *stresc(char *src);
