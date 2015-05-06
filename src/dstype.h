@@ -17,7 +17,7 @@ typedef enum {
 
 bool isdata(dstype_t ds);
 int8_t is_bool(char *str);
-dstype_t autotype(const void *data, size_t len);
+dstype_t autotype(const char *data, size_t len);
 char *datatotype(dstype_t dt);
 char *str_bool(bool b);
 char *str_null();
