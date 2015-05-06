@@ -174,6 +174,19 @@ int db_put(char *quid, const void *data, size_t data_len) {
 	return 0;
 }
 
+void *_db_get(quid_t *key) {
+	if (!ready)
+		return NULL;
+	size_t len;
+	void *data = engine_get(&btx, key, &len);
+	if (!data)
+		return NULL;
+
+	char *buf = slay_get_data(data);
+	zfree(data);
+	return buf;
+}
+
 void *db_get(char *quid) {
 	if (!ready)
 		return NULL;
@@ -186,7 +199,6 @@ void *db_get(char *quid) {
 		return NULL;
 
 	char *buf = slay_get_data(data);
-
 	zfree(data);
 	return buf;
 }

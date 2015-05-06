@@ -130,9 +130,7 @@ void *slay_get_data(void *data) {
 					buf = zstrdup(val_data);
 					break;
 				case DT_QUID: {
-					char squid[QUID_LENGTH+1];
-					quidtostr(squid, (quid_t *)val_data);
-					buf = db_get(squid);
+					buf = _db_get((quid_t *)val_data);
 					break;
 				}
 			}
@@ -151,7 +149,6 @@ void *slay_get_data(void *data) {
 
 				val_data = (char *)zrealloc(val_data, val_len+1);
 				((char *)val_data)[val_len] = '\0';
-
 				json_array_push(arr, json_string_new(val_data));
 				zfree(val_data);
 			}
