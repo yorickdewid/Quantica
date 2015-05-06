@@ -93,9 +93,6 @@ void *slay_get_data(void *data) {
 	char *buf = NULL;
 	switch (schema) {
 		case SCHEMA_FIELD: {
-			if (elements != 1) {
-				break;
-			}
 			size_t val_len;
 			dstype_t val_dt;
 
