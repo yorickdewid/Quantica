@@ -1,3 +1,4 @@
+#include <string.h>
 #include <ctype.h>
 #include <config.h>
 #include <common.h>
@@ -32,7 +33,7 @@ bool isdata(dstype_t ds) {
 	}
 	return FALSE;
 }
-
+#include <stdio.h>
 dstype_t autotype(const void *data, size_t len) {
 	if (!len)
 		return DT_NULL;
@@ -51,13 +52,25 @@ dstype_t autotype(const void *data, size_t len) {
 		if(isalpha(fchar))
 			return DT_CHAR;
 	}
-	if(strisdigit((char *)data))
+	int8_t b = is_bool((char *)data);
+	if (b!=-1)
+		return b ? DT_BOOL_T : DT_BOOL_F;
+	if (strisdigit((char *)data))
 		return DT_INT;
 	if (strquid_format((char *)data)>0)
 		return DT_QUID;
 	if (json_valid((char *)data))
 		return DT_JSON;
     return DT_TEXT;
+}
+
+int8_t is_bool(char *str) {
+	strtolower(str);
+	if (!strcmp(str, "true"))
+		return TRUE;
+	if (!strcmp(str, "false"))
+		return FALSE;
+	return -1;
 }
 
 char *str_bool(bool b) {
