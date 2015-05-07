@@ -100,6 +100,42 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
+void *slay_put_data(char *data, size_t data_len, size_t *len) {
+	void *slay = NULL;
+	dstype_t adt = autotype(data, data_len);
+
+	switch (adt) {
+		case DT_QUID:
+			slay = slay_parse_quid((char *)data, len);
+			break;
+		case DT_JSON:
+			slay = slay_parse_object((char *)data, data_len, len);
+			break;
+		case DT_NULL:
+			slay = slay_null(len);
+			break;
+		case DT_CHAR:
+			slay = slay_char((char *)data, len);
+			break;
+		case DT_BOOL_F:
+			slay = slay_bool(FALSE, len);
+			break;
+		case DT_BOOL_T:
+			slay = slay_bool(TRUE, len);
+			break;
+		case DT_FLOAT:
+			slay = slay_float((char *)data, data_len, len);
+			break;
+		case DT_INT:
+			slay = slay_integer((char *)data, data_len, len);
+			break;
+		case DT_TEXT:
+			slay = slay_parse_text((char *)data, data_len, len);
+			break;
+	}
+	return (void *)slay;
+}
+
 void *slay_get_data(void *data) {
 	uint64_t elements;
 	schema_t schema;

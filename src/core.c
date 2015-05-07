@@ -133,40 +133,10 @@ int db_put(char *quid, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 	quid_t key;
-	quid_create(&key);
 	size_t len = 0;
-	void *slay = NULL;
-	dstype_t adt = autotype(data, data_len);
+	quid_create(&key);
 
-	switch (adt) {
-		case DT_QUID:
-			slay = slay_parse_quid((char *)data, &len);
-			break;
-		case DT_JSON:
-			slay = slay_parse_object((char *)data, data_len, &len);
-			break;
-		case DT_NULL:
-			slay = slay_null(&len);
-			break;
-		case DT_CHAR:
-			slay = slay_char((char *)data, &len);
-			break;
-		case DT_BOOL_F:
-			slay = slay_bool(FALSE, &len);
-			break;
-		case DT_BOOL_T:
-			slay = slay_bool(TRUE, &len);
-			break;
-		case DT_FLOAT:
-			slay = slay_float((char *)data, data_len, &len);
-			break;
-		case DT_INT:
-			slay = slay_integer((char *)data, data_len, &len);
-			break;
-		case DT_TEXT:
-			slay = slay_parse_text((char *)data, data_len, &len);
-			break;
-	}
+	void *slay = slay_put_data((char *)data, data_len, &len);
 
 	if (engine_insert(&btx, &key, slay, len)<0)
 		return -1;
