@@ -70,10 +70,9 @@ dstype_t autotype(const char *data, size_t len) {
 }
 
 int8_t is_bool(char *str) {
-	strtolower(str);
-	if (!strcmp(str, "true"))
+	if (!strcmp(str, "true") || !strcmp(str, "TRUE"))
 		return TRUE;
-	if (!strcmp(str, "false"))
+	if (!strcmp(str, "false") || !strcmp(str, "FALSE"))
 		return FALSE;
 	return -1;
 }
