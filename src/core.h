@@ -20,7 +20,7 @@ struct record_status {
 };
 
 /*
- * Core controll
+ * Core control
  */
 void start_core();
 void detach_core();
