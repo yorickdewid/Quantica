@@ -200,8 +200,8 @@ void *slay_get_data(void *data) {
 					val_data = (char *)realloc(val_data, val_len+1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					char *escdata = stresc(val_data);
-					buf = zmalloc(val_len+3);
-					snprintf(buf, val_len+3, "\"%s\"", escdata);
+					buf = zmalloc(strlen(escdata)+3);
+					snprintf(buf, strlen(escdata)+3, "\"%s\"", escdata);
 					zfree(escdata);
 					break;
 				}
