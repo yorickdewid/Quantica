@@ -42,7 +42,7 @@ typedef struct _json_value {
 	json_type type;
 
 	union {
-		int boolean;
+		bool boolean;
 		int64_t integer;
 		double dbl;
 
