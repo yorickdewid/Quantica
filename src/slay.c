@@ -22,8 +22,38 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 
 				unsigned int i;
 				for(i=0; i<json->u.object.values[1].value->u.array.length; ++i) {
-					slay_wrap(next, json->u.object.values[1].value->u.array.values[i]->u.string.ptr, json->u.object.values[1].value->u.array.values[i]->u.string.length, DT_TEXT);
-					next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+json->u.object.values[1].value->u.array.values[i]->u.string.length);
+					switch (json->u.object.values[1].value->u.array.values[i]->type) {
+						case json_none:
+							slay_wrap(next, NULL, 0, DT_NULL);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay));
+							break;
+						case json_object:
+							/* Not implemented */
+							break;
+						case json_array:
+							/* Not implemented */
+							break;
+						case json_integer:
+							slay_wrap(next, (void *)&json->u.object.values[1].value->u.array.values[i]->u.integer, sizeof(int64_t), DT_INT);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+sizeof(int64_t));
+							break;
+						case json_double:
+							slay_wrap(next, (void *)&json->u.object.values[1].value->u.array.values[i]->u.dbl, sizeof(double), DT_FLOAT);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+sizeof(double));
+							break;
+						case json_string:
+							slay_wrap(next, json->u.object.values[1].value->u.array.values[i]->u.string.ptr, json->u.object.values[1].value->u.array.values[i]->u.string.length, DT_TEXT);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+json->u.object.values[1].value->u.array.values[i]->u.string.length);
+							break;
+						case json_boolean:
+							slay_wrap(next, NULL, 0, json->u.object.values[1].value->u.array.values[i]->u.boolean ? DT_BOOL_T : DT_BOOL_F);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay));
+							break;
+						case json_null:
+							slay_wrap(next, NULL, 0, DT_NULL);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay));
+							break;
+					}
 				}
 			}
 		}
@@ -103,7 +133,6 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 void *slay_put_data(char *data, size_t data_len, size_t *len) {
 	void *slay = NULL;
 	dstype_t adt = autotype(data, data_len);
-
 	switch (adt) {
 		case DT_QUID:
 			slay = slay_parse_quid((char *)data, len);
@@ -198,11 +227,45 @@ void *slay_get_data(void *data) {
 			for (i=0; i<elements; ++i) {
 				void *val_data = slay_unwrap(next, &val_len, &val_dt);
 				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
-
-				val_data = (char *)zrealloc(val_data, val_len+1);
-				((char *)val_data)[val_len] = '\0';
-				json_array_push(arr, json_string_new(val_data));
-				zfree(val_data);
+				switch (val_dt) {
+					case DT_NULL:
+						json_array_push(arr, json_null_new());
+						zfree(val_data);
+						break;
+					case DT_BOOL_T:
+						json_array_push(arr, json_boolean_new(TRUE));
+						zfree(val_data);
+						break;
+					case DT_BOOL_F:
+						json_array_push(arr, json_boolean_new(FALSE));
+						zfree(val_data);
+						break;
+					case DT_INT: {
+						int64_t *i = (int64_t *)val_data;
+						json_array_push(arr, json_integer_new(*i));
+						zfree(val_data);
+						break;
+					}
+					case DT_FLOAT: {
+						double *d = (double *)val_data;
+						json_array_push(arr, json_double_new(*d));
+						zfree(val_data);
+						break;
+					}
+					case DT_CHAR:
+					case DT_TEXT: {
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						json_array_push(arr, json_string_new(val_data));
+						zfree(val_data);
+						break;
+					}
+					case DT_JSON:
+					case DT_QUID: {
+						/* Not implemented */
+						break;
+					}
+				}
 			}
 
 			buf = malloc(json_measure(arr));

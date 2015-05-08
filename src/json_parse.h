@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+#include <config.h>
+#include <common.h>
+
 #define json_enable_comments  0x01
 #define json_error_max 128
 
