@@ -11,6 +11,7 @@ There is no genetic data architecture, structure or storage convention but rathe
 - Event-driven / non-blocking network (8700 req/s)
 - WebAPI requests
 - Multiple data dimensions (1-1, 1-N, N-N)
+- Multidriver SQL / JSON
 
 ## License
 
