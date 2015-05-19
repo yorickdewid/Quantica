@@ -10,6 +10,37 @@
 #include "core.h"
 #include "zmalloc.h"
 
+json_value *parse_json(json_value *json) {
+	unsigned int i = 0;
+	switch (json->type) {
+		case json_none:
+			return json_null_new();
+		case json_object: {
+			json_value *obj = json_object_new(json->u.object.length);
+			for(; i<json->u.object.length; ++i)
+				json_object_push(obj, json->u.object.values[i].name, parse_json(json->u.object.values[i].value));
+			return obj;
+		}
+		case json_array: {
+			json_value *arr = json_array_new(json->u.array.length);
+			for(; i<json->u.array.length; ++i)
+				json_array_push(arr, parse_json(json->u.array.values[i]));
+			return arr;
+		}
+		case json_integer:
+			return json_integer_new(json->u.integer);
+		case json_double:
+			return json_double_new(json->u.dbl);
+		case json_string:
+			return json_string_new(json->u.string.ptr);
+		case json_boolean:
+			return json_boolean_new(json->u.boolean);
+		case json_null:
+			return json_null_new();
+	}
+	return json_null_new();
+}
+
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = NULL;
 
@@ -27,21 +58,61 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 							slay_wrap(next, NULL, 0, DT_NULL);
 							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay));
 							break;
-						case json_object:
-							/* Not implemented */
+						case json_object: {
+							json_value *obj = json_object_new(json->u.object.values[1].value->u.array.values[i]->u.object.length);
+							unsigned int j = 0;
+
+							for (; j<json->u.object.values[1].value->u.array.values[i]->u.object.length; ++j) {
+								json_value *val = parse_json(json->u.object.values[1].value->u.array.values[i]->u.object.values[j].value);
+								json_object_push(obj, json->u.object.values[1].value->u.array.values[i]->u.object.values[j].name, val);
+							}
+							size_t objsz = json_measure(obj);
+							char *buf = zmalloc(objsz);
+							json_serialize(buf, obj);
+							json_builder_free(obj);
+							slay_wrap(next, buf, objsz, DT_JSON);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+objsz);
+							zfree(buf);
 							break;
-						case json_array:
-							/* Not implemented */
+						}
+						case json_array: {
+							json_value *arr = json_array_new(json->u.object.values[1].value->u.array.values[i]->u.array.length);
+							unsigned int j = 0;
+							for (; j<json->u.object.values[1].value->u.array.values[i]->u.array.length; ++j) {
+								json_value *val = parse_json(json->u.object.values[1].value->u.array.values[i]->u.array.values[j]);
+								json_array_push(arr, val);
+							}
+							size_t arrsz = json_measure(arr);
+							char *buf = zmalloc(arrsz);
+							json_serialize(buf, arr);
+							json_builder_free(arr);
+							slay_wrap(next, buf, arrsz, DT_JSON);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+arrsz);
+							zfree(buf);
 							break;
-						case json_integer:
-							slay_wrap(next, (void *)&json->u.object.values[1].value->u.array.values[i]->u.integer, sizeof(int64_t), DT_INT);
-							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+sizeof(int64_t));
+						}
+						case json_integer: {
+							char *istr = itoa(json->u.object.values[1].value->u.array.values[i]->u.integer);
+							slay_wrap(next, istr, strlen(istr), DT_INT);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+strlen(istr));
 							break;
-						case json_double:
-							slay_wrap(next, (void *)&json->u.object.values[1].value->u.array.values[i]->u.dbl, sizeof(double), DT_FLOAT);
-							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+sizeof(double));
+						}
+						case json_double: {
+							char lstr[32];
+							sprintf(lstr, "%f", json->u.object.values[1].value->u.array.values[i]->u.dbl);
+							slay_wrap(next, lstr, strlen(lstr), DT_FLOAT);
+							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+strlen(lstr));
 							break;
+						}
 						case json_string:
+							if (strquid_format(json->u.object.values[1].value->u.array.values[i]->u.string.ptr)>0) {
+								quid_t pu;
+								strtoquid(json->u.object.values[1].value->u.array.values[i]->u.string.ptr, &pu);
+
+								slay_wrap(next, (void *)&pu, sizeof(quid_t), DT_QUID);
+								next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+sizeof(quid_t));
+								break;
+							}
 							slay_wrap(next, json->u.object.values[1].value->u.array.values[i]->u.string.ptr, json->u.object.values[1].value->u.array.values[i]->u.string.length, DT_TEXT);
 							next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+json->u.object.values[1].value->u.array.values[i]->u.string.length);
 							break;
@@ -241,14 +312,18 @@ void *slay_get_data(void *data) {
 						zfree(val_data);
 						break;
 					case DT_INT: {
-						int64_t *i = (int64_t *)val_data;
-						json_array_push(arr, json_integer_new(*i));
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						long int li = atol(val_data);
+						json_array_push(arr, json_integer_new(li));
 						zfree(val_data);
 						break;
 					}
 					case DT_FLOAT: {
-						double *d = (double *)val_data;
-						json_array_push(arr, json_double_new(*d));
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						double ld = atof(val_data);
+						json_array_push(arr, json_double_new(ld));
 						zfree(val_data);
 						break;
 					}
@@ -261,8 +336,23 @@ void *slay_get_data(void *data) {
 						break;
 					}
 					case DT_JSON:
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						json_settings settings;
+						memset(&settings, 0, sizeof(json_settings));
+						settings.value_extra = json_builder_extra;
+
+						char error[128];
+						json_value *zarr = json_parse_ex(&settings, val_data, val_len, error);
+						json_array_push(arr, zarr);
+
+						zfree(val_data);
+						break;
 					case DT_QUID: {
-						/* Not implemented */
+						buf = _db_get((quid_t *)val_data);
+						json_array_push(arr, json_string_new(buf)); //TODO must be native type
+						zfree(buf);
+						zfree(val_data);
 						break;
 					}
 				}
