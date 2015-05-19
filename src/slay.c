@@ -48,6 +48,9 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 	if (!strcmp(json->u.object.values[0].name, "schema")) {
 		if (!strcmp(json->u.object.values[0].value->u.string.ptr, "ARRAY")) {
 			if (!strcmp(json->u.object.values[1].name, "data")) {
+				if (json->u.object.values[1].value->type != json_array)
+					goto single_json;
+
 				slay = create_row(SCHEMA_ARRAY, json->u.object.values[1].value->u.array.length, data_len, slay_len);
 				void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
 
@@ -130,6 +133,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len) {
 		}
 	}
 
+single_json:
 	if (!slay) {
 		slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
