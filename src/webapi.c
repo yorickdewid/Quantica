@@ -376,11 +376,12 @@ http_status_t api_db_put(char *response, http_request_t *req) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char squid[QUID_LENGTH+1];
-			if (db_put(squid, param_data, strlen(param_data))<0) {
+			int items = 0;
+			if (db_put(squid, &items, param_data, strlen(param_data))<0) {
 				snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 				return HTTP_OK;
 			}
-			snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", squid);
+			snprintf(response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", squid, items);
 			return HTTP_OK;
 		}
 		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);

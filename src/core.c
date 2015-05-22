@@ -129,14 +129,14 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
-int db_put(char *quid, const void *data, size_t data_len) {
+int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 	quid_t key;
 	size_t len = 0;
 	quid_create(&key);
 
-	void *slay = slay_put_data((char *)data, data_len, &len);
+	void *slay = slay_put_data((char *)data, data_len, &len, items);
 
 	if (engine_insert(&btx, &key, slay, len)<0)
 		return -1;
