@@ -8,8 +8,8 @@
 
 typedef enum {
 	SCHEMA_FIELD,
-	SCHEMA_OBJECTS,
 	SCHEMA_ARRAY,
+	SCHEMA_ASOCARRAY,
 	SCHEMA_TABLE
 } schema_t;
 

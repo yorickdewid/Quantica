@@ -132,7 +132,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 			}
 		}
 	} else {
-		slay = create_row(SCHEMA_ARRAY, json->u.object.length, data_len, slay_len);
+		slay = create_row(SCHEMA_ASOCARRAY, json->u.object.length, data_len, slay_len);
 		void *next = movetodata_row(slay);
 		*items = json->u.object.length;
 
@@ -318,10 +318,11 @@ void *slay_get_data(void *data) {
 	switch (schema) {
 		case SCHEMA_FIELD: {
 			size_t val_len;
+			size_t namelen;
 			dstype_t val_dt;
 
-			void *val_data = slay_unwrap(next, NULL, 0, &val_len, &val_dt);
-			next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len);
+			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
+			next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
 			switch (val_dt) {
 				case DT_NULL:
 					buf = zstrdup(str_null());
@@ -366,18 +367,11 @@ void *slay_get_data(void *data) {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
-			json_value *arr = json_array_new(0);
+			json_value *arr = json_array_new(elements);
 			for (i=0; i<elements; ++i) {
-				void *name = NULL;
 				size_t namelen;
-				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
-				if (namelen) {
-					name = (char *)zrealloc(name, namelen+1);
-					((char *)name)[namelen] = '\0';
-					puts(name);
-					zfree(name);
-				}
 				switch (val_dt) {
 					case DT_NULL:
 						json_array_push(arr, json_null_new());
@@ -443,7 +437,86 @@ void *slay_get_data(void *data) {
 			json_builder_free(arr);
 			break;
 		}
-		case SCHEMA_OBJECTS:
+		case SCHEMA_ASOCARRAY: {
+			size_t val_len;
+			dstype_t val_dt;
+			unsigned int i;
+			json_value *obj = json_object_new(elements);
+			for (i=0; i<elements; ++i) {
+				void *name = NULL;
+				size_t namelen;
+				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+				name = (char *)zrealloc(name, namelen+1);
+				((char *)name)[namelen] = '\0';
+
+				switch (val_dt) {
+					case DT_NULL:
+						json_object_push(obj, (char *)name, json_null_new());
+						zfree(val_data);
+						break;
+					case DT_BOOL_T:
+						json_object_push(obj, (char *)name, json_boolean_new(TRUE));
+						zfree(val_data);
+						break;
+					case DT_BOOL_F:
+						json_object_push(obj, (char *)name, json_boolean_new(FALSE));
+						zfree(val_data);
+						break;
+					case DT_INT: {
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						long int li = atol(val_data);
+						json_object_push(obj, (char *)name, json_integer_new(li));
+						zfree(val_data);
+						break;
+					}
+					case DT_FLOAT: {
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						double ld = atof(val_data);
+						json_object_push(obj, (char *)name, json_double_new(ld));
+						zfree(val_data);
+						break;
+					}
+					case DT_CHAR:
+					case DT_TEXT: {
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						json_object_push(obj, (char *)name, json_string_new(val_data));
+						zfree(val_data);
+						break;
+					}
+					case DT_JSON:
+						val_data = (char *)zrealloc(val_data, val_len+1);
+						((char *)val_data)[val_len] = '\0';
+						json_settings settings;
+						memset(&settings, 0, sizeof(json_settings));
+						settings.value_extra = json_builder_extra;
+
+						char error[128];
+						json_value *zarr = json_parse_ex(&settings, val_data, val_len, error);
+						json_object_push(obj, (char *)name, zarr);
+
+						zfree(val_data);
+						break;
+					case DT_QUID: {
+						buf = _db_get((quid_t *)val_data);
+						json_object_push(obj, (char *)name, json_string_new(buf)); //TODO must be native type
+						zfree(buf);
+						zfree(val_data);
+						break;
+					}
+				}
+				zfree(name);
+			}
+
+			buf = malloc(json_measure(obj));
+			json_serialize(buf, obj);
+			json_builder_free(obj);
+
+			break;
+		}
 		case SCHEMA_TABLE:
 			/* Not implemented */
 			break;
@@ -486,8 +559,8 @@ uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t le
 
 	uint8_t *namedest = dest+data_size;
 	memcpy(namedest, name, namelen);
-	return namedest+namelen;
 
+	return namedest+namelen;
 }
 
 void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_t *dt) {
