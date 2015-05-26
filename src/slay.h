@@ -16,6 +16,7 @@ typedef enum {
 struct value_slay {
 	uint16_t val_type;
 	__be64 size;
+	__be64 namesize;
 };
 
 struct row_slay {
@@ -35,7 +36,7 @@ void *slay_put_data(char *data, size_t data_len, size_t *len, int *items);
 void *slay_get_data(void *data);
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
 void *get_row(void *arrp, schema_t *schema, uint64_t *el);
-void slay_wrap(void *arrp, void *data, size_t len, dstype_t dt);
-void *slay_unwrap(void *value_slay, size_t *len, dstype_t *dt);
+uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t len, dstype_t dt);
+void *slay_unwrap(void *value_slay, void **name, size_t *namelen, size_t *len, dstype_t *dt);
 
 #endif // SLAY_H_INCLUDED
