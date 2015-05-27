@@ -308,7 +308,46 @@ void *slay_put_data(char *data, size_t data_len, size_t *len, int *items) {
 	return (void *)slay;
 }
 
-void *slay_get_data(void *data) {
+json_value *resolv_quid(char *buf, size_t buflen, dstype_t dt) {
+	switch (dt) {
+		case DT_QUID: {
+			dstype_t dt;
+			char *xbuf = _db_get((quid_t *)buf, &dt);
+			size_t xbuflen = strlen(xbuf);
+			return resolv_quid(xbuf, xbuflen, dt);
+		}
+		case DT_JSON: {
+			json_settings settings;
+			memset(&settings, 0, sizeof(json_settings));
+			settings.value_extra = json_builder_extra;
+
+			char error[128];
+			return json_parse_ex(&settings, buf, buflen, error);
+		}
+		case DT_NULL:
+			return json_null_new();
+		case DT_BOOL_F:
+			return json_boolean_new(FALSE);
+		case DT_BOOL_T:
+			return json_boolean_new(TRUE);
+		case DT_FLOAT: {
+			double ld = atof(buf);
+			return json_double_new(ld);
+		}
+		case DT_INT: {
+			long int li = atol(buf);
+			return json_integer_new(li);
+		}
+		case DT_CHAR:
+		case DT_TEXT: {
+			char *rbuf = strrmquote(buf);
+			return json_string_new(rbuf);
+		}
+	}
+	return json_null_new();
+}
+
+void *slay_get_data(void *data, dstype_t *dt) {
 	uint64_t elements;
 	schema_t schema;
 	void *slay = get_row(data, &schema, &elements);
@@ -322,7 +361,6 @@ void *slay_get_data(void *data) {
 			dstype_t val_dt;
 
 			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
-			//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
 			next = next_row(next);
 			switch (val_dt) {
 				case DT_NULL:
@@ -356,11 +394,13 @@ void *slay_get_data(void *data) {
 					buf = zstrdup(val_data);
 					break;
 				case DT_QUID: {
-					buf = _db_get((quid_t *)val_data);
+					dstype_t dt;
+					buf = _db_get((quid_t *)val_data, &dt);
 					break;
 				}
 			}
 
+			*dt = val_dt;
 			zfree(val_data);
 			break;
 		}
@@ -372,7 +412,6 @@ void *slay_get_data(void *data) {
 			for (i=0; i<elements; ++i) {
 				size_t namelen;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
-				//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
 				next = next_row(next);
 				switch (val_dt) {
 					case DT_NULL:
@@ -425,8 +464,11 @@ void *slay_get_data(void *data) {
 						zfree(val_data);
 						break;
 					case DT_QUID: {
-						buf = _db_get((quid_t *)val_data);
-						json_array_push(arr, json_string_new(buf)); //TODO must be native type
+						dstype_t dt;
+						buf = _db_get((quid_t *)val_data, &dt);
+						size_t buflen = strlen(buf);
+						json_array_push(arr, resolv_quid(buf, buflen, dt));
+
 						zfree(buf);
 						zfree(val_data);
 						break;
@@ -434,6 +476,7 @@ void *slay_get_data(void *data) {
 				}
 			}
 
+			*dt = DT_JSON;
 			buf = malloc(json_measure(arr));
 			json_serialize(buf, arr);
 			json_builder_free(arr);
@@ -448,7 +491,6 @@ void *slay_get_data(void *data) {
 				void *name = NULL;
 				size_t namelen;
 				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
-				//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
 				next = next_row(next);
 				name = (char *)zrealloc(name, namelen+1);
 				((char *)name)[namelen] = '\0';
@@ -504,8 +546,11 @@ void *slay_get_data(void *data) {
 						zfree(val_data);
 						break;
 					case DT_QUID: {
-						buf = _db_get((quid_t *)val_data);
-						json_object_push(obj, (char *)name, json_string_new(buf)); //TODO must be native type
+						dstype_t dt;
+						buf = _db_get((quid_t *)val_data, &dt);
+						size_t buflen = strlen(buf);
+						json_object_push(obj, (char *)name, resolv_quid(buf, buflen, dt));
+
 						zfree(buf);
 						zfree(val_data);
 						break;
@@ -514,6 +559,7 @@ void *slay_get_data(void *data) {
 				zfree(name);
 			}
 
+			*dt = DT_JSON;
 			buf = malloc(json_measure(obj));
 			json_serialize(buf, obj);
 			json_builder_free(obj);

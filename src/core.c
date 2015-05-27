@@ -146,7 +146,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
-void *_db_get(quid_t *key) {
+void *_db_get(quid_t *key, dstype_t *dt) {
 	if (!ready)
 		return NULL;
 	size_t len;
@@ -154,7 +154,7 @@ void *_db_get(quid_t *key) {
 	if (!data)
 		return NULL;
 
-	char *buf = slay_get_data(data);
+	char *buf = slay_get_data(data, dt);
 	zfree(data);
 	return buf;
 }
@@ -170,7 +170,8 @@ void *db_get(char *quid) {
 	if (!data)
 		return NULL;
 
-	char *buf = slay_get_data(data);
+	dstype_t dt;
+	char *buf = slay_get_data(data, &dt);
 	zfree(data);
 	return buf;
 }

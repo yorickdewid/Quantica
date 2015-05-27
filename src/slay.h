@@ -33,7 +33,7 @@ void *slay_char(char *data, size_t *slay_len);
 void *slay_float(char *data, size_t data_len, size_t *slay_len);
 void *slay_integer(char *data, size_t data_len, size_t *slay_len);
 void *slay_put_data(char *data, size_t data_len, size_t *len, int *items);
-void *slay_get_data(void *data);
+void *slay_get_data(void *data, dstype_t *dt);
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
 void *get_row(void *arrp, schema_t *schema, uint64_t *el);
 uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t len, dstype_t dt);
