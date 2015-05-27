@@ -14,6 +14,7 @@
 #include "crc32.h"
 #include "base64.h"
 #include "time.h"
+#include "json_encode.h"
 #include "slay.h"
 #include "engine.h"
 #include "bootstrap.h"
@@ -128,55 +129,58 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
-int db_put(char *quid, const void *data, size_t len) {
+int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 	quid_t key;
+	size_t len = 0;
 	quid_create(&key);
-	dstype_t adt = autotype(data, len);
-	if (adt == DT_QUID) {
-		quid_t pu;
-		strtoquid((char *)data, &pu);
-		data = (void *)&pu;
-		len = sizeof(quid_t);
-	}
-	void *val_data = slay_wrap((void *)data, &len, adt);
-	if (engine_insert(&btx, &key, val_data, len)<0)
+
+	void *slay = slay_put_data((char *)data, data_len, &len, items);
+
+	if (engine_insert(&btx, &key, slay, len)<0)
 		return -1;
-	zfree(val_data);
+	zfree(slay);
+
 	quidtostr(quid, &key);
 	return 0;
 }
 
-void *db_get(char *quid, size_t *len, dstype_t *dt) {
+void *_db_get(quid_t *key, dstype_t *dt) {
+	if (!ready)
+		return NULL;
+	size_t len;
+	void *data = engine_get(&btx, key, &len);
+	if (!data)
+		return NULL;
+
+	char *buf = slay_get_data(data, dt);
+	zfree(data);
+	return buf;
+}
+
+void *db_get(char *quid) {
 	if (!ready)
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
-	void *val_data = NULL;
 
-lookup:
-	val_data = engine_get(&btx, &key, len);
-	if (!val_data)
+	size_t len;
+	void *data = engine_get(&btx, &key, &len);
+	if (!data)
 		return NULL;
-	void *data = slay_unwrap(val_data, len, dt);
-	if (*dt == DT_QUID) {
-		memcpy(&key, data, sizeof(quid_t));
-		goto lookup;
-	}
-	char *stype = datatotype(*dt);
-	if (stype) {
-		zfree(data);
-		data = (void *)stype;
-		*len = strlen(stype);
-	}
-	return data;
+
+	dstype_t dt;
+	char *buf = slay_get_data(data, &dt);
+	zfree(data);
+	return buf;
 }
 
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
-	size_t len;
+	(void)quid;
+	/*size_t len;
 	quid_t key;
 	dstype_t dt;
 	strtoquid(quid, &key);
@@ -186,19 +190,25 @@ char *db_get_type(char *quid) {
 		return NULL;
 	void *data = slay_unwrap(val_data, &len, &dt);
 	zfree(data);
-	return str_type(dt);
+	return str_type(dt);*/
+	return NULL;
 }
 
 int db_update(char *quid, const void *data, size_t len) {
 	if (!ready)
 		return -1;
-	quid_t key;
+	(void)quid;
+	(void)data;
+	(void)len;
+/*	quid_t key;
 	strtoquid(quid, &key);
-	void *val_data = slay_wrap((void *)data, &len, DT_TEXT);
+	void *slay = create_row(1, &len);
+	void *val_data = slay_wrap(slay, (void *)data, len, DT_TEXT);
 	if (engine_update(&btx, &key, val_data, len)<0) {
 		return -1;
 	}
-	zfree(val_data);
+	zfree(slay);
+	zfree(val_data);*/
 	return 0;
 }
 

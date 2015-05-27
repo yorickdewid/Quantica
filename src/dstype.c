@@ -1,3 +1,4 @@
+#include <string.h>
 #include <ctype.h>
 #include <config.h>
 #include <common.h>
@@ -33,11 +34,11 @@ bool isdata(dstype_t ds) {
 	return FALSE;
 }
 
-dstype_t autotype(const void *data, size_t len) {
+dstype_t autotype(const char *data, size_t len) {
 	if (!len)
 		return DT_NULL;
 	if (len == 1) {
-		int fchar = (int)((char *)data)[0];
+		int fchar = data[0];
 		switch (fchar) {
 			case '0':
 			case 'f':
@@ -51,35 +52,37 @@ dstype_t autotype(const void *data, size_t len) {
 		if(isalpha(fchar))
 			return DT_CHAR;
 	}
-	if(strisdigit((char *)data))
+	int8_t b = is_bool((char *)data);
+	if (b!=-1)
+		return b ? DT_BOOL_T : DT_BOOL_F;
+	if (strisdigit((char *)data))
 		return DT_INT;
-	if (strquid_format((char *)data)>0)
+	if (strismatch(data, "1234567890.")) {
+		if(strccnt(data, '.') == 1)
+			if (data[0] != '.' && data[len-1] != '.')
+				return DT_FLOAT;
+	}
+	if (strquid_format(data)>0)
 		return DT_QUID;
-	if (json_valid((char *)data))
+	if (json_valid(data))
 		return DT_JSON;
     return DT_TEXT;
 }
 
-char *datatotype(dstype_t dt) {
-	switch(dt) {
-		case DT_NULL:
-			return zstrdup(str_null());
-		case DT_BOOL_T:
-			return zstrdup(str_bool(TRUE));
-		case DT_BOOL_F:
-			return zstrdup(str_bool(FALSE));
-		default:
-			return NULL;
-	}
-	return NULL;
+int8_t is_bool(char *str) {
+	if (!strcmp(str, "true") || !strcmp(str, "TRUE"))
+		return TRUE;
+	if (!strcmp(str, "false") || !strcmp(str, "FALSE"))
+		return FALSE;
+	return -1;
 }
 
 char *str_bool(bool b) {
-	return b ? "TRUE" : "FALSE";
+	return b ? "true" : "false";
 }
 
 char *str_null() {
-	return "NULL";
+	return "null";
 }
 
 char *str_type(dstype_t dt) {

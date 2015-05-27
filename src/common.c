@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <config.h>
 #include <common.h>
@@ -26,6 +27,36 @@ bool strisdigit(char *str) {
 		if(!isdigit(*str))
 			return FALSE;
 	return TRUE;
+}
+
+char *strrmquote(char *str) {
+	char *p = str;
+	p++;
+	p[strlen(p)-1] = 0;
+	return p;
+}
+
+bool strismatch(const char *str, const char *tok) {
+	for (; *str; ++str) {
+		bool flag = FALSE;
+		const char *pt = tok;
+		for (; *tok; ++tok)
+			if (*str == *tok)
+				flag = TRUE;
+		tok = pt;
+		if (!flag)
+			return FALSE;
+	}
+	return TRUE;
+}
+
+int strccnt(const char *str, char c) {
+	int cnt = 0;
+	while((str = strchr(str, c)) != NULL) {
+		cnt++;
+		str++;
+	}
+	return cnt;
 }
 
 uint16_t _ntohs(uint16_t x) {
