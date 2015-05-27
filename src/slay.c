@@ -466,8 +466,12 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_QUID: {
 						dstype_t dt;
 						buf = _db_get((quid_t *)val_data, &dt);
-						size_t buflen = strlen(buf);
-						json_array_push(arr, resolv_quid(buf, buflen, dt));
+						if (!buf)
+							json_array_push(arr, json_null_new());
+						else {
+							size_t buflen = strlen(buf);
+							json_array_push(arr, resolv_quid(buf, buflen, dt));
+						}
 
 						zfree(buf);
 						zfree(val_data);
@@ -548,8 +552,12 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_QUID: {
 						dstype_t dt;
 						buf = _db_get((quid_t *)val_data, &dt);
-						size_t buflen = strlen(buf);
-						json_object_push(obj, (char *)name, resolv_quid(buf, buflen, dt));
+						if (!buf)
+							json_object_push(obj, (char *)name, json_null_new());
+						else {
+							size_t buflen = strlen(buf);
+							json_object_push(obj, (char *)name, resolv_quid(buf, buflen, dt));
+						}
 
 						zfree(buf);
 						zfree(val_data);
