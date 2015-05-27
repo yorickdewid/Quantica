@@ -549,18 +549,18 @@ uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t le
 	slay->val_type = dt;
 	slay->size = data_size;
 	slay->namesize = namelen;
+
 	uint8_t *dest = ((uint8_t *)slay)+sizeof(struct value_slay);
-	if (!slay->size)
-		return dest;
+	if (slay->size) {
+		memcpy(dest, data, data_size);
+	}
 
-	memcpy(dest, data, data_size);
-	if (!slay->namesize)
-		return dest+data_size;
+	if (slay->namesize) {
+		uint8_t *namedest = dest+slay->size;
+		memcpy(namedest, name, namelen);
+	}
 
-	uint8_t *namedest = dest+data_size;
-	memcpy(namedest, name, namelen);
-
-	return namedest+namelen;
+	return dest+slay->size+namelen;
 }
 
 void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_t *dt) {
