@@ -12,7 +12,7 @@
 #include "zmalloc.h"
 
 #define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
-
+#define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
 
 #define FATAL(msg)                                        \
   do {                                                    \
@@ -322,7 +322,8 @@ void *slay_get_data(void *data) {
 			dstype_t val_dt;
 
 			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
-			next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+			//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+			next = next_row(next);
 			switch (val_dt) {
 				case DT_NULL:
 					buf = zstrdup(str_null());
@@ -371,7 +372,8 @@ void *slay_get_data(void *data) {
 			for (i=0; i<elements; ++i) {
 				size_t namelen;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
-				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+				//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+				next = next_row(next);
 				switch (val_dt) {
 					case DT_NULL:
 						json_array_push(arr, json_null_new());
@@ -446,7 +448,8 @@ void *slay_get_data(void *data) {
 				void *name = NULL;
 				size_t namelen;
 				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
-				next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+				//next = (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen);
+				next = next_row(next);
 				name = (char *)zrealloc(name, namelen+1);
 				((char *)name)[namelen] = '\0';
 
