@@ -2,9 +2,7 @@
 
 #include "dict.h"
 
-/**
- * Allocates a fresh unused token from the token pull.
- */
+/* Allocates a fresh unused token from the token pull. */
 static dict_token_t *dict_alloc_token(dict_parser *parser, dict_token_t *tokens, size_t num_tokens) {
 	dict_token_t *tok;
 	if (parser->toknext >= num_tokens) {
@@ -19,9 +17,7 @@ static dict_token_t *dict_alloc_token(dict_parser *parser, dict_token_t *tokens,
 	return tok;
 }
 
-/**
- * Fills token type and boundaries.
- */
+/* Fills token type and boundaries. */
 static void dict_fill_token(dict_token_t *token, dict_type_t type, int start, int end) {
 	token->type = type;
 	token->start = start;
@@ -29,9 +25,7 @@ static void dict_fill_token(dict_token_t *token, dict_type_t type, int start, in
 	token->size = 0;
 }
 
-/**
- * Fills next available token with dictionary primitive.
- */
+/* Fills next available token with dictionary primitive. */
 static dict_err_t dict_parse_primitive(dict_parser *parser, const char *str, size_t len, dict_token_t *tokens, size_t num_tokens) {
 	dict_token_t *token;
 	int start;
@@ -40,10 +34,8 @@ static dict_err_t dict_parse_primitive(dict_parser *parser, const char *str, siz
 
 	for (; parser->pos < len && str[parser->pos] != '\0'; parser->pos++) {
 		switch (str[parser->pos]) {
-#ifndef DICT_STRICT
 			/* In strict mode primitive must be followed by "," or "}" or "]" */
 			case ':':
-#endif
 			case '\t' : case '\r' : case '\n' : case ' ' :
 			case ','  : case ']'  : case '}' :
 				goto found;
@@ -53,11 +45,9 @@ static dict_err_t dict_parse_primitive(dict_parser *parser, const char *str, siz
 			return DICT_ERROR_INVAL;
 		}
 	}
-#ifdef DICT_STRICT
 	/* In strict mode primitive must be followed by a comma/object/array */
 	parser->pos = start;
 	return DICT_ERROR_PART;
-#endif
 
 found:
 	if (tokens == NULL) {
@@ -77,9 +67,7 @@ found:
 	return 0;
 }
 
-/**
- * Filsl next token with dictionary string.
- */
+/* Fills next token with dictionary string. */
 static dict_err_t dict_parse_string(dict_parser *parser, const char *str, size_t len, dict_token_t *tokens, size_t num_tokens) {
 	dict_token_t *token;
 
@@ -143,9 +131,7 @@ static dict_err_t dict_parse_string(dict_parser *parser, const char *str, size_t
 	return DICT_ERROR_PART;
 }
 
-/**
- * Parse dictionary string and fill tokens.
- */
+/* Parse dictionary string and fill tokens. */
 dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_token_t *tokens, unsigned int num_tokens) {
 	dict_err_t r;
 	int i;
@@ -252,7 +238,7 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 #endif
 				}
 				break;
-#ifdef DICT_STRICT
+
 			/* In strict mode primitives are: numbers and booleans */
 			case '-': case '0': case '1' : case '2': case '3' : case '4':
 			case '5': case '6': case '7' : case '8': case '9':
@@ -265,7 +251,7 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 						return DICT_ERROR_INVAL;
 					}
 				}
-#else
+#if 0
 			/* In non-strict mode every unquoted value is a primitive */
 			default:
 #endif
@@ -276,11 +262,9 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 					tokens[parser->toksuper].size++;
 				break;
 
-#ifdef DICT_STRICT
 			/* Unexpected char in strict mode */
 			default:
 				return DICT_ERROR_INVAL;
-#endif
 		}
 	}
 
@@ -294,10 +278,7 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 	return count;
 }
 
-/**
- * Creates a new parser based over a given  buffer with an array of tokens
- * available.
- */
+/* Creates a new parser */
 void dict_init(dict_parser *parser) {
 	parser->pos = 0;
 	parser->toknext = 0;
