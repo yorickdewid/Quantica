@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "dict.h"
 
@@ -198,7 +199,8 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 					}
 				}
 				/* Error if unmatched closing bracket */
-				if (i == -1) return DICT_ERROR_INVAL;
+				if (i == -1)
+					return DICT_ERROR_INVAL;
 				for (; i >= 0; i--) {
 					token = &tokens[i];
 					if (token->start != -1 && token->end == -1) {
@@ -283,4 +285,10 @@ void dict_init(dict_parser *parser) {
 	parser->pos = 0;
 	parser->toknext = 0;
 	parser->toksuper = -1;
+}
+
+int dict_cmp(const char *str, dict_token_t *tok, const char *s) {
+	if ((tok->type == DICT_STRING || tok->type == DICT_PRIMITIVE) && (int)strlen(s) == tok->end - tok->start && !strncmp(str + tok->start, s, tok->end - tok->start))
+		return 1;
+	return 0;
 }

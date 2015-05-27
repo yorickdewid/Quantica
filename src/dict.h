@@ -41,4 +41,6 @@ void dict_init(dict_parser *parser);
 /* Run dictionary parser. */
 dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_token_t *tokens, unsigned int num_tokens);
 
+int dict_cmp(const char *str, dict_token_t *tok, const char *s);
+
 #endif // DICT_H_INCLUDED
