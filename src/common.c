@@ -29,6 +29,13 @@ bool strisdigit(char *str) {
 	return TRUE;
 }
 
+char *strrmquote(char *str) {
+	char *p = str;
+	p++;
+	p[strlen(p)-1] = 0;
+	return p;
+}
+
 bool strismatch(const char *str, const char *tok) {
 	for (; *str; ++str) {
 		bool flag = FALSE;
