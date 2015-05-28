@@ -43,4 +43,6 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 
 int dict_cmp(const char *str, dict_token_t *tok, const char *s);
 
+int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt);
+
 #endif // DICT_H_INCLUDED

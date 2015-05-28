@@ -292,3 +292,29 @@ int dict_cmp(const char *str, dict_token_t *tok, const char *s) {
 		return 1;
 	return 0;
 }
+
+int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt) {
+	int i, j;
+	depth++;
+	if (depth == level)
+		(*cnt)++;
+	if (t->type == DICT_PRIMITIVE) {
+		return 1;
+	} else if (t->type == DICT_STRING) {
+		return 1;
+	} else if (t->type == DICT_OBJECT) {
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+		}
+		return j+1;
+	} else if (t->type == DICT_ARRAY) {
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+		}
+		return j+1;
+	}
+	return 0;
+}
