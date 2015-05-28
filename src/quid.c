@@ -178,7 +178,7 @@ uint8_t strquid_format(const char *s) {
 
 		return 1;
 	} else if (ssz == QUID_SHORT_LENGTH) {
-		if (s[strspn(s, "{}-0123456789abcdefABCDEF")])
+		if (s[strspn(s, "-0123456789abcdefABCDEF")])
 			return 0;
 
 		char *pch = strchr(s, '-');

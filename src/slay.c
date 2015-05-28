@@ -50,7 +50,12 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_INT);
 				}
 			} else if (t[i].type == DICT_STRING) {
-				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+				char *squid = data+t[i].start;
+				squid[t[i].end-t[i].start] = '\0';
+				if (strquid_format(data+t[i].start)>0)
+					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_QUID);
+				else
+					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
 			} else if (t[i].type == DICT_OBJECT) {
 				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
@@ -74,7 +79,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		cnt /= 2;
 		*items = cnt;
 
-		slay = create_row(SCHEMA_ASOCARRAY, cnt, data_len, slay_len);
+		slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
 		void *next = movetodata_row(slay);
 		for (i=1; i<r; ++i) {
 			if (i%2 == 0) {
@@ -89,7 +94,12 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_INT);
 					}
 				} else if (t[i].type == DICT_STRING) {
-					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+					char *squid = data+t[i].start;
+					squid[t[i].end-t[i].start] = '\0';
+					if (strquid_format(data+t[i].start)>0)
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_QUID);
+					else
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
 				} else if (t[i].type == DICT_OBJECT) {
 					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 					int x, j = 0;
@@ -392,7 +402,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			json_builder_free(arr);
 			break;
 		}
-		case SCHEMA_ASOCARRAY: {
+		case SCHEMA_OBJECT: {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
@@ -438,6 +448,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_TEXT: {
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
+						puts(val_data);
 						json_object_push(obj, (char *)name, json_string_new(val_data));
 						zfree(val_data);
 						break;
@@ -456,7 +467,8 @@ void *slay_get_data(void *data, dstype_t *dt) {
 						zfree(val_data);
 						break;
 					case DT_QUID: {
-						dstype_t dt;
+						printf(">>>%.*s\n", (int)val_len, (char *)val_data);
+						/*dstype_t dt;
 						buf = _db_get((quid_t *)val_data, &dt);
 						if (!buf)
 							json_object_push(obj, (char *)name, json_null_new());
@@ -465,7 +477,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 							json_object_push(obj, (char *)name, resolv_quid(buf, buflen, dt));
 						}
 
-						zfree(buf);
+						zfree(buf);*/
 						zfree(val_data);
 						break;
 					}
@@ -480,9 +492,6 @@ void *slay_get_data(void *data, dstype_t *dt) {
 
 			break;
 		}
-		case SCHEMA_TABLE:
-			/* Not implemented */
-			break;
 	}
 
 	return buf;
