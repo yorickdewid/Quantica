@@ -780,10 +780,10 @@ void handle_request(int sd, fd_set *set) {
 	lprintf(logreqline);
 
 	if (c_connection) {
-		if(!strcmp(c_connection, "close")){
-			vector_append(headers, tree_zstrdup("Connection: close\r\n", headers));
+		if(!strcmp(c_connection, "close")) {
+			vector_append_str(headers, "Connection: close\r\n");
 		} else if(!strcmp(c_connection, "keep-alive")){
-			vector_append(headers, tree_zstrdup("Connection: keep-alive\r\n", headers));
+			vector_append_str(headers, "Connection: keep-alive\r\n");
 		}
 	}
 
@@ -833,7 +833,7 @@ unsupported:
 		_filename[fsz-1] = '\0';
 
 	if (request_type == HTTP_OPTIONS) {
-		vector_append(headers, tree_zstrdup("Allow: POST,OPTIONS,GET,HEAD\r\n", headers));
+		vector_append_str(headers, "Allow: POST,OPTIONS,GET,HEAD\r\n");
 		raw_response(socket_stream, headers, "200 OK");
 		goto done;
 	}
