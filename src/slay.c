@@ -16,37 +16,6 @@
 #define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
 #define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
 
-json_value *parse_json(json_value *json) {
-	unsigned int i = 0;
-	switch (json->type) {
-		case json_none:
-			return json_null_new();
-		case json_object: {
-			json_value *obj = json_object_new(json->u.object.length);
-			for(; i<json->u.object.length; ++i)
-				json_object_push(obj, json->u.object.values[i].name, parse_json(json->u.object.values[i].value));
-			return obj;
-		}
-		case json_array: {
-			json_value *arr = json_array_new(json->u.array.length);
-			for(; i<json->u.array.length; ++i)
-				json_array_push(arr, parse_json(json->u.array.values[i]));
-			return arr;
-		}
-		case json_integer:
-			return json_integer_new(json->u.integer);
-		case json_double:
-			return json_double_new(json->u.dbl);
-		case json_string:
-			return json_string_new(json->u.string.ptr);
-		case json_boolean:
-			return json_boolean_new(json->u.boolean);
-		case json_null:
-			return json_null_new();
-	}
-	return json_null_new();
-}
-
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items) {
 	void *slay = NULL;
 
