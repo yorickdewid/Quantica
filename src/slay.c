@@ -3,27 +3,18 @@
 #include <string.h>
 #include <assert.h>
 
+#include <log.h>
+
 #include "dstype.h"
 #include "slay.h"
 #include "quid.h"
-#include "json_parse.h"
+#include "dict.h"
 #include "json_encode.h"
 #include "core.h"
 #include "zmalloc.h"
 
 #define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
 #define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
-
-#define FATAL(msg)                                        \
-  do {                                                    \
-    fprintf(stderr,                                       \
-            "Fatal error in %s on line %d: %s\n",         \
-            __FILE__,                                     \
-            __LINE__,                                     \
-            msg);                                         \
-    fflush(stderr);                                       \
-    abort();                                              \
-  } while (0)
 
 json_value *parse_json(json_value *json) {
 	unsigned int i = 0;
@@ -56,155 +47,125 @@ json_value *parse_json(json_value *json) {
 	return json_null_new();
 }
 
+int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt) {
+	int i, j;
+	depth++;
+	if (depth == level)
+		(*cnt)++;
+	if (t->type == DICT_PRIMITIVE) {
+		return 1;
+	} else if (t->type == DICT_STRING) {
+		return 1;
+	} else if (t->type == DICT_OBJECT) {
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+		}
+		return j+1;
+	} else if (t->type == DICT_ARRAY) {
+		j = 0;
+		for (i = 0; i < t->size; i++) {
+			j += dict_levelcount(t+1+j, depth, level, cnt);
+		}
+		return j+1;
+	}
+	return 0;
+}
+
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items) {
 	void *slay = NULL;
 
-	json_value *json = json_parse(data, data_len);
-	if (json->type == json_array) {
-		slay = create_row(SCHEMA_ARRAY, json->u.array.length, data_len, slay_len);
+	int i;
+	int r;
+	dict_parser p;
+	dict_token_t t[data_len];
+
+	dict_init(&p);
+	r = dict_parse(&p, data, data_len, t, data_len);
+	if (r < 1)
+		lprintf("[erro] Failed to parse dict\n");
+
+	if (t[0].type == DICT_ARRAY) {
+		int cnt = 0;
+		dict_levelcount(t, 0, 2, &cnt);
+		*items = cnt;
+
+		slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
 		void *next = movetodata_row(slay);
-		*items = json->u.array.length;
-
-		unsigned int i;
-		for(i=0; i<json->u.array.length; ++i) {
-			switch (json->u.array.values[i]->type) {
-				case json_none:
+		for (i=1; i<r; ++i) {
+			if (t[i].type == DICT_PRIMITIVE) {
+				if (dict_cmp(data, &t[i], "null")) {
 					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
-					break;
-				case json_object: {
-					json_value *obj = json_object_new(json->u.array.values[i]->u.object.length);
-					unsigned int j = 0;
-
-					for (; j<json->u.array.values[i]->u.object.length; ++j) {
-						json_value *val = parse_json(json->u.array.values[i]->u.object.values[j].value);
-						json_object_push(obj, json->u.array.values[i]->u.object.values[j].name, val);
-					}
-					size_t objsz = json_measure(obj);
-					char *buf = zmalloc(objsz);
-					json_serialize(buf, obj);
-					json_builder_free(obj);
-					next = slay_wrap(next, NULL, 0, buf, objsz, DT_JSON);
-					zfree(buf);
-					break;
+				} else if (dict_cmp(data, &t[i], "true")) {
+					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
+				} else if (dict_cmp(data, &t[i], "false")) {
+					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
+				} else {
+					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_INT);
 				}
-				case json_array: {
-					json_value *arr = json_array_new(json->u.array.values[i]->u.array.length);
-					unsigned int j = 0;
-					for (; j<json->u.array.values[i]->u.array.length; ++j) {
-						json_value *val = parse_json(json->u.array.values[i]->u.array.values[j]);
-						json_array_push(arr, val);
-					}
-					size_t arrsz = json_measure(arr);
-					char *buf = zmalloc(arrsz);
-					json_serialize(buf, arr);
-					json_builder_free(arr);
-					next = slay_wrap(next, NULL, 0, buf, arrsz, DT_JSON);
-					zfree(buf);
-					break;
+			} else if (t[i].type == DICT_STRING) {
+				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+			} else if (t[i].type == DICT_OBJECT) {
+				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+				int x, j = 0;
+				for (x=0; x<t[i].size; x++) {
+					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 				}
-				case json_integer: {
-					char *istr = itoa(json->u.array.values[i]->u.integer);
-					next = slay_wrap(next, NULL, 0, istr, strlen(istr), DT_INT);
-					break;
+				i += j;
+			} else if (t[i].type == DICT_ARRAY) {
+				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+				int x, j = 0;
+				for (x=0; x<t[i].size; x++) {
+					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 				}
-				case json_double: {
-					char lstr[32];
-					sprintf(lstr, "%f", json->u.array.values[i]->u.dbl);
-					next = slay_wrap(next, NULL, 0, lstr, strlen(lstr), DT_FLOAT);
-					break;
-				}
-				case json_string:
-					if (strquid_format(json->u.array.values[i]->u.string.ptr)>0) {
-						quid_t pu;
-						strtoquid(json->u.array.values[i]->u.string.ptr, &pu);
-
-						next = slay_wrap(next, NULL, 0, (void *)&pu, sizeof(quid_t), DT_QUID);
-						break;
-					}
-					next = slay_wrap(next, NULL, 0, json->u.array.values[i]->u.string.ptr, json->u.array.values[i]->u.string.length, DT_TEXT);
-					break;
-				case json_boolean:
-					next = slay_wrap(next, NULL, 0, NULL, 0, json->u.array.values[i]->u.boolean ? DT_BOOL_T : DT_BOOL_F);
-					break;
-				case json_null:
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
-					break;
+				i += j;
 			}
 		}
-	} else {
-		slay = create_row(SCHEMA_ASOCARRAY, json->u.object.length, data_len, slay_len);
+	} else if (t[0].type == DICT_OBJECT) {
+		int cnt = 0;
+		dict_levelcount(t, 0, 2, &cnt);
+		cnt /= 2;
+		*items = cnt;
+
+		slay = create_row(SCHEMA_ASOCARRAY, cnt, data_len, slay_len);
 		void *next = movetodata_row(slay);
-		*items = json->u.object.length;
-
-		unsigned int i;
-		for(i=0; i<json->u.object.length; ++i) {
-			switch (json->u.object.values[i].value->type) {
-				case json_none:
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, NULL, 0, DT_NULL);
-					break;
-				case json_object: {
-					json_value *obj = json_object_new(json->u.object.values[i].value->u.object.length);
-					unsigned int j = 0;
-
-					for (; j<json->u.object.values[i].value->u.object.length; ++j) {
-						json_value *val = parse_json(json->u.object.values[i].value->u.object.values[j].value);
-						json_object_push(obj, json->u.object.values[i].value->u.object.values[j].name, val);
+		for (i=1; i<r; ++i) {
+			if (i%2 == 0) {
+				if (t[i].type == DICT_PRIMITIVE) {
+					if (dict_cmp(data, &t[i], "null")) {
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_NULL);
+					} else if (dict_cmp(data, &t[i], "true")) {
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_BOOL_T);
+					} else if (dict_cmp(data, &t[i], "false")) {
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_BOOL_F);
+					} else {
+						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_INT);
 					}
-					size_t objsz = json_measure(obj);
-					char *buf = zmalloc(objsz);
-					json_serialize(buf, obj);
-					json_builder_free(obj);
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, buf, objsz, DT_JSON);
-					zfree(buf);
-					break;
-				}
-				case json_array: {
-					json_value *arr = json_array_new(json->u.object.values[i].value->u.array.length);
-					unsigned int j = 0;
-					for (; j<json->u.object.values[i].value->u.array.length; ++j) {
-						json_value *val = parse_json(json->u.object.values[i].value->u.array.values[j]);
-						json_array_push(arr, val);
+				} else if (t[i].type == DICT_STRING) {
+					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+				} else if (t[i].type == DICT_OBJECT) {
+					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+					int x, j = 0;
+					for (x=0; x<t[i].size; x++) {
+						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 					}
-					size_t arrsz = json_measure(arr);
-					char *buf = zmalloc(arrsz);
-					json_serialize(buf, arr);
-					json_builder_free(arr);
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, buf, arrsz, DT_JSON);
-					zfree(buf);
-					break;
-				}
-				case json_integer: {
-					char *istr = itoa(json->u.object.values[i].value->u.integer);
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, istr, strlen(istr), DT_INT);
-					break;
-				}
-				case json_double: {
-					char lstr[32];
-					sprintf(lstr, "%f", json->u.object.values[i].value->u.dbl);
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, lstr, strlen(lstr), DT_FLOAT);
-					break;
-				}
-				case json_string:
-					if (strquid_format(json->u.object.values[i].value->u.string.ptr)>0) {
-						quid_t pu;
-						strtoquid(json->u.object.values[i].value->u.string.ptr, &pu);
-
-						next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, (void *)&pu, sizeof(quid_t), DT_QUID);
-						break;
+					i += j;
+				} else if (t[i].type == DICT_ARRAY) {
+					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+					int x, j = 0;
+					for (x=0; x<t[i].size; x++) {
+						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 					}
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, json->u.object.values[i].value->u.string.ptr, json->u.object.values[i].value->u.string.length, DT_TEXT);
-					break;
-				case json_boolean:
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, NULL, 0, json->u.object.values[i].value->u.boolean ? DT_BOOL_T : DT_BOOL_F);
-					break;
-				case json_null:
-					next = slay_wrap(next, json->u.object.values[i].name, json->u.object.values[i].name_length, NULL, 0, DT_NULL);
-					break;
+					i += j;
+				}
 			}
 		}
+
 	}
 
-	json_value_free(json);
 	return slay;
 }
 
