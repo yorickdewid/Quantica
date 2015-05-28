@@ -1,0 +1,17 @@
+#ifndef VECTOR_H_INCLUDED
+#define VECTOR_H_INCLUDED
+
+#include <string.h>
+
+typedef struct {
+	void **buffer;
+	unsigned int size;
+	unsigned int alloc_size;
+} vector_t;
+
+vector_t *alloc_vector(size_t sz);
+void free_vector(vector_t *v);
+void vector_append(vector_t *v, void *item);
+void *vector_at(vector_t *v, unsigned int idx);
+
+#endif // VECTOR_H_INCLUDED

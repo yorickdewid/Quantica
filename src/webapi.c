@@ -30,6 +30,7 @@
 #include "md5.h"
 #include "dstype.h"
 #include "sha256.h"
+#include "vector.h"
 #include "time.h"
 #include "hashtable.h"
 #include "webapi.h"
@@ -69,44 +70,11 @@ typedef struct {
 	http_method_t method;
 } http_request_t;
 
-typedef struct {
-	void **buffer;
-	unsigned int size;
-	unsigned int alloc_size;
-} vector_t;
-
 struct webroute {
 	char uri[32];
 	http_status_t (*api_handler)(char *response, http_request_t *req);
 	int require_quid;
 };
-
-vector_t *alloc_vector(size_t sz) {
-	vector_t *v = (vector_t *)tree_zmalloc(sizeof(vector_t), NULL);
-	v->buffer = (void **)tree_zmalloc(sz * sizeof(void *), v);
-	v->size = 0;
-	v->alloc_size = sz;
-
-	return v;
-}
-
-void free_vector(vector_t *v) {
-	zfree(v->buffer);
-}
-
-void vector_append(vector_t *v, void *item) {
-	if(v->size == v->alloc_size) {
-		v->alloc_size = v->alloc_size * 2;
-		v->buffer = (void **)tree_zrealloc(v->buffer, v->alloc_size *sizeof(void *));
-	}
-
-	v->buffer[v->size] = item;
-	v->size++;
-}
-
-void *vector_at(vector_t *v, unsigned int idx) {
-	return idx >= v->size ? NULL : v->buffer[idx];
-}
 
 void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET)
