@@ -57,8 +57,10 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 
 	dict_init(&p);
 	r = dict_parse(&p, data, data_len, t, data_len);
-	if (r < 1)
+	if (r < 1) {
 		lprintf("[erro] Failed to parse dict\n");
+		return NULL;
+	}
 
 	if (t[0].type == DICT_ARRAY) {
 		int cnt = 0;
