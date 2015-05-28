@@ -12,10 +12,6 @@ vector_t *alloc_vector(size_t sz) {
 	return v;
 }
 
-void free_vector(vector_t *v) {
-	zfree(v->buffer);
-}
-
 void vector_append(vector_t *v, void *item) {
 	if(v->size == v->alloc_size) {
 		v->alloc_size = v->alloc_size * 2;

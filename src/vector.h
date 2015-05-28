@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#define vector_free(v) tree_zfree(v);
+
 typedef struct {
 	void **buffer;
 	unsigned int size;
@@ -10,7 +12,6 @@ typedef struct {
 } vector_t;
 
 vector_t *alloc_vector(size_t sz);
-void free_vector(vector_t *v);
 void vector_append(vector_t *v, void *item);
 void *vector_at(vector_t *v, unsigned int idx);
 void vector_append_str(vector_t *v, const char *str);

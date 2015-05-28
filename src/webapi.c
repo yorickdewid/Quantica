@@ -601,8 +601,8 @@ void handle_request(int sd, fd_set *set) {
 		if (!strstr(in, "\n")) {
 			raw_response(socket_stream, headers, "400 Bad Request");
 			fflush(socket_stream);
-			tree_zfree(queue);
-			tree_zfree(headers);
+			vector_free(queue);
+			vector_free(headers);
 			goto disconnect;
 		}
 
@@ -613,8 +613,8 @@ void handle_request(int sd, fd_set *set) {
 	}
 
 	if (feof(socket_stream)) {
-		tree_zfree(queue);
-		tree_zfree(headers);
+		vector_free(queue);
+		vector_free(headers);
 		goto disconnect;
 	}
 
@@ -640,8 +640,8 @@ void handle_request(int sd, fd_set *set) {
 			if (i > 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				tree_zfree(queue);
-				tree_zfree(headers);
+				vector_free(queue);
+				vector_free(headers);
 				goto disconnect;
 			}
 
@@ -687,8 +687,8 @@ void handle_request(int sd, fd_set *set) {
 			if (filename[0] == ' ' || filename[0] == '\r' || filename[0] == '\n') {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				tree_zfree(queue);
-				tree_zfree(headers);
+				vector_free(queue);
+				vector_free(headers);
 				goto disconnect;
 			}
 
@@ -696,8 +696,8 @@ void handle_request(int sd, fd_set *set) {
 			if (!http_version) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				tree_zfree(queue);
-				tree_zfree(headers);
+				vector_free(queue);
+				vector_free(headers);
 				goto disconnect;
 			}
 			http_version[-1] = '\0';
@@ -718,8 +718,8 @@ void handle_request(int sd, fd_set *set) {
 			if (i == 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
 				fflush(socket_stream);
-				tree_zfree(queue);
-				tree_zfree(headers);
+				vector_free(queue);
+				vector_free(headers);
 				goto disconnect;
 			}
 
@@ -791,16 +791,16 @@ void handle_request(int sd, fd_set *set) {
 unsupported:
 		raw_response(socket_stream, headers, "405 Method Not Allowed");
 		fflush(socket_stream);
-		tree_zfree(queue);
-		tree_zfree(headers);
+		vector_free(queue);
+		vector_free(headers);
 		goto disconnect;
 	}
 
 	if (!filename || strstr(filename, "'") || strstr(filename, " ") || (querystring && strstr(querystring," "))) {
 		raw_response(socket_stream, headers, "400 Bad Request");
 		fflush(socket_stream);
-		tree_zfree(queue);
-		tree_zfree(headers);
+		vector_free(queue);
+		vector_free(headers);
 		goto disconnect;
 	}
 
@@ -915,8 +915,8 @@ done:
 	if(c_buf)
 		zfree(c_buf);
 	zfree(_filename);
-	tree_zfree(queue);
-	tree_zfree(headers);
+	vector_free(queue);
+	vector_free(headers);
 	if (postdata) {
 		free_hashtable(postdata);
 	}
