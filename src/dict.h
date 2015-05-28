@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "vector.h"
+
 /* Dictionary type identifier. */
 typedef enum {
 	DICT_PRIMITIVE = 0,
@@ -35,6 +37,12 @@ typedef struct {
 	int toksuper;			/* superior token node, e.g parent object or array */
 } dict_parser;
 
+typedef struct {
+	char *name;
+	char *str;
+	bool cap;
+} dict_t;
+
 /* Create dictionary parser over an array of tokens */
 void dict_init(dict_parser *parser);
 
@@ -44,5 +52,13 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 int dict_cmp(const char *str, dict_token_t *tok, const char *s);
 
 int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt);
+
+char *dict_array(vector_t *v, char *buf);
+
+char *dict_object(vector_t *v, char *buf);
+
+dict_t *dict_element_cnew(vector_t *v, bool encapsulate, char *name, char *val);
+
+dict_t *dict_element_new(vector_t *v, bool encapsulate, char *name, char *val);
 
 #endif // DICT_H_INCLUDED

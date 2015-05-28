@@ -13,6 +13,8 @@
 #include "core.h"
 #include "zmalloc.h"
 
+#define VECTOR_SIZE	1024
+
 #define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
 #define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
 
@@ -324,37 +326,28 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
-			json_value *arr = json_array_new(elements);
+
+			vector_t *arr = alloc_vector(VECTOR_SIZE);
 			for (i=0; i<elements; ++i) {
 				size_t namelen;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 				switch (val_dt) {
-					case DT_NULL:
-						json_array_push(arr, json_null_new());
-						zfree(val_data);
-						break;
-					case DT_BOOL_T:
-						json_array_push(arr, json_boolean_new(TRUE));
-						zfree(val_data);
-						break;
-					case DT_BOOL_F:
-						json_array_push(arr, json_boolean_new(FALSE));
-						zfree(val_data);
-						break;
-					case DT_INT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
-						((char *)val_data)[val_len] = '\0';
-						long int li = atol(val_data);
-						json_array_push(arr, json_integer_new(li));
+					case DT_NULL: {
+						dict_t *element = dict_element_cnew(arr, FALSE, NULL, "null");
+						vector_append(arr, (void *)element);
 						zfree(val_data);
 						break;
 					}
-					case DT_FLOAT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
-						((char *)val_data)[val_len] = '\0';
-						double ld = atof(val_data);
-						json_array_push(arr, json_double_new(ld));
+					case DT_BOOL_T: {
+						dict_t *element = dict_element_cnew(arr, FALSE, NULL, "true");
+						vector_append(arr, (void *)element);
+						zfree(val_data);
+						break;
+					}
+					case DT_BOOL_F: {
+						dict_t *element = dict_element_cnew(arr, FALSE, NULL, "false");
+						vector_append(arr, (void *)element);
 						zfree(val_data);
 						break;
 					}
@@ -362,34 +355,35 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_TEXT: {
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						json_array_push(arr, json_string_new(val_data));
+						dict_t *element = dict_element_new(arr, TRUE, NULL, val_data);
+						vector_append(arr, (void *)element);
 						zfree(val_data);
 						break;
 					}
+					case DT_INT:
+					case DT_FLOAT:
 					case DT_JSON:
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						json_settings settings;
-						memset(&settings, 0, sizeof(json_settings));
-						settings.value_extra = json_builder_extra;
-
-						char error[128];
-						json_value *zarr = json_parse_ex(&settings, val_data, val_len, error);
-						json_array_push(arr, zarr);
-
+						dict_t *element = dict_element_new(arr, FALSE, NULL, val_data);
+						vector_append(arr, (void *)element);
 						zfree(val_data);
 						break;
 					case DT_QUID: {
-						dstype_t dt;
-						buf = _db_get((quid_t *)val_data, &dt);
-						if (!buf)
-							json_array_push(arr, json_null_new());
-						else {
-							size_t buflen = strlen(buf);
-							json_array_push(arr, resolv_quid(buf, buflen, dt));
-						}
+						//dstype_t dt;
+						//buf = _db_get((quid_t *)val_data, &dt);
+						//if (!buf)
+						//	json_array_push(arr, json_null_new());
+						//else {
+						//	size_t buflen = strlen(buf);
+						//	json_array_push(arr, resolv_quid(buf, buflen, dt));
+						//}
+						//dict_t element = {NULL, val_data, 1};
+						//vector_append(arr, (void *)&element);
+						dict_t *element = dict_element_new(arr, TRUE, NULL, val_data);
+						vector_append(arr, (void *)element);
 
-						zfree(buf);
+						//zfree(buf);
 						zfree(val_data);
 						break;
 					}
@@ -397,16 +391,19 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(json_measure(arr));
-			json_serialize(buf, arr);
-			json_builder_free(arr);
+			buf = malloc(arr->alloc_size);
+			memset(buf, 0, arr->alloc_size);
+			buf = dict_array(arr, buf);
+			vector_free(arr);
+
 			break;
 		}
 		case SCHEMA_OBJECT: {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
-			json_value *obj = json_object_new(elements);
+
+			vector_t *obj = alloc_vector(VECTOR_SIZE);
 			for (i=0; i<elements; ++i) {
 				void *name = NULL;
 				size_t namelen;
@@ -416,31 +413,21 @@ void *slay_get_data(void *data, dstype_t *dt) {
 				((char *)name)[namelen] = '\0';
 
 				switch (val_dt) {
-					case DT_NULL:
-						json_object_push(obj, (char *)name, json_null_new());
-						zfree(val_data);
-						break;
-					case DT_BOOL_T:
-						json_object_push(obj, (char *)name, json_boolean_new(TRUE));
-						zfree(val_data);
-						break;
-					case DT_BOOL_F:
-						json_object_push(obj, (char *)name, json_boolean_new(FALSE));
-						zfree(val_data);
-						break;
-					case DT_INT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
-						((char *)val_data)[val_len] = '\0';
-						long int li = atol(val_data);
-						json_object_push(obj, (char *)name, json_integer_new(li));
+					case DT_NULL: {
+						dict_t *element = dict_element_cnew(obj, FALSE, name, "null");
+						vector_append(obj, (void *)element);
 						zfree(val_data);
 						break;
 					}
-					case DT_FLOAT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
-						((char *)val_data)[val_len] = '\0';
-						double ld = atof(val_data);
-						json_object_push(obj, (char *)name, json_double_new(ld));
+					case DT_BOOL_T: {
+						dict_t *element = dict_element_cnew(obj, FALSE, name, "true");
+						vector_append(obj, (void *)element);
+						zfree(val_data);
+						break;
+					}
+					case DT_BOOL_F: {
+						dict_t *element = dict_element_cnew(obj, FALSE, name, "false");
+						vector_append(obj, (void *)element);
 						zfree(val_data);
 						break;
 					}
@@ -448,26 +435,22 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_TEXT: {
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						puts(val_data);
-						json_object_push(obj, (char *)name, json_string_new(val_data));
+						dict_t *element = dict_element_new(obj, TRUE, name, val_data);
+						vector_append(obj, (void *)element);
 						zfree(val_data);
 						break;
 					}
+					case DT_FLOAT:
+					case DT_INT:
 					case DT_JSON:
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						json_settings settings;
-						memset(&settings, 0, sizeof(json_settings));
-						settings.value_extra = json_builder_extra;
-
-						char error[128];
-						json_value *zarr = json_parse_ex(&settings, val_data, val_len, error);
-						json_object_push(obj, (char *)name, zarr);
-
+						dict_t *element = dict_element_new(obj, FALSE, name, val_data);
+						vector_append(obj, (void *)element);
 						zfree(val_data);
 						break;
 					case DT_QUID: {
-						printf(">>>%.*s\n", (int)val_len, (char *)val_data);
+						//printf(">>>%.*s\n", (int)val_len, (char *)val_data);
 						/*dstype_t dt;
 						buf = _db_get((quid_t *)val_data, &dt);
 						if (!buf)
@@ -478,6 +461,8 @@ void *slay_get_data(void *data, dstype_t *dt) {
 						}
 
 						zfree(buf);*/
+						dict_t *element = dict_element_new(obj, TRUE, name, val_data);
+						vector_append(obj, (void *)element);
 						zfree(val_data);
 						break;
 					}
@@ -486,9 +471,10 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(json_measure(obj));
-			json_serialize(buf, obj);
-			json_builder_free(obj);
+			buf = malloc(obj->alloc_size);
+			memset(buf, 0, obj->alloc_size);
+			buf = dict_object(obj, buf);
+			vector_free(obj);
 
 			break;
 		}

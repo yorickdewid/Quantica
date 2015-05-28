@@ -1,7 +1,12 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <config.h>
+#include <common.h>
+
 #include "dict.h"
+#include "zmalloc.h"
 
 /* Allocates a fresh unused token from the token pull. */
 static dict_token_t *dict_alloc_token(dict_parser *parser, dict_token_t *tokens, size_t num_tokens) {
@@ -317,4 +322,70 @@ int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt) {
 		return j+1;
 	}
 	return 0;
+}
+
+char *dict_array(vector_t *v, char *buf) {
+	unsigned int i;
+	char *_buf = buf+1;
+	for (i=0; i<v->size; ++i) {
+		dict_t *item = (dict_t *)vector_at(v, i);
+		if (i != (v->size-1)) {
+			if (item->cap)
+				sprintf(_buf + strlen(_buf), "\"%s\",", item->str);
+			else
+				sprintf(_buf + strlen(_buf), "%s,", item->str);
+        } else {
+			if (item->cap)
+				sprintf(_buf + strlen(_buf), "\"%s\"", item->str);
+			else
+				sprintf(_buf + strlen(_buf), "%s", item->str);
+		}
+    }
+    buf[0] = '[';
+    buf[strlen(buf)] = ']';
+    buf[strlen(buf)+1] = '\0';
+
+	return buf;
+}
+
+char *dict_object(vector_t *v, char *buf) {
+	unsigned int i;
+	char *_buf = buf+1;
+	for (i=0; i<v->size; ++i) {
+		dict_t *item = (dict_t *)vector_at(v, i);
+		if (i != (v->size-1)) {
+			if (item->cap)
+				sprintf(_buf + strlen(_buf), "\"%s\":\"%s\",", item->name, item->str);
+			else
+				sprintf(_buf + strlen(_buf), "\"%s\":%s,", item->name, item->str);
+		} else {
+			if (item->cap)
+				sprintf(_buf + strlen(_buf), "\"%s\":\"%s\"", item->name, item->str);
+			else
+				sprintf(_buf + strlen(_buf), "\"%s\":%s", item->name, item->str);
+		}
+	}
+    buf[0] = '{';
+    buf[strlen(buf)] = '}';
+    buf[strlen(buf)+1] = '\0';
+
+	return buf;
+}
+
+dict_t *dict_element_cnew(vector_t *v, bool encapsulate, char *name, char *val) {
+	dict_t *elm = (dict_t *)tree_zmalloc(sizeof(dict_t), v);
+	elm->str = val;
+	elm->cap = encapsulate;
+	if (name)
+		elm->name = tree_zstrdup(name, v);
+	return elm;
+}
+
+dict_t *dict_element_new(vector_t *v, bool encapsulate, char *name, char *val) {
+	dict_t *elm = (dict_t *)tree_zmalloc(sizeof(dict_t), v);
+	elm->str = tree_zstrdup(val, v);
+	elm->cap = encapsulate;
+	if (name)
+		elm->name = tree_zstrdup(name, v);
+	return elm;
 }
