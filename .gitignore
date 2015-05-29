@@ -27,12 +27,7 @@
 *.i*86
 *.x86_64
 *.hex
-bin/quantica*
-
-# Database files
-*.*idx*
-*.*db*
-*.*log*
+bin/*
 
 # Workspace specific
 *.layout

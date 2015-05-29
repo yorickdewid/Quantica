@@ -7,9 +7,27 @@
 #include <common.h>
 #include <log.h>
 #include <error.h>
+#include "arc4random.h"
 #include "basecontrol.h"
 
 #define BASECONTROL		"base_control"
+#define INSTANCE_RANDOM	5
+
+static char *generate_instance_name() {
+	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	int i, len = INSTANCE_RANDOM;
+	char rand[INSTANCE_RANDOM];
+	for (i=0; i<len; ++i)
+		rand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
+	rand[len] = 0;
+
+	static char buf[INSTANCE_LENGTH];
+	strlcpy(buf, INSTANCE_PREFIX, INSTANCE_LENGTH);
+	strlcat(buf, "_", INSTANCE_LENGTH);
+	strlcat(buf, rand, INSTANCE_LENGTH);
+
+	return buf;
+}
 
 void base_sync(struct base *base) {
 	struct base_super super;
@@ -49,7 +67,7 @@ void base_init(struct base *base) {
 	} else {
 		quid_create(&base->instance_key);
 		quid_create(&base->base_key);
-		strlcpy(base->instance_name, INSTANCE, INSTANCE_LENGTH);
+		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 
 		static char buf[QUID_LENGTH+1];
 		quidtostr(buf, &base->base_key);
