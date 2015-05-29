@@ -146,11 +146,14 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
-void *_db_get(quid_t *key, dstype_t *dt) {
+void *_db_get(char *quid, dstype_t *dt) {
 	if (!ready)
 		return NULL;
+	quid_t key;
+	strtoquid(quid, &key);
+
 	size_t len;
-	void *data = engine_get(&btx, key, &len);
+	void *data = engine_get(&btx, &key, &len);
 	if (!data)
 		return NULL;
 
