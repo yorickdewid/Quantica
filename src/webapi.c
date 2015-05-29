@@ -192,7 +192,7 @@ http_status_t api_instance(char *response, http_request_t *req) {
 		strlcpy(response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	snprintf(response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":true}", get_instance_name());
+	snprintf(response, RESPONSE_SIZE, "{\"name\":\"%s\",\"id\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":true}", get_instance_name(), get_instance_id());
 	return HTTP_OK;
 }
 

@@ -23,13 +23,23 @@
 static struct engine btx;
 static uint8_t ready = FALSE;
 static qtime_t uptime;
+static quid_t instanceid;
 struct error _eglobal;
 
 void start_core() {
+	/* Start the logger */
 	start_log();
 	ERRORZEOR();
+
+	quid_create(&instanceid);
+
+	/* Initialize engine */
 	engine_init(&btx, INITDB);
+
+	/* Bootstrap database if not exist */
 	bootstrap(&btx);
+
+	/* Server ready */
 	uptime = get_timestamp();
 	ready = TRUE;
 }
@@ -51,6 +61,12 @@ void set_instance_name(char name[]) {
 
 char *get_instance_name() {
 	return btx.ins_name;
+}
+
+char *get_instance_id() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &instanceid);
+	return buf;
 }
 
 char *get_uptime() {
