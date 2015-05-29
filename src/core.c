@@ -16,11 +16,13 @@
 #include "time.h"
 #include "json_encode.h"
 #include "slay.h"
+#include "basecontrol.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "core.h"
 
 static struct engine btx;
+static struct base control;
 static uint8_t ready = FALSE;
 static qtime_t uptime;
 static quid_t instanceid;
@@ -32,6 +34,7 @@ void start_core() {
 	ERRORZEOR();
 
 	quid_create(&instanceid);
+	base_init(&control);
 
 	/* Initialize engine */
 	engine_init(&btx, INITDB);
@@ -47,25 +50,32 @@ void start_core() {
 void detach_core() {
 	if (!ready)
 		return;
+	/* CLose all databases */
 	engine_close(&btx);
+
+	base_close(&control);
+
+	/* Stop the logger */
 	stop_log();
+
+	/* Server is inactive */
 	ready = FALSE;
 }
 
 void set_instance_name(char name[]) {
 	strtoupper(name);
-	strlcpy(btx.ins_name, name, INSTANCE_LENGTH);
-	btx.ins_name[INSTANCE_LENGTH-1] = '\0';
-	engine_sync(&btx);
+	strlcpy(control.instance_name, name, INSTANCE_LENGTH);
+	control.instance_name[INSTANCE_LENGTH-1] = '\0';
+	base_sync(&control);
 }
 
 char *get_instance_name() {
-	return btx.ins_name;
+	return control.instance_name;
 }
 
-char *get_instance_id() {
+char *get_instance_key() {
 	static char buf[QUID_LENGTH+1];
-	quidtostr(buf, &instanceid);
+	quidtostr(buf, &control.instance_key);
 	return buf;
 }
 

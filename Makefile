@@ -30,6 +30,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/json_encode.c \
 		$(SRCDIR)/dstype.c \
 		$(SRCDIR)/slay.c \
+		$(SRCDIR)/basecontrol.c \
 		$(SRCDIR)/engine.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \

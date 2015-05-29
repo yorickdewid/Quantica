@@ -112,7 +112,6 @@ struct engine {
 	int db_fd;
 	int wal_fd;
 	bool lock;
-	char ins_name[INSTANCE_LENGTH];
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];

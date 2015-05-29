@@ -135,7 +135,6 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
 	assert(from_be64(super.version)==VERSION_RELESE);
-	strlcpy(e->ins_name, super.instance, INSTANCE_LENGTH);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -154,7 +153,7 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 	memset(e, 0, sizeof(struct engine));
 	e->fd = open(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	e->db_fd = open(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	e->wal_fd = open(walname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	e->wal_fd = open(walname, O_RDWR | O_TRUNC | O_CREAT, 0644);
 	if (e->fd < 0)
 		return -1;
 
@@ -163,7 +162,6 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 
 	e->alloc = sizeof(struct engine_super);
 	e->db_alloc = sizeof(struct engine_dbsuper);
-	strlcpy(e->ins_name, INSTANCE, INSTANCE_LENGTH);
 	return 0;
 }
 
@@ -332,7 +330,6 @@ static void flush_super(struct engine *e) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
-	strlcpy(super.instance, e->ins_name, INSTANCE_LENGTH);
 
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
