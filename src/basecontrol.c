@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 
 #include <config.h>
 #include <common.h>
@@ -15,6 +16,8 @@ void base_sync(struct base *base) {
 	memset(&super, 0, sizeof(struct base_super));
 	super.base_key = base->base_key;
 	super.instance_key = base->instance_key;
+	super.lock = base->lock;
+	super.version = VERSION_RELESE;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 
 	lseek(base->fd, 0, SEEK_SET);
@@ -40,6 +43,8 @@ void base_init(struct base *base) {
 		}
 		base->base_key = super.base_key;
 		base->instance_key = super.instance_key;
+		base->lock = super.lock;
+		assert(super.version==VERSION_RELESE);
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 	} else {
 		quid_create(&base->instance_key);
@@ -51,6 +56,7 @@ void base_init(struct base *base) {
 
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		base->base_fd = open(buf, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+		close(open(BINDATA, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644));
 		base_sync(base);
 	}
 }

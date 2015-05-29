@@ -12,6 +12,8 @@ struct base {
 	quid_t instance_key;
 	char instance_name[INSTANCE_LENGTH];
 	quid_t base_key;
+	bool lock;
+	uint16_t version;
 	int fd;
 	int base_fd;
 };
@@ -20,6 +22,8 @@ struct base_super {
 	quid_t instance_key;
 	char instance_name[INSTANCE_LENGTH];
 	quid_t base_key;
+	bool lock;
+	uint16_t version;
 };
 
 void base_sync(struct base *base);
