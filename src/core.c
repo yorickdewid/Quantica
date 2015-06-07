@@ -28,6 +28,12 @@ static qtime_t uptime;
 static quid_t instanceid;
 struct error _eglobal;
 
+static char *get_zero_key() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &control.zero_key);
+	return buf;
+}
+
 void start_core() {
 	/* Start the logger */
 	start_log();
@@ -37,7 +43,7 @@ void start_core() {
 	base_init(&control);
 
 	/* Initialize engine */
-	engine_init(&btx, INITDB);
+	engine_init(&btx, get_zero_key(), control.bindata);
 
 	/* Bootstrap database if not exist */
 	bootstrap(&btx);
@@ -164,8 +170,10 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 	void *slay = slay_put_data((char *)data, data_len, &len, items);
 
-	if (engine_insert(&btx, &key, slay, len)<0)
+	if (engine_insert(&btx, &key, slay, len)<0) {
+		zfree(slay);
 		return -1;
+	}
 	zfree(slay);
 
 	quidtostr(quid, &key);
@@ -223,21 +231,20 @@ char *db_get_type(char *quid) {
 	return NULL;
 }
 
-int db_update(char *quid, const void *data, size_t len) {
+int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
-	(void)quid;
-	(void)data;
-	(void)len;
-/*	quid_t key;
+	quid_t key;
+	size_t len = 0;
 	strtoquid(quid, &key);
-	void *slay = create_row(1, &len);
-	void *val_data = slay_wrap(slay, (void *)data, len, DT_TEXT);
-	if (engine_update(&btx, &key, val_data, len)<0) {
+
+	void *slay = slay_put_data((char *)data, data_len, &len, items);
+
+	if (engine_update(&btx, &key, slay, len)<0) {
+		zfree(slay);
 		return -1;
 	}
 	zfree(slay);
-	zfree(val_data);*/
 	return 0;
 }
 
@@ -264,7 +271,17 @@ int db_purge(char *quid) {
 int db_vacuum() {
 	if (!ready)
 		return -1;
-	return engine_vacuum(&btx, INITDB);
+	char tmp_key[QUID_LENGTH+1];
+	quid_t key;
+	quid_create(&key);
+	quidtostr(tmp_key, &key);
+	char *bindata = generate_bindata_name(&control);
+
+	if (engine_vacuum(&btx, tmp_key, bindata)<0)
+		return -1;
+	memcpy(&control.zero_key, &key, sizeof(quid_t));
+	strcpy(control.bindata, bindata);
+	return 0;
 }
 
 int db_record_get_meta(char *quid, struct record_status *status) {

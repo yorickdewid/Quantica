@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
@@ -29,14 +30,30 @@ static char *generate_instance_name() {
 	return buf;
 }
 
+char *generate_bindata_name(struct base *base) {
+	static char buf[BINDATA_LENGTH];
+	char *pdot = strchr(buf, '.');
+	if (!pdot)
+		sprintf(buf, "%s.%d", base->bindata, ++base->bincnt);
+	else {
+		char *k = buf;
+		char *token = strsep(&k , ".");
+		sprintf(buf, "%s.%d", token, ++base->bincnt);
+
+	}
+	return buf;
+}
+
 void base_sync(struct base *base) {
 	struct base_super super;
 	memset(&super, 0, sizeof(struct base_super));
-	super.base_key = base->base_key;
+	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
 	super.version = VERSION_RELESE;
+	super.bincnt = base->bincnt;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
+	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 
 	lseek(base->fd, 0, SEEK_SET);
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
@@ -59,28 +76,26 @@ void base_init(struct base *base) {
 			ERROR(EIO_READ, EL_FATAL);
 			return;
 		}
-		base->base_key = super.base_key;
+		base->zero_key = super.zero_key;
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
+		base->bincnt = super.bincnt;
 		assert(super.version==VERSION_RELESE);
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
+		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 	} else {
 		quid_create(&base->instance_key);
-		quid_create(&base->base_key);
+		quid_create(&base->zero_key);
+		base->bincnt = 0;
+
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
-
-		static char buf[QUID_LENGTH+1];
-		quidtostr(buf, &base->base_key);
-
+		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-		base->base_fd = open(buf, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-		close(open(BINDATA, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644));
 		base_sync(base);
 	}
 }
 
 void base_close(struct base *base) {
 	base_sync(base);
-	close(base->base_fd);
 	close(base->fd);
 }

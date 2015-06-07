@@ -19,7 +19,8 @@
 
 #define NUM		200000
 #define R_NUM		(NUM/200)
-#define DBNAME		"bmark_engine"
+#define IDXNAME		"bmark_engine.idx"
+#define DBNAME		"bmark_engine.db"
 #define KEYSIZE		16
 #define VALSIZE		100
 
@@ -243,7 +244,7 @@ BENCHMARK_IMPL(engine) {
 	random_value();
 
 	/* Create new database */
-	engine_init(&e, DBNAME);
+	engine_init(&e, IDXNAME, DBNAME);
 
 	/* Run testcase */
 	db_write_test();
@@ -257,7 +258,8 @@ BENCHMARK_IMPL(engine) {
 
 	/* Close and delete database */
 	engine_close(&e);
-	engine_unlink(DBNAME);
+	unlink(IDXNAME);
+	unlink(DBNAME);
 
 	RETURN_OK();
 }

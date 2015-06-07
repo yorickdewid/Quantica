@@ -6,105 +6,67 @@
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-static void unlink_backup(const char* fname) {
-    char dbname[1024], idxname[1024], walname[1024];
-    snprintf(idxname, 1024, "%s.db1", fname);
-    snprintf(dbname, 1024, "%s.idx1", fname);
-    snprintf(walname, 1024, "%s.log1", fname);
-    unlink(idxname);
-    unlink(dbname);
-    unlink(walname);
-}
-
 static void test_engine_create(){
 	struct engine e;
-	const char fname[] = "test_database1";
-    size_t fpath_sz = sizeof(fname)+5;
-	char fpath[fpath_sz];
+	const char fname[] = "test_database1.idx";
+	const char dbname[] = "test_database1.db";
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	ASSERT(e.fd);
 	ASSERT(e.db_fd);
 	ASSERT(e.alloc);
 	ASSERT(e.db_alloc);
 	engine_close(&e);
-	snprintf(fpath, fpath_sz, "%s.db", fname);
-	ASSERT(file_exists(fpath));
-	engine_unlink(fname);
-	ASSERT(!file_exists(fpath));
+	ASSERT(file_exists(fname));
+	ASSERT(file_exists(dbname));
+	unlink(fname);
+	unlink(dbname);
+	ASSERT(!file_exists(fname));
+	ASSERT(!file_exists(dbname));
 }
 
 static void test_engine_crud(){
 	struct engine e;
-	const char fname[] = "test_database2";
+	const char fname[] = "test_database2.idx";
+	const char dbname[] = "test_database2.db";
 	quid_t quid;
 	char data[] = ".....";
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	quid_create(&quid);
 	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 	engine_close(&e);
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	size_t len;
 	void *rdata = engine_get(&e, &quid, &len);
 	ASSERT(rdata);
 	zfree(rdata);
 	engine_close(&e);
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	int r2 = engine_delete(&e, &quid);
 	ASSERT(!r2);
 	engine_close(&e);
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	size_t len2;
 	void *r2data = engine_get(&e, &quid, &len2);
 	ASSERT(!r2data);
 	engine_close(&e);
-	engine_unlink(fname);
-}
-
-static void test_engine_clean(){
-	struct engine e;
-	const char fname[] = "test_database3";
-	quid_t quid;
-	char data[] = ".....";
-
-	engine_init(&e, fname);
-	quid_create(&quid);
-	int r = engine_insert(&e, &quid, data, strlen(data));
-	ASSERT(!r);
-
-	int r2 = engine_vacuum(&e, fname);
-	ASSERT(!r2);
-	engine_close(&e);
-
-    size_t fpath_sz = sizeof(fname)+5;
-	char fpath[fpath_sz];
-	snprintf(fpath, fpath_sz, "%s._db", fname);
-	ASSERT(file_exists(fpath));
-	snprintf(fpath, fpath_sz, "%s.db1", fname);
-	ASSERT(file_exists(fpath));
-
-	engine_init(&e, fname);
-	size_t len;
-	void *rdata = engine_get(&e, &quid, &len);
-	ASSERT(rdata);
-	zfree(rdata);
-	engine_close(&e);
-	engine_unlink(fname);
-	unlink_backup(fname);
+	unlink(fname);
+	unlink(dbname);
 }
 
 static void test_engine_meta(){
 	struct engine e;
-	const char fname[] = "test_database4";
+	const char fname[] = "test_database4.idx";
+	const char dbname[] = "test_database4.db";
 	quid_t quid;
 	char data[] = ".....";
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	quid_create(&quid);
 	int r = engine_insert(&e, &quid, data, strlen(data));
 	ASSERT(!r);
@@ -122,13 +84,14 @@ static void test_engine_meta(){
 	ASSERT(!r2);
 	engine_close(&e);
 
-	engine_init(&e, fname);
+	engine_init(&e, fname, dbname);
 	struct metadata md2;
 	int r3 = engine_getmeta(&e, &quid, &md2);
 	ASSERT(!r3);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct metadata)));
 	engine_close(&e);
-	engine_unlink(fname);
+	unlink(fname);
+	unlink(dbname);
 }
 
 TEST_IMPL(engine) {
@@ -138,7 +101,6 @@ TEST_IMPL(engine) {
 	/* Run testcase */
 	test_engine_create();
 	test_engine_crud();
-	test_engine_clean();
 	test_engine_meta();
 
 	RETURN_OK();
