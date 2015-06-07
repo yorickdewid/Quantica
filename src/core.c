@@ -216,19 +216,19 @@ void *db_get(char *quid) {
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
-	(void)quid;
-	/*size_t len;
 	quid_t key;
-	dstype_t dt;
 	strtoquid(quid, &key);
 
-	void *val_data = engine_get(&btx, &key, &len);
-	if (!val_data)
+	size_t len;
+	void *data = engine_get(&btx, &key, &len);
+	if (!data)
 		return NULL;
-	void *data = slay_unwrap(val_data, &len, &dt);
+
+	dstype_t dt;
+	void *buf = slay_get_data(data, &dt);
+	zfree(buf);
 	zfree(data);
-	return str_type(dt);*/
-	return NULL;
+	return str_type(dt);
 }
 
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
