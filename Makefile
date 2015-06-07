@@ -16,6 +16,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/itoa.c \
 		$(SRCDIR)/strdup.c \
 		$(SRCDIR)/stresc.c \
+		$(SRCDIR)/strsep.c \
 		$(SRCDIR)/quid.c \
 		$(SRCDIR)/sha1.c \
 		$(SRCDIR)/aes.c \
