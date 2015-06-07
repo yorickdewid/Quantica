@@ -83,6 +83,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/base64.h" />
+		<Unit filename="../src/basecontrol.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/basecontrol.h" />
 		<Unit filename="../src/bootstrap.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -98,6 +102,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/crc32.h" />
+		<Unit filename="../src/dict.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/dict.h" />
 		<Unit filename="../src/dstype.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -168,6 +176,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../src/time.h" />
+		<Unit filename="../src/vector.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../src/vector.h" />
 		<Unit filename="../src/webapi.c">
 			<Option compilerVar="CC" />
 		</Unit>
