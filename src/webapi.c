@@ -449,7 +449,8 @@ http_status_t api_db_update(char *response, http_request_t *req) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_data && param_quid) {
-			if (db_update(param_quid, param_data, strlen(param_data))<0) {
+			int items = 0;
+			if (db_update(param_quid, &items, param_data, strlen(param_data))<0) {
 				if(IFERROR(EREC_LOCKED)) {
 					snprintf(response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
 					return HTTP_OK;
@@ -934,7 +935,7 @@ int start_webapi() {
 
 	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 	lprintf("[info] Current time: %lld\n", get_timestamp());
-	lprintf("[info] Storage core [" INITDB "]\n");
+	lprintf("[info] Storage core [%s]\n", get_instance_key());
 	lprintf("[info] Starting daemon\n");
 	lprintf("[info] Start database core\n");
 
