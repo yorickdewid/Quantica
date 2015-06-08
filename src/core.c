@@ -196,14 +196,13 @@ void *_db_get(char *quid, dstype_t *dt) {
 	return buf;
 }
 
-void *db_get(char *quid) {
+void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
 
-	size_t len;
-	void *data = engine_get(&btx, &key, &len);
+	void *data = engine_get(&btx, &key, len);
 	if (!data)
 		return NULL;
 
