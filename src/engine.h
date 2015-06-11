@@ -106,7 +106,6 @@ struct engine {
 	uint64_t db_alloc;
 	int fd;
 	int db_fd;
-	int wal_fd;
 	bool lock;
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
