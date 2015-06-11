@@ -377,7 +377,6 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 		if (len > RESPONSE_SIZE) {
 			resplen = RESPONSE_SIZE+len;
 			*response = zrealloc(*response, resplen);
-			printf("newlen %zu\n", resplen);
 		}
 		snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
 		zfree(data);
