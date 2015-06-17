@@ -29,6 +29,24 @@ bool strisdigit(char *str) {
 	return TRUE;
 }
 
+bool strisalpha(char *str) {
+	for (; *str; ++str) {
+		if (!isalpha(*str))
+			return FALSE;
+	}
+	return TRUE;
+}
+
+bool strisualpha(char *str) {
+	for (; *str; ++str) {
+		if (*str == '_')
+			continue;
+		if (!isalpha(*str))
+			return FALSE;
+	}
+	return TRUE;
+}
+
 char *strrmquote(char *str) {
 	char *p = str;
 	p++;
