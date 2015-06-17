@@ -37,6 +37,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/hashtable.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
+		$(SRCDIR)/sql.c \
 		$(TESTDIR)/benchmark-engine.c \
 		$(TESTDIR)/test-quid.c \
 		$(TESTDIR)/test-aes.c \
