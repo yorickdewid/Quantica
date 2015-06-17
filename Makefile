@@ -26,6 +26,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/sha256.c \
 		$(SRCDIR)/vector.c \
 		$(SRCDIR)/dict.c \
+		$(SRCDIR)/stack.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/json_parse.c \
 		$(SRCDIR)/json_encode.c \
