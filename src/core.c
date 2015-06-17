@@ -19,6 +19,7 @@
 #include "basecontrol.h"
 #include "engine.h"
 #include "bootstrap.h"
+#include "sql.h"
 #include "core.h"
 
 static struct engine btx;
@@ -153,6 +154,11 @@ unsigned long int stat_getkeys() {
 
 unsigned long int stat_getfreekeys() {
 	return btx.stats.free_tables;
+}
+
+int exec_sqlquery(const char *query) {
+	sql_exec(query);
+	return 0;
 }
 
 void quid_generate(char *quid) {
