@@ -29,6 +29,8 @@ enum token {
 	T_GREATER,
 	T_SMALLER,
 	T_EQUAL,
+	T_GREATER_EQUAL,
+	T_SMALLER_EQUAL,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -49,11 +51,10 @@ void parse(stack_t *stack) {
 	int i;
 	for (i=0; i<=stack->top; ++i) {
 		struct stoken *tok = stack->contents[i];
-		if (tok->token == T_STRING) {
+		if (tok->token == T_STRING)
 			//printf("[%d] %d (%s)\n", i, tok->token, tok->u.string);
 			printf("[%d] %d\n", i, tok->token);
-			//zfree(tok->u.string);
-		} else if (tok->token == T_INTEGER)
+		else if (tok->token == T_INTEGER)
 			printf("[%d] %d (%d)\n", i, tok->token, tok->u.integer);
 		else if (tok->token == T_DOUBLE)
 			printf("[%d] %d (%f)\n", i, tok->token, tok->u.dbl);
@@ -226,6 +227,14 @@ int tokenize(stack_t *stack, char sql[]) {
 		} else if (!strcmp(pch, "=")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_EQUAL;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "<=")) {
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token =  T_SMALLER_EQUAL;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, ">=")) {
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token =  T_GREATER_EQUAL;
 			stack_push(stack, tok);
 		} else if (!strcmp(pch, ";")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
