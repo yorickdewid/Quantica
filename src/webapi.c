@@ -33,6 +33,7 @@
 #include "vector.h"
 #include "time.h"
 #include "hashtable.h"
+#include "sql.h"
 #include "webapi.h"
 
 #define HEADER_SIZE			10240L
@@ -244,6 +245,21 @@ http_status_t api_sha256(char **response, http_request_t *req) {
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_sqlquery(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "query");
+		if (param_data) {
+			exec_sqlquery(param_data);
+			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects query\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
@@ -555,6 +571,7 @@ const struct webroute route[] = {
 	{"/sha1",		api_sha,			FALSE},
 	{"/md5",		api_md5,			FALSE},
 	{"/sha256",		api_sha256,			FALSE},
+	{"/sql",		api_sqlquery,		FALSE},
 	{"/vacuum",		api_vacuum,			FALSE},
 	{"/version",	api_version,		FALSE},
 	{"/status",		api_status,			FALSE},
