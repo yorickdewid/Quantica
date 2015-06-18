@@ -52,7 +52,6 @@ void parse(stack_t *stack) {
 	for (i=0; i<=stack->top; ++i) {
 		struct stoken *tok = stack->contents[i];
 		if (tok->token == T_STRING)
-			//printf("[%d] %d (%s)\n", i, tok->token, tok->u.string);
 			printf("[%d] %d\n", i, tok->token);
 		else if (tok->token == T_INTEGER)
 			printf("[%d] %d (%d)\n", i, tok->token, tok->u.integer);
