@@ -15,6 +15,8 @@ enum token {
 	/* actions */
 	T_SELECT,
 	T_INSERT,
+	T_DELETE,
+	T_UPDATE,
 	T_ALL,
 	T_FROM,
 	T_WHERE,
@@ -181,6 +183,18 @@ int tokenize(stack_t *stack, char sql[]) {
 		} else if (!strcmp(pch, "INSERT")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_INSERT;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "UPDATE")) {
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_UPDATE;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "DELETE")) {
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_DELETE;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "SET")) {
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_SEPARATE;
 			stack_push(stack, tok);
 		} else if (!strcmp(pch, "INTO")) {
 		} else if (!strcmp(pch, "VALUES")) {
