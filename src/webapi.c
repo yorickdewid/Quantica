@@ -255,17 +255,17 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
 		if (param_data) {
-			size_t len, resplen;
+			size_t len = 0, resplen;
 			char *data = exec_sqlquery(param_data, &len);
-			if (!data) {
+			if (ISERROR()) {
 				if(IFERROR(EREC_NOTFOUND)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
 					return HTTP_OK;
 				} else if(IFERROR(ESQL_TOKEN)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid token in query\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid token in query\",\"status\":\"SQL_TOKEN\",\"success\":false}", GETERROR());
 					return HTTP_OK;
 				} else if(IFERROR(ESQL_PARSE)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query\",\"status\":\"SQL_PARSE\",\"success\":false}", GETERROR());
 					return HTTP_OK;
 				} else {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
@@ -277,7 +277,10 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				resplen = RESPONSE_SIZE+len;
 				*response = zrealloc(*response, resplen);
 			}
-			snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by query\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
+			if (!data)
+				snprintf(*response, resplen, "{\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			else
+				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Query executed with result\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
 			zfree(data);
 			return HTTP_OK;
 		}
@@ -400,7 +403,7 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 http_status_t api_db_get(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
-		size_t len, resplen;
+		size_t len = 0, resplen;
 		char *data = db_get(param_quid, &len);
 		if (!data) {
 			if(IFERROR(EREC_NOTFOUND)) {
