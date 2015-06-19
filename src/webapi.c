@@ -255,8 +255,24 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
 		if (param_data) {
-			exec_sqlquery(param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			size_t len, resplen;
+			char *data = exec_sqlquery(param_data, &len);
+			if (!data) {
+				if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				}
+			}
+			resplen = RESPONSE_SIZE;
+			if (len > RESPONSE_SIZE) {
+				resplen = RESPONSE_SIZE+len;
+				*response = zrealloc(*response, resplen);
+			}
+			snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by query\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
+			zfree(data);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects query\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);

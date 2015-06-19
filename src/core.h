@@ -32,7 +32,7 @@ char *get_uptime();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
 int crypto_sha256(char *s, const char *data);
-int exec_sqlquery(const char *query);
+void *exec_sqlquery(const char *query, size_t *len);
 char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
