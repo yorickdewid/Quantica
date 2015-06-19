@@ -261,6 +261,12 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				if(IFERROR(EREC_NOTFOUND)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
 					return HTTP_OK;
+				} else if(IFERROR(ESQL_TOKEN)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid token in query\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(ESQL_PARSE)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
 				} else {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 					return HTTP_OK;
