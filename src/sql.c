@@ -5,8 +5,11 @@
 
 #include <config.h>
 #include <common.h>
+#include <error.h>
 #include "zmalloc.h"
 #include "stack.h"
+#include "quid.h"
+#include "core.h"
 #include "sql.h"
 
 #define STACK_SZ	15
@@ -37,32 +40,116 @@ enum token {
 	T_INTEGER,
 	T_DOUBLE,
 	T_STRING,
+	T_QUID,
 	T_INVALID,
 };
 
 struct stoken {
 	enum token token;
 	union {
-		char *string;
+		struct {
+			int length;
+			char *ptr;
+		} string;
 		int integer;
 		double dbl;
 	} u;
 };
 
-void parse(stack_t *stack) {
-	int i;
-	for (i=0; i<=stack->top; ++i) {
-		struct stoken *tok = stack->contents[i];
-		if (tok->token == T_STRING)
-			printf("[%d] %d\n", i, tok->token);
-		else if (tok->token == T_INTEGER)
-			printf("[%d] %d (%d)\n", i, tok->token, tok->u.integer);
-		else if (tok->token == T_DOUBLE)
-			printf("[%d] %d (%f)\n", i, tok->token, tok->u.dbl);
-		else
-			printf("[%d] %d\n", i, tok->token);
-		tree_zfree(tok);
+void *parse(stack_t *stack, size_t *len) {
+	struct stoken *tok = stack_rpop(stack);
+	if (!tok) {
+		ERROR(ESQL_PARSE, EL_WARN);
+		puts("Empty stack 1");
+		return NULL;
 	}
+	switch (tok->token) {
+		case T_SELECT:
+			puts("SELECT");
+			tree_zfree(tok);
+			while ((tok = stack_rpop(stack)) != NULL) {
+				if (tok->token == T_FROM)
+					break;
+				if (tok->token == T_ALL)
+					puts("ALL");
+				if (tok->token == T_STRING)
+					printf("<%s>\n", tok->u.string.ptr);
+			}
+			tok = stack_rpop(stack);
+			if (!tok) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("Empty stack 2");
+				return NULL;
+			}
+			if (tok->token != T_QUID) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("No key 3");
+				return NULL;
+			}
+			printf("[%s]\n", tok->u.string.ptr);
+			void *data = db_get(tok->u.string.ptr, len);
+			if (data) {
+				printf("%.*s\n", (int)*len, (char *)data);
+				return data;
+			}
+			break;
+		case T_INSERT:
+			puts("INSERT");
+			break;
+		case T_UPDATE:
+			puts("UPDATE");
+			break;
+		case T_DELETE:
+			puts("DELETE");
+			tok = stack_rpop(stack);
+			if (!tok) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("Empty stack 3");
+				return NULL;
+			}
+			if (tok->token != T_FROM) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("No FROM");
+				return NULL;
+			}
+			tok = stack_rpop(stack);
+			if (!tok) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("Empty stack 4");
+				return NULL;
+			}
+			if (tok->token != T_QUID) {
+				ERROR(ESQL_PARSE, EL_WARN);
+				puts("No key 4");
+				return NULL;
+			}
+			printf("[%s]\n", tok->u.string.ptr);
+			db_delete(tok->u.string.ptr);
+			break;
+		case T_ALL:
+		case T_FROM:
+		case T_WHERE:
+		case T_AND:
+		case T_OR:
+		case T_BRACK_OPEN:
+		case T_BRACK_CLOSE:
+		case T_SEPARATE:
+		case T_COMMIT:
+		case T_GREATER:
+		case T_SMALLER:
+		case T_EQUAL:
+		case T_GREATER_EQUAL:
+		case T_SMALLER_EQUAL:
+		case T_INTEGER:
+		case T_DOUBLE:
+		case T_STRING:
+		case T_QUID:
+		case T_INVALID:
+			ERROR(ESQL_PARSE, EL_WARN);
+			puts("Invalid query 1");
+			break;
+	}
+	return NULL;
 }
 
 char *explode_sql(char *sql) {
@@ -168,7 +255,6 @@ char *explode_sql(char *sql) {
 		}
 	}
 	_sql[i] = '\0';
-
 	return _osql;
 }
 
@@ -259,41 +345,52 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->u.integer = atoi(pch);
 			stack_push(stack, tok);
 		} else if (strismatch(pch, "1234567890.")) {
-			if (strccnt(pch, '.') == 1) {
-				if (pch[0] != '.' && pch[strlen(pch)-1] != '.') {
-					struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
-					tok->token =  T_DOUBLE;
-					tok->u.dbl = atof(pch);
-					stack_push(stack, tok);
-				}
-			}
+			if (strccnt(pch, '.') != 1)
+				goto tok_next;
+			if (pch[0] == '.' || pch[strlen(pch)-1] == '.')
+				goto tok_next;
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token =  T_DOUBLE;
+			tok->u.dbl = atof(pch);
+			stack_push(stack, tok);
 		} else if (strisualpha(pch)) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_STRING;
-			tok->u.string = pch;
+			char *_s = tree_zstrdup(pch, tok);
+			tok->u.string.ptr = _s;
+			tok->u.string.length = strlen(_s);
 			stack_push(stack, tok);
 		} else if ((pch[0] == '"' && pch[strlen(pch)-1] == '"') || (pch[0] == '\'' && pch[strlen(pch)-1] == '\'')) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
-			tok->token =  T_STRING;
+			tok->token = T_STRING;
 			char *_s = tree_zstrdup(pch, tok);
 			_s[strlen(pch)-1] = '\0';
 			_s++;
-			tok->u.string = _s;
+			if (strquid_format(_s)>0)
+				tok->token = T_QUID;
+			tok->u.string.ptr = _s;
+			tok->u.string.length = strlen(_s);
 			stack_push(stack, tok);
 		} else {
+			ERROR(ESQL_TOKEN, EL_WARN);
 			printf("Unexpected token '%s'\n", pch);
 			return 0;
 		}
+tok_next:
 		pch = strtok(NULL, " ,");
 	}
 	zfree(_ustr);
 	return 1;
 }
 
-void sql_exec(const char *sql) {
+void *sql_exec(const char *sql, size_t *len) {
+	ERRORZEOR();
+	void *rs = NULL;
 	stack_t tokenstream;
 	stack_init(&tokenstream, STACK_SZ);
 	if (tokenize(&tokenstream, (char *)sql))
-		parse(&tokenstream);
+		rs = parse(&tokenstream, len);
 	stack_destroy(&tokenstream);
+
+	return rs;
 }
