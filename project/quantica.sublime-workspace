@@ -8,18 +8,18 @@
 	"buffers":
 	[
 		{
-			"file": "/home/eve/projects/quantica/src/sql.c",
+			"file": "/home/eve/projects/quantica/src/main.c",
 			"settings":
 			{
-				"buffer_size": 9611,
+				"buffer_size": 1789,
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "quantica.sublime-project",
+			"file": "/home/eve/projects/quantica/src/sql.c",
 			"settings":
 			{
-				"buffer_size": 621,
+				"buffer_size": 9612,
 				"line_ending": "Unix"
 			}
 		}
@@ -52,11 +52,31 @@
 	"command_palette":
 	{
 		"height": 392.0,
-		"last_filter": "",
+		"last_filter": "git c",
 		"selected_items":
 		[
+			[
+				"git c",
+				"Git: Commit"
+			],
+			[
+				"git sta",
+				"Git: Status"
+			],
+			[
+				"git add",
+				"Git: Add..."
+			],
+			[
+				"git st",
+				"Git: Status"
+			],
+			[
+				"Package Control: ",
+				"Package Control: List Packages"
+			]
 		],
-		"width": 392.0
+		"width": 449.0
 	},
 	"console":
 	{
@@ -81,6 +101,7 @@
 	],
 	"file_history":
 	[
+		"/home/eve/projects/quantica/project/quantica.sublime-project",
 		"/home/eve/.config/sublime-text-3/Packages/Default/Preferences.sublime-settings",
 		"/home/eve/.config/sublime-text-3/Packages/User/Distraction Free.sublime-settings",
 		"/home/eve/.config/sublime-text-3/Packages/User/JSON.sublime-settings",
@@ -151,7 +172,7 @@
 	],
 	"find":
 	{
-		"height": 0.0
+		"height": 23.0
 	},
 	"find_in_files":
 	{
@@ -173,7 +194,7 @@
 		"replace_history":
 		[
 		],
-		"reverse": false,
+		"reverse": true,
 		"show_context": true,
 		"use_buffer2": true,
 		"whole_word": false,
@@ -187,19 +208,48 @@
 			[
 				{
 					"buffer": 0,
-					"file": "/home/eve/projects/quantica/src/sql.c",
+					"file": "/home/eve/projects/quantica/src/main.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 9611,
+						"buffer_size": 1789,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2480,
-								2480
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": -0.0,
+						"translation.y": 45.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "/home/eve/projects/quantica/src/sql.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9612,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2788,
+								2788
 							]
 						],
 						"settings":
@@ -211,35 +261,6 @@
 						"translation.y": 1710.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "quantica.sublime-project",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 621,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								371,
-								371
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/JavaScript/JSON.tmLanguage",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
 					"stack_index": 0,
 					"type": "text"
 				}
@@ -248,7 +269,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 0.0
+		"height": 34.0
 	},
 	"input":
 	{
@@ -279,17 +300,21 @@
 	"menu_visible": true,
 	"output.exec":
 	{
-		"height": 139.0
+		"height": 92.0
 	},
 	"output.find_results":
 	{
 		"height": 0.0
 	},
+	"output.git":
+	{
+		"height": 100.0
+	},
 	"pinned_build_system": "CC",
 	"project": "quantica.sublime-project",
 	"replace":
 	{
-		"height": 0.0
+		"height": 42.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -327,7 +352,7 @@
 	"show_open_files": false,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 199.0,
+	"side_bar_width": 217.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{
