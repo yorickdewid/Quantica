@@ -6,6 +6,9 @@
 
 #include "dstype.h"
 
+#define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
+#define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
+
 typedef enum {
 	SCHEMA_FIELD,
 	SCHEMA_ARRAY,

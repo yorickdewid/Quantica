@@ -15,9 +15,6 @@
 
 #define VECTOR_SIZE	1024
 
-#define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
-#define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
-
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items) {
 	void *slay = NULL;
 
