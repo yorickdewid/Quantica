@@ -1,0 +1,335 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "/home/eve/projects/quantica/src/sql.c",
+			"settings":
+			{
+				"buffer_size": 9611,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "quantica.sublime-project",
+			"settings":
+			{
+				"buffer_size": 621,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "CC",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"CC",
+					""
+				],
+				[
+					"CC",
+					"Clean"
+				],
+				[
+					"CC",
+					"Test"
+				]
+			],
+			[
+				"CC",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 392.0
+	},
+	"console":
+	{
+		"height": 126.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/eve/projects/quantica",
+		"/home/eve/projects/quantica/src"
+	],
+	"file_history":
+	[
+		"/home/eve/.config/sublime-text-3/Packages/Default/Preferences.sublime-settings",
+		"/home/eve/.config/sublime-text-3/Packages/User/Distraction Free.sublime-settings",
+		"/home/eve/.config/sublime-text-3/Packages/User/JSON.sublime-settings",
+		"/home/eve/.config/sublime-text-3/Packages/User/Preferences.sublime-settings",
+		"/home/eve/.config/sublime-text-3/Packages/User/C++.sublime-settings",
+		"/home/eve/.config/sublime-text-3/Packages/User/C.sublime-build",
+		"/home/eve/projects/quantica/cb/quantica.sublime-project",
+		"/home/eve/projects/quantica/Makefile",
+		"/home/eve/projects/quantica/src/main.c",
+		"/home/eve/projects/quantica/src/aes.c",
+		"/home/eve/projects/quantica/src/aes.h",
+		"/home/eve/projects/quantica/src/arc4random.c",
+		"/home/eve/projects/quantica/src/arc4random.h",
+		"/home/eve/projects/quantica/src/base64.c",
+		"/home/eve/projects/quantica/src/base64.h",
+		"/home/eve/projects/quantica/src/basecontrol.c",
+		"/home/eve/projects/quantica/src/basecontrol.h",
+		"/home/eve/projects/quantica/src/bootstrap.c",
+		"/home/eve/projects/quantica/src/bootstrap.h",
+		"/home/eve/projects/quantica/src/common.c",
+		"/home/eve/projects/quantica/src/core.c",
+		"/home/eve/projects/quantica/src/core.h",
+		"/home/eve/projects/quantica/src/crc32.c",
+		"/home/eve/projects/quantica/src/crc32.h",
+		"/home/eve/projects/quantica/src/dict.c",
+		"/home/eve/projects/quantica/src/dict.h",
+		"/home/eve/projects/quantica/src/dstype.c",
+		"/home/eve/projects/quantica/src/dstype.h",
+		"/home/eve/projects/quantica/src/engine.c",
+		"/home/eve/projects/quantica/src/engine.h",
+		"/home/eve/projects/quantica/src/hashtable.c",
+		"/home/eve/projects/quantica/src/hashtable.h",
+		"/home/eve/projects/quantica/src/itoa.c",
+		"/home/eve/projects/quantica/src/json_check.c",
+		"/home/eve/projects/quantica/src/json_check.h",
+		"/home/eve/projects/quantica/src/json_encode.c",
+		"/home/eve/projects/quantica/src/json_encode.h",
+		"/home/eve/projects/quantica/src/json_parse.c",
+		"/home/eve/projects/quantica/src/json_parse.h",
+		"/home/eve/projects/quantica/src/log.c",
+		"/home/eve/projects/quantica/src/md5.c",
+		"/home/eve/projects/quantica/src/md5.h",
+		"/home/eve/projects/quantica/src/quid.c",
+		"/home/eve/projects/quantica/src/quid.h",
+		"/home/eve/projects/quantica/src/sha1.c",
+		"/home/eve/projects/quantica/src/sha1.h",
+		"/home/eve/projects/quantica/src/sha256.c",
+		"/home/eve/projects/quantica/src/sha256.h",
+		"/home/eve/projects/quantica/src/slay.c",
+		"/home/eve/projects/quantica/src/slay.h",
+		"/home/eve/projects/quantica/src/sql.c",
+		"/home/eve/projects/quantica/src/sql.h",
+		"/home/eve/projects/quantica/src/stack.c",
+		"/home/eve/projects/quantica/src/stack.h",
+		"/home/eve/projects/quantica/src/strdup.c",
+		"/home/eve/projects/quantica/src/stresc.c",
+		"/home/eve/projects/quantica/src/strlcat.c",
+		"/home/eve/projects/quantica/src/strlcpy.c",
+		"/home/eve/projects/quantica/src/strsep.c",
+		"/home/eve/projects/quantica/src/time.c",
+		"/home/eve/projects/quantica/src/time.h",
+		"/home/eve/projects/quantica/src/vector.c",
+		"/home/eve/projects/quantica/src/vector.h",
+		"/home/eve/projects/quantica/src/webapi.c",
+		"/home/eve/projects/quantica/src/webapi.h",
+		"/home/eve/projects/quantica/src/zmalloc.c",
+		"/home/eve/projects/quantica/src/zmalloc.h"
+	],
+	"find":
+	{
+		"height": 0.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/home/eve/projects/quantica/src/sql.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9611,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2480,
+								2480
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1710.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "quantica.sublime-project",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 621,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								371,
+								371
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JSON.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 139.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "CC",
+	"project": "quantica.sublime-project",
+	"replace":
+	{
+		"height": 0.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 199.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
