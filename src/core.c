@@ -166,6 +166,22 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
+int _db_put(char *quid, void *slay, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	quid_create(&key);
+
+	if (engine_insert(&btx, &key, slay, len)<0) {
+		zfree(slay);
+		return -1;
+	}
+	zfree(slay);
+
+	quidtostr(quid, &key);
+	return 0;
+}
+
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
@@ -174,7 +190,6 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	quid_create(&key);
 
 	void *slay = slay_put_data((char *)data, data_len, &len, items);
-
 	if (engine_insert(&btx, &key, slay, len)<0) {
 		zfree(slay);
 		return -1;

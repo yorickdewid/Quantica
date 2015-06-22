@@ -42,6 +42,7 @@ void quid_generate(char *quid);
 /*
  * Database operations
  */
+int _db_put(char *quid, void *slay, size_t len);
 int db_put(char *quid, int *items, const void *data, size_t len);
 void *_db_get(char *quid, dstype_t *dt);
 void *db_get(char *quid, size_t *len);
