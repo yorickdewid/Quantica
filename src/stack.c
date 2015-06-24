@@ -35,6 +35,20 @@ void *stack_pop(stack_t *stack) {
 	return stack->contents[stack->top--];
 }
 
+void *stack_offset_peek(stack_t *stack, int offset) {
+	if (stack_isempty(stack))
+		return NULL;
+
+	return stack->contents[stack->top-offset];
+}
+
+void *stack_offset_rpeek(stack_t *stack, int offset) {
+	if (stack_isempty(stack))
+		return NULL;
+
+	return stack->contents[stack->rtop+offset];
+}
+
 void *stack_peek(stack_t *stack) {
 	if (stack_isempty(stack))
 		return NULL;

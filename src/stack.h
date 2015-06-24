@@ -13,6 +13,8 @@ void stack_destroy(stack_t *stack);
 void stack_push(stack_t *stack, void *elm);
 void *stack_pop(stack_t *stack);
 void *stack_rpop(stack_t *stack);
+void *stack_offset_peek(stack_t *stack, int offset);
+void *stack_offset_rpeek(stack_t *stack, int offset);
 void *stack_peek(stack_t *stack);
 void *stack_rpeek(stack_t *stack);
 int stack_isempty(stack_t *stack);
