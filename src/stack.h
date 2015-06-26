@@ -4,6 +4,7 @@
 typedef struct {
 	void **contents;
 	int max_size;
+	int size;
 	int top;
 	int rtop;
 } stack_t;
@@ -17,7 +18,5 @@ void *stack_offset_peek(stack_t *stack, int offset);
 void *stack_offset_rpeek(stack_t *stack, int offset);
 void *stack_peek(stack_t *stack);
 void *stack_rpeek(stack_t *stack);
-int stack_isempty(stack_t *stack);
-int stack_isfull(stack_t *stack);
 
 #endif // STACK_H_INCLUDED
