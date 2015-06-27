@@ -52,7 +52,7 @@ dstype_t autotype(const char *data, size_t len) {
 		if(isalpha(fchar))
 			return DT_CHAR;
 	}
-	int8_t b = is_bool((char *)data);
+	int8_t b = strisbool((char *)data);
 	if (b!=-1)
 		return b ? DT_BOOL_T : DT_BOOL_F;
 	if (strisdigit((char *)data))
@@ -67,14 +67,6 @@ dstype_t autotype(const char *data, size_t len) {
 	if (json_valid(data))
 		return DT_JSON;
     return DT_TEXT;
-}
-
-int8_t is_bool(char *str) {
-	if (!strcmp(str, "true") || !strcmp(str, "TRUE"))
-		return TRUE;
-	if (!strcmp(str, "false") || !strcmp(str, "FALSE"))
-		return FALSE;
-	return -1;
 }
 
 char *str_bool(bool b) {
