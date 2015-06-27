@@ -256,7 +256,7 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
 		if (param_data) {
 			size_t len = 0, resplen;
-			char *data = exec_sqlquery(param_data, &len);
+			sqlresult_t *data = exec_sqlquery(param_data, &len);
 			if (ISERROR()) {
 				if(IFERROR(EREC_NOTFOUND)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
@@ -264,8 +264,14 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				} else if(IFERROR(ESQL_TOKEN)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid token in query\",\"status\":\"SQL_TOKEN\",\"success\":false}", GETERROR());
 					return HTTP_OK;
-				} else if(IFERROR(ESQL_PARSE)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query\",\"status\":\"SQL_PARSE\",\"success\":false}", GETERROR());
+				} else if(IFERROR(ESQL_PARSE_END)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unexpected end of query\",\"status\":\"SQL_PARSE_END\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(ESQL_PARSE_VAL)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Expecting value\",\"status\":\"SQL_PARSE_VAL\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(ESQL_PARSE_TOK)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unexpected token\",\"status\":\"SQL_PARSE_TOK\",\"success\":false}", GETERROR());
 					return HTTP_OK;
 				} else {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
@@ -277,11 +283,13 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				resplen = RESPONSE_SIZE+len;
 				*response = zrealloc(*response, resplen);
 			}
-			if (!data)
+			if (data->items>0)
+				snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", data->quid, data->items);
+			else if (data->data) {
+				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", (char *)data->data);
+				zfree(data->data);
+			} else
 				snprintf(*response, resplen, "{\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}");
-			else
-				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Query executed with result\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
-			zfree(data);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects query\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
