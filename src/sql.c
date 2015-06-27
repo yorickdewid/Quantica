@@ -46,6 +46,8 @@ enum token {
 	T_DOUBLE,
 	T_STRING,
 	T_QUID,
+	T_TRUE,
+	T_FALSE,
 	T_INVALID,
 };
 
@@ -156,13 +158,22 @@ insert_val:
 						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_QUID);
 					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
+				} else if (tok->token == T_FALSE) {
+					if (name)
+						next = slay_wrap(next, name[i].name, name[i].length, NULL, 0, DT_BOOL_F);
+					else
+						next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
+				} else if (tok->token == T_TRUE) {
+					if (name)
+						next = slay_wrap(next, name[i].name, name[i].length, NULL, 0, DT_BOOL_T);
+					else
+						next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
 				}
 				i++;
 			}
 			if (name)
 				zfree(name);
 			_db_put(rs.quid, slay, slay_len);
-			puts(rs.quid);
 			rs.items = cnt;
 			return &rs;
 		}
@@ -207,6 +218,8 @@ insert_val:
 		case T_DOUBLE:
 		case T_STRING:
 		case T_QUID:
+		case T_TRUE:
+		case T_FALSE:
 		case T_INVALID:
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			break;
@@ -400,6 +413,16 @@ int tokenize(stack_t *stack, char sql[]) {
 		} else if (!strcmp(pch, ";")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_COMMIT;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "TRUE")) {
+			cnt++;
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_TRUE;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "FALSE")) {
+			cnt++;
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_FALSE;
 			stack_push(stack, tok);
 		} else if (strisdigit(pch)) {
 			charcnt += strlen(pch);
