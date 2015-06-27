@@ -4,10 +4,11 @@
 #include "quid.h"
 
 typedef struct {
-	quid_t quid;
-	char *str;
+	char quid[QUID_LENGTH+1];
+	void *data;
+	int items;
 } sqlresult_t;
 
-void *sql_exec(const char *sql, size_t *len);
+sqlresult_t *sql_exec(const char *sql, size_t *len);
 
 #endif // SQL_H_INCLUDED

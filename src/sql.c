@@ -53,78 +53,59 @@ struct stoken {
 	enum token token;
 	char *string;
 	int length;
-	/*union {
-		struct {
-			int length;
-			char *ptr;
-		} string;
-		int integer;
-		double dbl; 
-	} u;*/
 };
 
-void *parse(stack_t *stack, size_t *len) {
-	struct stoken *tok = stack_rpop(stack);
-	if (!tok) {
-		ERROR(ESQL_PARSE, EL_WARN);
-		puts("Empty stack 1");
-		return NULL;
+sqlresult_t *parse(stack_t *stack, size_t *len) {
+	static sqlresult_t rs;
+	memset(&rs, '\0', sizeof(sqlresult_t));
+	if (stack->size<=0) {
+		ERROR(ESQL_PARSE_END, EL_WARN);
+		return &rs;
 	}
+	struct stoken *tok = stack_rpop(stack);
 	switch (tok->token) {
 		case T_SELECT:
-			puts("SELECT");
-			tree_zfree(tok);
-			while ((tok = stack_rpop(stack)) != NULL) {
+			while (stack->size>0) {
+				tok = stack_rpop(stack);
 				if (tok->token == T_FROM)
 					break;
-				if (tok->token == T_ALL)
-					puts("ALL");
-				if (tok->token == T_STRING)
-					printf("<%s>\n", tok->string);
+			}
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
 			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 2");
-				return NULL;
-			}
 			if (tok->token != T_QUID) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No key 3");
-				return NULL;
+				ERROR(ESQL_PARSE_VAL, EL_WARN);
+				return &rs;
 			}
-			printf("[%s]\n", tok->string);
-			void *data = db_get(tok->string, len);
-			if (data) {
-				printf("%.*s\n", (int)*len, (char *)data);
-				return data;
-			}
+			rs.data = db_get(tok->string, len);
+			if (rs.data)
+				return &rs;
 			break;
-		case T_INSERT:
-			puts("INSERT");
+		case T_INSERT: {
 			struct objname {
 				char *name;
 				int length;
 			} *name = NULL;
 			schema_t schema = SCHEMA_ARRAY;
-			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 3");
-				return NULL;
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
+			tok = stack_rpop(stack);
 			if (tok->token == T_SEPARATE)
 				goto insert_val;
 			if (tok->token != T_BRACK_OPEN) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No brack");
-				return NULL;
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
 			}
 			cnt /= 2;
 			schema = SCHEMA_OBJECT;
 			name = malloc(sizeof(struct objname) * cnt);
 			int i = 0;
-			while ((tok = stack_rpop(stack)) != NULL) {
+			while (stack->size>0) {
+				tok = stack_rpop(stack);
 				if (tok->token == T_BRACK_CLOSE)
 					break;
 				if (tok->token == T_STRING) {
@@ -134,94 +115,78 @@ void *parse(stack_t *stack, size_t *len) {
 				}
 			}
 			i = 0;
-			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 4.5");
-				return NULL;
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
+			tok = stack_rpop(stack);
 			if (tok->token != T_SEPARATE) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No sep");
-				return NULL;
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
 			}
 insert_val:
-			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 4");
-				return NULL;
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
+			tok = stack_rpop(stack);
 			if (tok->token != T_BRACK_OPEN) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No brak");
-				return NULL;
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
 			}
 			size_t slay_len = 0;
 			void *slay = create_row(schema, cnt, charcnt, &slay_len);
 			void *next = movetodata_row(slay);
-			while ((tok = stack_rpop(stack)) != NULL) {
+			while (stack->size>0) {
+				tok = stack_rpop(stack);
 				if (tok->token == T_BRACK_CLOSE)
 					break;
 				if (tok->token == T_STRING) {
-					if (name) {
-						printf("<%s> %d [%s]\n", tok->string, tok->length, name[i].name);
+					if (name)
 						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_TEXT);
-					} else {
-						printf("<%s> %d\n", tok->string, tok->length);
+					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
-					}
 				} else if (tok->token == T_INTEGER || tok->token == T_DOUBLE) {
-					if (name) {
-						printf("<%s> %d [%s]\n", tok->string, tok->length, name[i].name);
+					if (name)
 						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_INT);
-					} else {
-						printf("<%s> %d\n", tok->string, tok->length);
+					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
-					}
 				} else if (tok->token == T_QUID) {
-					if (name) {
-						printf("<%s> %d [%s]\n", tok->string, tok->length, name[i].name);
+					if (name)
 						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_QUID);
-					} else {
-						printf("<%s> %d\n", tok->string, tok->length);
+					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
-					}
 				}
 				i++;
 			}
-			char *squid = (char *)zmalloc(QUID_LENGTH+1);
-			_db_put(squid, slay, slay_len);
-			printf("[%s]\n", squid);
-			return NULL;
+			if (name)
+				zfree(name);
+			_db_put(rs.quid, slay, slay_len);
+			puts(rs.quid);
+			rs.items = cnt;
+			return &rs;
+		}
 		case T_UPDATE:
-			puts("UPDATE");
 			break;
 		case T_DELETE:
-			puts("DELETE");
-			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 3");
-				return NULL;
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
+			tok = stack_rpop(stack);
 			if (tok->token != T_FROM) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No FROM");
-				return NULL;
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
 			}
 			tok = stack_rpop(stack);
-			if (!tok) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("Empty stack 4");
-				return NULL;
-			}
 			if (tok->token != T_QUID) {
-				ERROR(ESQL_PARSE, EL_WARN);
-				puts("No key 4");
-				return NULL;
+				ERROR(ESQL_PARSE_VAL, EL_WARN);
+				return &rs;
 			}
-			printf("[%s]\n", tok->string);
 			db_delete(tok->string);
 			break;
 		case T_ALL:
@@ -243,11 +208,10 @@ insert_val:
 		case T_STRING:
 		case T_QUID:
 		case T_INVALID:
-			ERROR(ESQL_PARSE, EL_WARN);
-			puts("Invalid query 1");
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			break;
 	}
-	return NULL;
+	return &rs;
 }
 
 char *explode_sql(char *sql) {
@@ -483,7 +447,7 @@ int tokenize(stack_t *stack, char sql[]) {
 			stack_push(stack, tok);
 		} else {
 			ERROR(ESQL_TOKEN, EL_WARN);
-			printf("Unexpected token '%s'\n", pch);
+			zfree(_ustr);
 			return 0;
 		}
 tok_next:
@@ -493,9 +457,9 @@ tok_next:
 	return 1;
 }
 
-void *sql_exec(const char *sql, size_t *len) {
+sqlresult_t *sql_exec(const char *sql, size_t *len) {
+	sqlresult_t *rs = NULL;
 	ERRORZEOR();
-	void *rs = NULL;
 	charcnt = 0;
 	cnt = 0;
 	stack_t tokenstream;

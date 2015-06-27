@@ -156,7 +156,7 @@ unsigned long int stat_getfreekeys() {
 	return btx.stats.free_tables;
 }
 
-void *exec_sqlquery(const char *query, size_t *len) {
+sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 	return sql_exec(query, len);
 }
 

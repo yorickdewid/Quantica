@@ -259,7 +259,7 @@
 	],
 	"find":
 	{
-		"height": 34.0
+		"height": 23.0
 	},
 	"find_in_files":
 	{
@@ -454,8 +454,8 @@
 						"selection":
 						[
 							[
-								11428,
-								11428
+								7264,
+								7264
 							]
 						],
 						"settings":
@@ -532,7 +532,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 34.0
+		"height": 23.0
 	},
 	"input":
 	{
