@@ -467,133 +467,83 @@ int tokenize(stack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
 	char *pch = strtok(_ustr," ,");
 	while(pch != NULL) {
+		struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 		if (!strcmp(pch, "SELECT") || !strcmp(pch, "select")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SELECT;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "INSERT") || !strcmp(pch, "insert")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_INSERT;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "UPDATE") || !strcmp(pch, "update")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_UPDATE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "DELETE") || !strcmp(pch, "delete")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_DELETE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "SET") || !strcmp(pch, "set")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SEPARATE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "INTO") || !strcmp(pch, "into")) {
 		} else if (!strcmp(pch, "VALUES") || !strcmp(pch, "values")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SEPARATE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "(")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_BRACK_OPEN;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, ")")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_BRACK_CLOSE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "*")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_ALL;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "FROM") || !strcmp(pch, "from")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_FROM;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "WHERE") || !strcmp(pch, "where")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_WHERE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "AND") || !strcmp(pch, "and") || !strcmp(pch, "&&")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_AND;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "OR") || !strcmp(pch, "or") || !strcmp(pch, "||")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_OR;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, ">")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_GREATER;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "<")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SMALLER;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "=")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_EQUAL;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "<=")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_SMALLER_EQUAL;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, ">=")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_GREATER_EQUAL;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, ";")) {
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_COMMIT;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_TRUE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "FALSE") || !strcmp(pch, "false")) {
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_FALSE;
-			stack_push(stack, tok);
 		} else if (!strcmp(pch, "NULL") || !strcmp(pch, "null")) {
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_NULL;
-			stack_push(stack, tok);
 		} else if (strisdigit(pch)) {
 			charcnt += strlen(pch);
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_INTEGER;
 			char *_s = tree_zstrdup(pch, tok);
 			tok->string = _s;
 			tok->length = strlen(_s);
-			stack_push(stack, tok);
 		} else if (strismatch(pch, "1234567890.")) {
 			if (strccnt(pch, '.') != 1)
-				goto tok_next;
+				goto tok_err;
 			if (pch[0] == '.' || pch[strlen(pch)-1] == '.')
-				goto tok_next;
+				goto tok_err;
 			charcnt += strlen(pch);
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_DOUBLE;
 			char *_s = tree_zstrdup(pch, tok);
 			tok->string = _s;
 			tok->length = strlen(_s);
-			stack_push(stack, tok);
 		} else if (strisualpha(pch)) {
 			charcnt += strlen(pch);
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_STRING;
 			char *_s = tree_zstrdup(pch, tok);
 			tok->string = _s;
 			tok->length = strlen(_s);
-			stack_push(stack, tok);
 		} else if ((pch[0] == '"' && pch[strlen(pch)-1] == '"') || (pch[0] == '\'' && pch[strlen(pch)-1] == '\'')) {
 			charcnt += strlen(pch);
 			cnt++;
-			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_STRING;
 			char *_s = tree_zstrdup(pch, tok);
 			_s[strlen(pch)-1] = '\0';
@@ -602,13 +552,14 @@ int tokenize(stack_t *stack, char sql[]) {
 				tok->token = T_QUID;
 			tok->string = _s;
 			tok->length = strlen(_s);
-			stack_push(stack, tok);
 		} else {
+tok_err:
 			ERROR(ESQL_TOKEN, EL_WARN);
+			tree_zfree(tok);
 			zfree(_ustr);
 			return 0;
 		}
-tok_next:
+		stack_push(stack, tok);
 		pch = strtok(NULL, " ,");
 	}
 	zfree(_ustr);
