@@ -250,6 +250,20 @@ char *db_get_type(char *quid) {
 	return str_type(dt);
 }
 
+int _db_update(char *quid, void *slay, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	strtoquid(quid, &key);
+
+	if (engine_update(&btx, &key, slay, len)<0) {
+		zfree(slay);
+		return -1;
+	}
+	zfree(slay);
+	return 0;
+}
+
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
@@ -258,7 +272,6 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	strtoquid(quid, &key);
 
 	void *slay = slay_put_data((char *)data, data_len, &len, items);
-
 	if (engine_update(&btx, &key, slay, len)<0) {
 		zfree(slay);
 		return -1;
