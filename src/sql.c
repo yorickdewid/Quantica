@@ -48,6 +48,7 @@ enum token {
 	T_QUID,
 	T_TRUE,
 	T_FALSE,
+	T_NULL,
 	T_INVALID,
 };
 
@@ -220,6 +221,7 @@ insert_val:
 		case T_QUID:
 		case T_TRUE:
 		case T_FALSE:
+		case T_NULL:
 		case T_INVALID:
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			break;
@@ -337,28 +339,28 @@ int tokenize(stack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
 	char *pch = strtok(_ustr," ,");
 	while(pch != NULL) {
-		if (!strcmp(pch, "SELECT")) {
+		if (!strcmp(pch, "SELECT") || !strcmp(pch, "select")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SELECT;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "INSERT")) {
+		} else if (!strcmp(pch, "INSERT") || !strcmp(pch, "insert")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_INSERT;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "UPDATE")) {
+		} else if (!strcmp(pch, "UPDATE") || !strcmp(pch, "update")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_UPDATE;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "DELETE")) {
+		} else if (!strcmp(pch, "DELETE") || !strcmp(pch, "delete")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_DELETE;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "SET")) {
+		} else if (!strcmp(pch, "SET") || !strcmp(pch, "set")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SEPARATE;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "INTO")) {
-		} else if (!strcmp(pch, "VALUES")) {
+		} else if (!strcmp(pch, "INTO") || !strcmp(pch, "into")) {
+		} else if (!strcmp(pch, "VALUES") || !strcmp(pch, "values")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_SEPARATE;
 			stack_push(stack, tok);
@@ -374,19 +376,19 @@ int tokenize(stack_t *stack, char sql[]) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_ALL;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "FROM")) {
+		} else if (!strcmp(pch, "FROM") || !strcmp(pch, "from")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_FROM;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "WHERE")) {
+		} else if (!strcmp(pch, "WHERE") || !strcmp(pch, "where")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_WHERE;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "AND")) {
+		} else if (!strcmp(pch, "AND") || !strcmp(pch, "and") || !strcmp(pch, "&&")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_AND;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "OR")) {
+		} else if (!strcmp(pch, "OR") || !strcmp(pch, "or") || !strcmp(pch, "||")) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_OR;
 			stack_push(stack, tok);
@@ -414,15 +416,20 @@ int tokenize(stack_t *stack, char sql[]) {
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token =  T_COMMIT;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "TRUE")) {
+		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
 			cnt++;
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_TRUE;
 			stack_push(stack, tok);
-		} else if (!strcmp(pch, "FALSE")) {
+		} else if (!strcmp(pch, "FALSE") || !strcmp(pch, "false")) {
 			cnt++;
 			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 			tok->token = T_FALSE;
+			stack_push(stack, tok);
+		} else if (!strcmp(pch, "NULL") || !strcmp(pch, "null")) {
+			cnt++;
+			struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
+			tok->token = T_NULL;
 			stack_push(stack, tok);
 		} else if (strisdigit(pch)) {
 			charcnt += strlen(pch);
