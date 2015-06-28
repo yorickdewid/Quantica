@@ -35,6 +35,7 @@ enum token {
 	T_BRACK_CLOSE,
 	T_SEPARATE,
 	T_COMMIT,
+	T_TARGET,
 	/* operations */
 	T_GREATER,
 	T_SMALLER,
@@ -99,6 +100,24 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				return &rs;
 			}
 			tok = stack_rpop(stack);
+			if (tok->token == T_TARGET) {
+				if (stack->size<=0) {
+					ERROR(ESQL_PARSE_END, EL_WARN);
+					return &rs;
+				}
+				tok = stack_rpop(stack);
+				if (tok->token == T_QUID) {
+				} else if (tok->token == T_NULL) {
+				} else {
+					ERROR(ESQL_PARSE_VAL, EL_WARN);
+					return &rs;
+				}
+				if (stack->size<=0) {
+					ERROR(ESQL_PARSE_END, EL_WARN);
+					return &rs;
+				}
+				tok = stack_rpop(stack);
+			}
 			if (tok->token == T_SEPARATE)
 				goto insert_arr;
 			if (tok->token != T_BRACK_OPEN) {
@@ -338,6 +357,7 @@ update_arr:
 		case T_BRACK_CLOSE:
 		case T_SEPARATE:
 		case T_COMMIT:
+		case T_TARGET:
 		case T_GREATER:
 		case T_SMALLER:
 		case T_EQUAL:
@@ -479,6 +499,7 @@ int tokenize(stack_t *stack, char sql[]) {
 		} else if (!strcmp(pch, "SET") || !strcmp(pch, "set")) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "INTO") || !strcmp(pch, "into")) {
+			tok->token = T_TARGET;
 		} else if (!strcmp(pch, "VALUES") || !strcmp(pch, "values")) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "(")) {
