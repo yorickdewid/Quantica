@@ -92,32 +92,37 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				int length;
 			} *name = NULL;
 			schema_t schema = SCHEMA_ARRAY;
+			if (cnt == 1)
+				schema = SCHEMA_FIELD;
 			if (stack->size<=0) {
 				ERROR(ESQL_PARSE_END, EL_WARN);
 				return &rs;
 			}
 			tok = stack_rpop(stack);
 			if (tok->token == T_SEPARATE)
-				goto insert_val;
+				goto insert_arr;
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			cnt /= 2;
 			schema = SCHEMA_OBJECT;
-			name = malloc(sizeof(struct objname) * cnt);
+			int name_cnt = cnt/2;
+			name = zmalloc(sizeof(struct objname) * name_cnt);
 			int i = 0;
 			while (stack->size>0) {
 				tok = stack_rpop(stack);
 				if (tok->token == T_BRACK_CLOSE)
 					break;
+				if (i+1 > name_cnt) {
+					name = zrealloc(name, sizeof(struct objname) * ++name_cnt);
+				}
 				if (tok->token == T_STRING) {
 					name[i].name = tok->string;
 					name[i].length = tok->length;
 					i++;
+					cnt--;
 				}
 			}
-			i = 0;
 			if (stack->size<=0) {
 				ERROR(ESQL_PARSE_END, EL_WARN);
 				return &rs;
@@ -127,7 +132,7 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-insert_val:
+insert_arr:
 			if (stack->size<=0) {
 				ERROR(ESQL_PARSE_END, EL_WARN);
 				return &rs;
@@ -138,44 +143,47 @@ insert_val:
 				return &rs;
 			}
 			size_t slay_len = 0;
+			int j = 0;
 			void *slay = create_row(schema, cnt, charcnt, &slay_len);
 			void *next = movetodata_row(slay);
 			while (stack->size>0) {
 				tok = stack_rpop(stack);
 				if (tok->token == T_BRACK_CLOSE)
 					break;
+				if (name && j>=i)
+					break;
 				if (tok->token == T_STRING) {
 					if (name)
-						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_TEXT);
+						next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_TEXT);
 					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
 				} else if (tok->token == T_INTEGER || tok->token == T_DOUBLE) {
 					if (name)
-						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_INT);
+						next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_INT);
 					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
 				} else if (tok->token == T_QUID) {
 					if (name)
-						next = slay_wrap(next, name[i].name, name[i].length, tok->string, tok->length, DT_QUID);
+						next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_QUID);
 					else
 						next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
 				} else if (tok->token == T_FALSE) {
 					if (name)
-						next = slay_wrap(next, name[i].name, name[i].length, NULL, 0, DT_BOOL_F);
+						next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_F);
 					else
 						next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
 				} else if (tok->token == T_TRUE) {
 					if (name)
-						next = slay_wrap(next, name[i].name, name[i].length, NULL, 0, DT_BOOL_T);
+						next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
 					else
 						next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
 				}
-				i++;
+				j++;
 			}
 			if (name)
 				zfree(name);
 			_db_put(rs.quid, slay, slay_len);
-			rs.items = cnt;
+			rs.items = j;
 			return &rs;
 		}
 		case T_UPDATE:

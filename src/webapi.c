@@ -273,6 +273,9 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				} else if(IFERROR(ESQL_PARSE_TOK)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unexpected token\",\"status\":\"SQL_PARSE_TOK\",\"success\":false}", GETERROR());
 					return HTTP_OK;
+				} else if(IFERROR(ESQL_PARSE_STCT)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query construction\",\"status\":\"SQL_PARSE_STCT\",\"success\":false}", GETERROR());
+					return HTTP_OK;
 				} else {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 					return HTTP_OK;
