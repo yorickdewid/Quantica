@@ -139,8 +139,6 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			int length;
 		} *name = NULL;
 		schema_t schema = SCHEMA_ARRAY;
-		if (cnt == 1)
-			schema = SCHEMA_FIELD;
 		if (stack->size<=0) {
 			ERROR(ESQL_PARSE_END, EL_WARN);
 			return &rs;
@@ -158,12 +156,15 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				ERROR(ESQL_PARSE_VAL, EL_WARN);
 				return &rs;
 			}
+			cnt--;
 			if (stack->size<=0) {
 				ERROR(ESQL_PARSE_END, EL_WARN);
 				return &rs;
 			}
 			tok = stack_rpop(stack);
 		}
+		if (cnt == 1)
+			schema = SCHEMA_FIELD;
 		if (tok->token == T_SEPARATE)
 			goto insert_arr;
 		if (tok->token != T_BRACK_OPEN) {
@@ -506,7 +507,7 @@ char *explode_sql(char *sql) {
 
 int tokenize(stack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
-	char *pch = strtok(_ustr," ,");
+	char *pch = strtoken(_ustr," ,");
 	while(pch != NULL) {
 		struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 		if (!strcmp(pch, "SELECT") || !strcmp(pch, "select")) {
@@ -630,7 +631,7 @@ tok_err:
 			return 0;
 		}
 		stack_push(stack, tok);
-		pch = strtok(NULL, " ,");
+		pch = strtoken(NULL, " ,");
 	}
 	zfree(_ustr);
 	return 1;
