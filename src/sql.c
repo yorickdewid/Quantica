@@ -57,6 +57,8 @@ enum token {
 	T_EQUAL,
 	T_GREATER_EQUAL,
 	T_SMALLER_EQUAL,
+	/* functional */
+	T_FUNC_QUID,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -83,10 +85,41 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 	}
 	struct stoken *tok = stack_rpop(stack);
 	if (tok->token == T_SELECT) {
-		while (stack->size>0) {
+		tok = stack_rpop(stack);
+		if (tok->token == T_FUNC_QUID) {
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
 			tok = stack_rpop(stack);
-			if (tok->token == T_FROM)
-				break;
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			quid_generate(rs.quid);
+			return &rs;
+		}
+		if (tok->token != T_ASTERISK) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		if (stack->size<=0) {
+			ERROR(ESQL_PARSE_END, EL_WARN);
+			return &rs;
+		}
+		tok = stack_rpop(stack);
+		if (tok->token != T_FROM) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
 		}
 		if (stack->size<=0) {
 			ERROR(ESQL_PARSE_END, EL_WARN);
@@ -540,6 +573,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_UNIQUE;
 		} else if (!strcmp(pch, "IS") || !strcmp(pch, "is")) {
 			tok->token =  T_IS;
+		} else if (!strcmp(pch, "QUID") || !strcmp(pch, "quid")) {
+			tok->token =  T_FUNC_QUID;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {

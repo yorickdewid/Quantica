@@ -286,7 +286,7 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				resplen = RESPONSE_SIZE+len;
 				*response = zrealloc(*response, resplen);
 			}
-			if (data->items>0)
+			if (data->quid[0] != '\0')
 				snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", data->quid, data->items);
 			else if (data->data) {
 				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", (char *)data->data);
