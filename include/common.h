@@ -43,6 +43,7 @@ bool strisdigit(char *str);
 bool strisalpha(char *str);
 bool strisualpha(char *str);
 char *strrmquote(char *str);
+char *strtoken(char *s, const char *delim);
 bool strismatch(const char *str, const char *tok);
 int strccnt(const char *str, char c);
 char *itoa(long i);
