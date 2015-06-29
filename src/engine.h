@@ -9,10 +9,6 @@
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
 
-#define DBEXT	"db"
-#define IDXEXT	"idx"
-#define LOGEXT	"log"
-
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
 
@@ -110,9 +106,7 @@ struct engine {
 	uint64_t db_alloc;
 	int fd;
 	int db_fd;
-	int wal_fd;
 	bool lock;
-	char ins_name[INSTANCE_LENGTH];
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];
@@ -121,17 +115,12 @@ struct engine {
 /*
  * Open or Creat an existing database file.
  */
-void engine_init(struct engine *e, const char *file);
+void engine_init(struct engine *e, const char *fname, const char *dbname);
 
 /*
  * Close a database file opened with engine_create() or engine_open().
  */
 void engine_close(struct engine *e);
-
-/*
- * Delete the database from disk
- */
-void engine_unlink(const char *fname);
 
 /*
  * Insert a new item with key 'quid' with the contents in 'data' to the
@@ -159,7 +148,7 @@ int engine_setmeta(struct engine *e, const quid_t *quid, const struct metadata *
 
 int engine_delete(struct engine *e, const quid_t *quid);
 
-int engine_vacuum(struct engine *e, const char *fname);
+int engine_vacuum(struct engine *e, const char *fname, const char *nfname);
 int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);

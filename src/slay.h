@@ -6,11 +6,13 @@
 
 #include "dstype.h"
 
+#define movetodata_row(row) (void *)(((uint8_t *)row)+sizeof(struct row_slay))
+#define next_row(next) (void *)(((uint8_t *)next)+sizeof(struct value_slay)+val_len+namelen)
+
 typedef enum {
 	SCHEMA_FIELD,
 	SCHEMA_ARRAY,
-	SCHEMA_ASOCARRAY,
-	SCHEMA_TABLE
+	SCHEMA_OBJECT
 } schema_t;
 
 struct value_slay {
@@ -25,7 +27,7 @@ struct row_slay {
 };
 
 void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items);
-void *slay_parse_quid(char *data, size_t *slay_len);
+void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len);
 void *slay_parse_text(char *data, size_t data_len, size_t *slay_len);
 void *slay_bool(bool boolean, size_t *slay_len);
 void *slay_null(size_t *slay_len);

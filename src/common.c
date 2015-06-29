@@ -10,6 +10,14 @@ char from_hex(char ch) {
 	return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
 }
 
+int8_t strisbool(char *str) {
+	if (!strcmp(str, "true") || !strcmp(str, "TRUE"))
+		return TRUE;
+	if (!strcmp(str, "false") || !strcmp(str, "FALSE"))
+		return FALSE;
+	return -1;
+}
+
 char *strtolower(char *str){
     for (; *str; ++str)
         *str = tolower(*str);
@@ -26,6 +34,24 @@ bool strisdigit(char *str) {
 	for (; *str; ++str)
 		if(!isdigit(*str))
 			return FALSE;
+	return TRUE;
+}
+
+bool strisalpha(char *str) {
+	for (; *str; ++str) {
+		if (!isalpha(*str))
+			return FALSE;
+	}
+	return TRUE;
+}
+
+bool strisualpha(char *str) {
+	for (; *str; ++str) {
+		if (*str == '_')
+			continue;
+		if (!isalpha(*str))
+			return FALSE;
+	}
 	return TRUE;
 }
 

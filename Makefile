@@ -16,6 +16,8 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/itoa.c \
 		$(SRCDIR)/strdup.c \
 		$(SRCDIR)/stresc.c \
+		$(SRCDIR)/strsep.c \
+		$(SRCDIR)/strtoken.c \
 		$(SRCDIR)/quid.c \
 		$(SRCDIR)/sha1.c \
 		$(SRCDIR)/aes.c \
@@ -23,16 +25,21 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/crc32.c \
 		$(SRCDIR)/md5.c \
 		$(SRCDIR)/sha256.c \
+		$(SRCDIR)/vector.c \
+		$(SRCDIR)/dict.c \
+		$(SRCDIR)/stack.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/json_parse.c \
 		$(SRCDIR)/json_encode.c \
 		$(SRCDIR)/dstype.c \
 		$(SRCDIR)/slay.c \
+		$(SRCDIR)/basecontrol.c \
 		$(SRCDIR)/engine.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
+		$(SRCDIR)/sql.c \
 		$(TESTDIR)/benchmark-engine.c \
 		$(TESTDIR)/test-quid.c \
 		$(TESTDIR)/test-aes.c \

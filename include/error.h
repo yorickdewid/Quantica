@@ -18,7 +18,12 @@ enum error_code {
 	EQUID_EXIST,
 	EDB_LOCKED,
 	EREC_LOCKED,
-	EREC_NOTFOUND
+	EREC_NOTFOUND,
+	ESQL_TOKEN,
+	ESQL_PARSE_END,
+	ESQL_PARSE_VAL,
+	ESQL_PARSE_TOK,
+	ESQL_PARSE_STCT
 };
 
 /*
@@ -31,7 +36,7 @@ struct error {
 
 extern struct error _eglobal;
 
-#define ERROR(e,l)			\
+#define ERROR(e, l)			\
 	_eglobal.code = e;		\
 	_eglobal.level = l;		\
 

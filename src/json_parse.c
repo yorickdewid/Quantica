@@ -210,7 +210,7 @@ json_value *json_parse_ex(json_settings *settings, const char *json, size_t leng
 
 		state.cur_line = 1;
 
-		for (state.ptr = json ;; ++state.ptr) {
+		for (state.ptr = json;; ++state.ptr) {
 			char b = (state.ptr == end ? 0 : *state.ptr);
 
 			if (flags & flag_string) {

@@ -2,12 +2,12 @@
 #define CONFIG_H_INCLUDED
 
 #define PROGNAME		"Quantica"
-#define INSTANCE		"SERVER01"
+#define INSTANCE_PREFIX	"QUANTZ"
 #define VERSION_RELESE	0
-#define VERSION_MAJOR	4
+#define VERSION_MAJOR	5
 #define VERSION_MINOR	0
 #define LOGFILE			"quantica.log"
-#define INITDB			"i1"
+#define BINDATA			"QUBIN_DATA"
 
 #define CACHE_SLOTS	23
 #define DBCACHE_SLOTS	25

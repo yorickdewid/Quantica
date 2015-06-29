@@ -36,15 +36,20 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 typedef uint8_t bool;
 
 char from_hex(char ch);
+int8_t strisbool(char *str);
 char *strtolower(char *str);
 char *strtoupper(char *str);
 bool strisdigit(char *str);
+bool strisalpha(char *str);
+bool strisualpha(char *str);
 char *strrmquote(char *str);
+char *strtoken(char *s, const char *delim);
 bool strismatch(const char *str, const char *tok);
 int strccnt(const char *str, char c);
 char *itoa(long i);
 char *strdup(const char *str);
 char *stresc(char *src);
+char *strsep(char ** stringp, const char *delim);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */

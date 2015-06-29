@@ -88,40 +88,11 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 	put_table(e, table, offset);
 }
 
-static void create_backup(const char *fname) {
-	char ddbname[DBNAME_SIZE], didxname[DBNAME_SIZE], dwalname[DBNAME_SIZE];
-	char sdbname[DBNAME_SIZE], sidxname[DBNAME_SIZE], swalname[DBNAME_SIZE];
-	snprintf(sidxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
-	snprintf(sdbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
-	snprintf(swalname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
-	snprintf(didxname, DBNAME_SIZE, "%s.%s1", fname, IDXEXT);
-	snprintf(ddbname, DBNAME_SIZE, "%s.%s1", fname, DBEXT);
-	snprintf(dwalname, DBNAME_SIZE, "%s.%s1", fname, LOGEXT);
-	rename(sidxname, didxname);
-	rename(sdbname, ddbname);
-	rename(swalname, dwalname);
-}
-
-static void restore_tmpdb(const char *fname) {
-	char ddbname[DBNAME_SIZE], didxname[DBNAME_SIZE], dwalname[DBNAME_SIZE];
-	char sdbname[DBNAME_SIZE], sidxname[DBNAME_SIZE], swalname[DBNAME_SIZE];
-	snprintf(sidxname, DBNAME_SIZE, "%s._%s", fname, IDXEXT);
-	snprintf(sdbname, DBNAME_SIZE, "%s._%s", fname, DBEXT);
-	snprintf(swalname, DBNAME_SIZE, "%s._%s", fname, LOGEXT);
-	snprintf(didxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
-	snprintf(ddbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
-	snprintf(dwalname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
-	rename(sidxname, didxname);
-	rename(sdbname, ddbname);
-	rename(swalname, dwalname);
-}
-
-static int engine_open(struct engine *e, const char *idxname, const char *dbname, const char* walname) {
+static int engine_open(struct engine *e, const char *idxname, const char *dbname) {
 	memset(e, 0, sizeof(struct engine));
 	e->fd = open(idxname, O_RDWR | O_BINARY);
 	e->db_fd = open(dbname, O_RDWR | O_BINARY);
-	e->wal_fd = open(walname, O_RDWR | O_BINARY);
-	if (e->fd < 0)
+	if (e->fd < 0 || e->db_fd < 0)
 		return -1;
 
 	struct engine_super super;
@@ -135,7 +106,6 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
 	assert(from_be64(super.version)==VERSION_RELESE);
-	strlcpy(e->ins_name, super.instance, INSTANCE_LENGTH);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -150,12 +120,11 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	return 0;
 }
 
-static int engine_create(struct engine *e, const char *idxname, const char *dbname, const char *walname) {
+static int engine_create(struct engine *e, const char *idxname, const char *dbname) {
 	memset(e, 0, sizeof(struct engine));
 	e->fd = open(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	e->db_fd = open(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	e->wal_fd = open(walname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	if (e->fd < 0)
+	if (e->fd < 0 || e->db_fd < 0)
 		return -1;
 
 	flush_super(e);
@@ -163,21 +132,14 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 
 	e->alloc = sizeof(struct engine_super);
 	e->db_alloc = sizeof(struct engine_dbsuper);
-	strlcpy(e->ins_name, INSTANCE, INSTANCE_LENGTH);
 	return 0;
 }
 
-void engine_init(struct engine *e, const char *fname) {
-	char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
-	snprintf(idxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
-	snprintf(dbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
-	snprintf(walname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
-
-	restore_tmpdb(fname);
-	if(file_exists(idxname) && file_exists(dbname)) {
-		engine_open(e, idxname, dbname, walname);
+void engine_init(struct engine *e, const char *fname, const char *dbname) {
+	if(file_exists(fname) && file_exists(dbname)) {
+		engine_open(e, fname, dbname);
 	} else {
-		engine_create(e, idxname, dbname, walname);
+		engine_create(e, fname, dbname);
 	}
 }
 
@@ -185,7 +147,6 @@ void engine_close(struct engine *e) {
 	flush_super(e);
 	close(e->fd);
 	close(e->db_fd);
-	close(e->wal_fd);
 
 	size_t i;
 	for(i=0; i<CACHE_SLOTS; ++i) {
@@ -193,16 +154,6 @@ void engine_close(struct engine *e) {
 			free(e->cache[i].table);
 		}
 	}
-}
-
-void engine_unlink(const char *fname) {
-	char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
-	snprintf(idxname, DBNAME_SIZE, "%s.%s", fname, IDXEXT);
-	snprintf(dbname, DBNAME_SIZE, "%s.%s", fname, DBEXT);
-	snprintf(walname, DBNAME_SIZE, "%s.%s", fname, LOGEXT);
-	unlink(idxname);
-	unlink(dbname);
-	unlink(walname);
 }
 
 void engine_sync(struct engine *e) {
@@ -332,7 +283,6 @@ static void flush_super(struct engine *e) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
-	strlcpy(super.instance, e->ins_name, INSTANCE_LENGTH);
 
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
@@ -367,7 +317,6 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	info.free = 0;
 
 	uint64_t offset = alloc_dbchunk(e, len);
-
 	lseek(e->db_fd, offset, SEEK_SET);
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprintf("[erro] Failed to write disk\n");
@@ -873,7 +822,7 @@ static void walk_dbstorage(struct engine *e) {
 }
 #endif // 0
 
-static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_offset) {
+static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
 	struct engine_table *table = get_table(e, table_offset);
 	size_t sz = table->size;
@@ -915,15 +864,14 @@ static void tree_traversal(struct engine *e, struct engine *ce, uint64_t table_o
 
 		zfree(data);
 		if (child)
-			tree_traversal(e, ce, child);
+			engine_copy(e, ce, child);
 		if (right)
-			tree_traversal(e, ce, right);
+			engine_copy(e, ce, right);
 	}
 	put_table(e, table, table_offset);
 }
 
-int engine_vacuum(struct engine *e, const char *fname) {
-    char dbname[DBNAME_SIZE], idxname[DBNAME_SIZE], walname[DBNAME_SIZE];
+int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 	struct engine ce;
 	struct engine tmp;
 
@@ -937,18 +885,12 @@ int engine_vacuum(struct engine *e, const char *fname) {
 		return 0;
 
 	e->lock = LOCK;
-	snprintf(idxname, DBNAME_SIZE, "%s._%s", fname, IDXEXT);
-	snprintf(dbname, DBNAME_SIZE, "%s._%s", fname, DBEXT);
-	snprintf(walname, DBNAME_SIZE, "%s._%s", fname, LOGEXT);
-
-	engine_create(&ce, idxname, dbname, walname);
-	tree_traversal(e, &ce, e->top);
+	engine_create(&ce, fname, dbname);
+	engine_copy(e, &ce, e->top);
 
 	memcpy(&tmp, e, sizeof(struct engine));
 	memcpy(e, &ce, sizeof(struct engine));
 	engine_close(&tmp);
-
-	create_backup(fname);
 
 	return 0;
 }
@@ -979,7 +921,8 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 				offset = insert_data(e, data, len);
 				table->items[i].offset = to_be64(offset);
 				flush_table(e, table, table_offset);
-				goto done;
+				flush_super(e);
+				return 0;
 			}
 			if (cmp < 0) {
 				right = i;
@@ -991,12 +934,8 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 		put_table(e, table, table_offset);
 		table_offset = child;
 	}
-
-done:
-	flush_super(e);
-	if(ISERROR())
-		return -1;
-	return 0;
+	ERROR(EREC_NOTFOUND, EL_WARN);
+	return -1;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {

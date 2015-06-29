@@ -1,0 +1,44 @@
+{
+	"folders": [
+		{
+			"path": "/home/eve/projects/quantica",
+			"folder_exclude_patterns": [
+				"bin"
+			]
+		}
+	],
+	"settings": {
+		"tab_size": 4,
+		"translate_tabs_to_spaces": false,
+		"use_tab_stops": true,
+		"detect_indentation": true,
+		"auto_indent": true,
+		"smart_indent": true
+	},
+	"build_systems": [
+		{
+			"name": "CC",
+			"cmd": [
+				"make"
+			],
+			"working_dir": "${folder}",
+			"selector": "source.makefile",
+			"variants": [
+				{
+					"name": "Clean",
+					"cmd": [
+						"make",
+						"clean"
+					]
+				},
+				{
+					"name": "Test",
+					"cmd": [
+						"make",
+						"test"
+					]
+				}
+			]
+		}
+	]
+}

@@ -3,6 +3,7 @@
 
 #include "quid.h"
 #include "time.h"
+#include "sql.h"
 #include "dstype.h"
 #include "engine.h"
 
@@ -27,10 +28,12 @@ void detach_core();
 
 void set_instance_name(char name[]);
 char *get_instance_name();
+char *get_instance_key();
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
 int crypto_sha256(char *s, const char *data);
+sqlresult_t *exec_sqlquery(const char *query, size_t *len);
 char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
@@ -40,11 +43,13 @@ void quid_generate(char *quid);
 /*
  * Database operations
  */
+int _db_put(char *quid, void *slay, size_t len);
 int db_put(char *quid, int *items, const void *data, size_t len);
-void *_db_get(quid_t *key, dstype_t *dt);
-void *db_get(char *quid);
+void *_db_get(char *quid, dstype_t *dt);
+void *db_get(char *quid, size_t *len);
 char *db_get_type(char *quid);
-int db_update(char *quid, const void *data, size_t len);
+int _db_update(char *quid, void *slay, size_t len);
+int db_update(char *quid, int *items, const void *data, size_t data_len);
 int db_delete(char *quid);
 int db_purge(char *quid);
 int db_vacuum();

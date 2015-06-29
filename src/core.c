@@ -16,20 +16,40 @@
 #include "time.h"
 #include "json_encode.h"
 #include "slay.h"
+#include "basecontrol.h"
 #include "engine.h"
 #include "bootstrap.h"
+#include "sql.h"
 #include "core.h"
 
 static struct engine btx;
+static struct base control;
 static uint8_t ready = FALSE;
 static qtime_t uptime;
+static quid_t instanceid;
 struct error _eglobal;
 
+static char *get_zero_key() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &control.zero_key);
+	return buf;
+}
+
 void start_core() {
+	/* Start the logger */
 	start_log();
 	ERRORZEOR();
-	engine_init(&btx, INITDB);
+
+	quid_create(&instanceid);
+	base_init(&control);
+
+	/* Initialize engine */
+	engine_init(&btx, get_zero_key(), control.bindata);
+
+	/* Bootstrap database if not exist */
 	bootstrap(&btx);
+
+	/* Server ready */
 	uptime = get_timestamp();
 	ready = TRUE;
 }
@@ -37,20 +57,33 @@ void start_core() {
 void detach_core() {
 	if (!ready)
 		return;
+	/* CLose all databases */
 	engine_close(&btx);
+
+	base_close(&control);
+
+	/* Stop the logger */
 	stop_log();
+
+	/* Server is inactive */
 	ready = FALSE;
 }
 
 void set_instance_name(char name[]) {
 	strtoupper(name);
-	strlcpy(btx.ins_name, name, INSTANCE_LENGTH);
-	btx.ins_name[INSTANCE_LENGTH-1] = '\0';
-	engine_sync(&btx);
+	strlcpy(control.instance_name, name, INSTANCE_LENGTH);
+	control.instance_name[INSTANCE_LENGTH-1] = '\0';
+	base_sync(&control);
 }
 
 char *get_instance_name() {
-	return btx.ins_name;
+	return control.instance_name;
+}
+
+char *get_instance_key() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &control.instance_key);
+	return buf;
 }
 
 char *get_uptime() {
@@ -123,10 +156,30 @@ unsigned long int stat_getfreekeys() {
 	return btx.stats.free_tables;
 }
 
+sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
+	return sql_exec(query, len);
+}
+
 void quid_generate(char *quid) {
 	quid_t key;
 	quid_create(&key);
 	quidtostr(quid, &key);
+}
+
+int _db_put(char *quid, void *slay, size_t len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	quid_create(&key);
+
+	if (engine_insert(&btx, &key, slay, len)<0) {
+		zfree(slay);
+		return -1;
+	}
+	zfree(slay);
+
+	quidtostr(quid, &key);
+	return 0;
 }
 
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
@@ -137,20 +190,24 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	quid_create(&key);
 
 	void *slay = slay_put_data((char *)data, data_len, &len, items);
-
-	if (engine_insert(&btx, &key, slay, len)<0)
+	if (engine_insert(&btx, &key, slay, len)<0) {
+		zfree(slay);
 		return -1;
+	}
 	zfree(slay);
 
 	quidtostr(quid, &key);
 	return 0;
 }
 
-void *_db_get(quid_t *key, dstype_t *dt) {
+void *_db_get(char *quid, dstype_t *dt) {
 	if (!ready)
 		return NULL;
+	quid_t key;
+	strtoquid(quid, &key);
+
 	size_t len;
-	void *data = engine_get(&btx, key, &len);
+	void *data = engine_get(&btx, &key, &len);
 	if (!data)
 		return NULL;
 
@@ -159,14 +216,13 @@ void *_db_get(quid_t *key, dstype_t *dt) {
 	return buf;
 }
 
-void *db_get(char *quid) {
+void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
 
-	size_t len;
-	void *data = engine_get(&btx, &key, &len);
+	void *data = engine_get(&btx, &key, len);
 	if (!data)
 		return NULL;
 
@@ -179,36 +235,48 @@ void *db_get(char *quid) {
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
-	(void)quid;
-	/*size_t len;
 	quid_t key;
-	dstype_t dt;
 	strtoquid(quid, &key);
 
-	void *val_data = engine_get(&btx, &key, &len);
-	if (!val_data)
+	size_t len;
+	void *data = engine_get(&btx, &key, &len);
+	if (!data)
 		return NULL;
-	void *data = slay_unwrap(val_data, &len, &dt);
+
+	dstype_t dt;
+	void *buf = slay_get_data(data, &dt);
+	zfree(buf);
 	zfree(data);
-	return str_type(dt);*/
-	return NULL;
+	return str_type(dt);
 }
 
-int db_update(char *quid, const void *data, size_t len) {
+int _db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
-	(void)quid;
-	(void)data;
-	(void)len;
-/*	quid_t key;
+	quid_t key;
 	strtoquid(quid, &key);
-	void *slay = create_row(1, &len);
-	void *val_data = slay_wrap(slay, (void *)data, len, DT_TEXT);
-	if (engine_update(&btx, &key, val_data, len)<0) {
+
+	if (engine_update(&btx, &key, slay, len)<0) {
+		zfree(slay);
 		return -1;
 	}
 	zfree(slay);
-	zfree(val_data);*/
+	return 0;
+}
+
+int db_update(char *quid, int *items, const void *data, size_t data_len) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	size_t len = 0;
+	strtoquid(quid, &key);
+
+	void *slay = slay_put_data((char *)data, data_len, &len, items);
+	if (engine_update(&btx, &key, slay, len)<0) {
+		zfree(slay);
+		return -1;
+	}
+	zfree(slay);
 	return 0;
 }
 
@@ -235,7 +303,17 @@ int db_purge(char *quid) {
 int db_vacuum() {
 	if (!ready)
 		return -1;
-	return engine_vacuum(&btx, INITDB);
+	char tmp_key[QUID_LENGTH+1];
+	quid_t key;
+	quid_create(&key);
+	quidtostr(tmp_key, &key);
+	char *bindata = generate_bindata_name(&control);
+
+	if (engine_vacuum(&btx, tmp_key, bindata)<0)
+		return -1;
+	memcpy(&control.zero_key, &key, sizeof(quid_t));
+	strcpy(control.bindata, bindata);
+	return 0;
 }
 
 int db_record_get_meta(char *quid, struct record_status *status) {
