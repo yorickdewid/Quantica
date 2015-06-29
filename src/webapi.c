@@ -680,7 +680,7 @@ void handle_request(int sd, fd_set *set) {
 	char *filename = NULL;
 	char * _filename = NULL;
 	char *querystring = NULL;
-	int request_type;
+	int request_type = 0;
 	char *host = NULL;
 	char *http_version = NULL;
 	unsigned long c_length = 0L;

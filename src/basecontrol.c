@@ -20,7 +20,7 @@ static char *generate_instance_name() {
 	char rand[INSTANCE_RANDOM];
 	for (i=0; i<len; ++i)
 		rand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
-	rand[len] = 0;
+	rand[len-1] = 0;
 
 	static char buf[INSTANCE_LENGTH];
 	strlcpy(buf, INSTANCE_PREFIX, INSTANCE_LENGTH);

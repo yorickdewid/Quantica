@@ -134,6 +134,7 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		if (rs.data)
 			return &rs;
 	} else if (tok->token == T_INSERT) {
+		int i = 0;
 		struct objname {
 			char *name;
 			int length;
@@ -174,7 +175,6 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		schema = SCHEMA_OBJECT;
 		int name_cnt = cnt/2;
 		name = zmalloc(sizeof(struct objname) * name_cnt);
-		int i = 0;
 		while (stack->size>0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
@@ -259,6 +259,7 @@ insert_arr:
 		rs.items = j;
 		return &rs;
 	} else if (tok->token == T_UPDATE) {
+		int i = 0;
 		if (stack->size<=0) {
 			ERROR(ESQL_PARSE_END, EL_WARN);
 			return &rs;
@@ -299,7 +300,6 @@ insert_arr:
 		schema = SCHEMA_OBJECT;
 		int name_cnt = cnt/2;
 		name = zmalloc(sizeof(struct objname) * name_cnt);
-		int i = 0;
 		while (stack->size>0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
