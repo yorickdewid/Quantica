@@ -245,6 +245,11 @@ insert_arr:
 					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
 				else
 					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
+			} else if (tok->token == T_NULL) {
+				if (name)
+					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
+				else
+					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
 			}
 			j++;
 		}
@@ -365,6 +370,11 @@ update_arr:
 					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
 				else
 					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
+			} else if (tok->token == T_NULL) {
+				if (name)
+					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
+				else
+					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
 			}
 			j++;
 		}
