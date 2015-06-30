@@ -14,6 +14,7 @@
 #include "core.h"
 
 static int delete_larger = 0;
+static uint64_t last_blob = 0;
 
 static void flush_super(struct engine *e);
 static void flush_dbsuper(struct engine *e);
@@ -69,7 +70,7 @@ static void put_table(struct engine *e, struct engine_table *table, uint64_t off
 	/* overwrite cache */
 	struct engine_cache *slot = &e->cache[offset % CACHE_SLOTS];
 	if (slot->offset != 0) {
-		free(slot->table);
+		zfree(slot->table);
 	}
 	slot->offset = offset;
 	slot->table = table;
@@ -114,6 +115,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		return -1;
 	}
 	assert(from_be64(dbsuper.version)==VERSION_RELESE);
+	last_blob = from_be64(dbsuper.last);
 
 	e->alloc = lseek(e->fd, 0, SEEK_END);
 	e->db_alloc = lseek(e->db_fd, 0, SEEK_END);
@@ -132,6 +134,7 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 
 	e->alloc = sizeof(struct engine_super);
 	e->db_alloc = sizeof(struct engine_dbsuper);
+	last_blob = 0;
 	return 0;
 }
 
@@ -151,7 +154,7 @@ void engine_close(struct engine *e) {
 	size_t i;
 	for(i=0; i<CACHE_SLOTS; ++i) {
 		if(e->cache[i].offset) {
-			free(e->cache[i].table);
+			zfree(e->cache[i].table);
 		}
 	}
 }
@@ -250,6 +253,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 
 	int i, j;
 	info.free = 1;
+	info.next = 0;
 	struct engine_dbcache dbinfo;
 	size_t len = from_be32(info.len);
 	dbinfo.offset = offset;
@@ -296,6 +300,7 @@ static void flush_dbsuper(struct engine *e) {
 	struct engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct engine_dbsuper));
 	dbsuper.version = to_be64(VERSION_RELESE);
+	dbsuper.last = to_be64(last_blob);
 
 	lseek(e->db_fd, 0, SEEK_SET);
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {

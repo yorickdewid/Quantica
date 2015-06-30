@@ -378,7 +378,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(arr->alloc_size);
+			buf = zmalloc(arr->alloc_size);
 			memset(buf, 0, arr->alloc_size);
 			buf = dict_array(arr, buf);
 			vector_free(arr);
@@ -452,7 +452,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(obj->alloc_size);
+			buf = zmalloc(obj->alloc_size);
 			memset(buf, 0, obj->alloc_size);
 			buf = dict_object(obj, buf);
 			vector_free(obj);

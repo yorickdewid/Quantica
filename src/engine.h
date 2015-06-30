@@ -78,6 +78,7 @@ struct engine_dbcache {
 
 struct blob_info {
      __be32 len;
+     __be64 next;
 	bool free;
 } __attribute__((packed));
 
@@ -92,6 +93,8 @@ struct engine_super {
 
 struct engine_dbsuper {
 	__be32 version;
+	__be64 start;
+	__be64 last;
 } __attribute__((packed));
 
 struct engine_stats {
