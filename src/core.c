@@ -59,7 +59,6 @@ void detach_core() {
 		return;
 	/* CLose all databases */
 	engine_close(&btx);
-
 	base_close(&control);
 
 	/* Stop the logger */

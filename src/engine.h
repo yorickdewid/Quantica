@@ -93,7 +93,6 @@ struct engine_super {
 
 struct engine_dbsuper {
 	__be32 version;
-	__be64 start;
 	__be64 last;
 } __attribute__((packed));
 

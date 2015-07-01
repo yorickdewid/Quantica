@@ -129,12 +129,12 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 	if (e->fd < 0 || e->db_fd < 0)
 		return -1;
 
+	last_blob = 0;
 	flush_super(e);
 	flush_dbsuper(e);
 
 	e->alloc = sizeof(struct engine_super);
 	e->db_alloc = sizeof(struct engine_dbsuper);
-	last_blob = 0;
 	return 0;
 }
 
@@ -147,7 +147,7 @@ void engine_init(struct engine *e, const char *fname, const char *dbname) {
 }
 
 void engine_close(struct engine *e) {
-	flush_super(e);
+	engine_sync(e);
 	close(e->fd);
 	close(e->db_fd);
 
@@ -322,6 +322,9 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	info.free = 0;
 
 	uint64_t offset = alloc_dbchunk(e, len);
+	info.next = last_blob;
+	last_blob = offset;
+
 	lseek(e->db_fd, offset, SEEK_SET);
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprintf("[erro] Failed to write disk\n");
