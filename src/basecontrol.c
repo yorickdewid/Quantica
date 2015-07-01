@@ -13,6 +13,7 @@
 
 #define BASECONTROL		"base_control"
 #define INSTANCE_RANDOM	5
+#define BASE_MAGIC		"$EOBCTRL$"
 
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -54,6 +55,7 @@ void base_sync(struct base *base) {
 	super.bincnt = base->bincnt;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
+	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
 	lseek(base->fd, 0, SEEK_SET);
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
@@ -81,6 +83,7 @@ void base_init(struct base *base) {
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
 		assert(super.version==VERSION_RELESE);
+		assert(!strcmp(super.magic, BASE_MAGIC));
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 	} else {
