@@ -318,6 +318,13 @@ http_status_t api_vacuum(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_sync(char **response, http_request_t *req) {
+	unused(req);
+	filesync();
+	strlcpy(*response, "{\"description\":\"Block synchronization succeeded\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_version(char **response, http_request_t *req) {
 	unused(req);
 	snprintf(*response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":true}", API_VERSION, get_version_string());
@@ -609,6 +616,7 @@ const struct webroute route[] = {
 	{"/sha256",		api_sha256,			FALSE},
 	{"/sql",		api_sqlquery,		FALSE},
 	{"/vacuum",		api_vacuum,			FALSE},
+	{"/sync",		api_sync,			FALSE},
 	{"/version",	api_version,		FALSE},
 	{"/status",		api_status,			FALSE},
 	{"/quid",		api_gen_quid,		FALSE},

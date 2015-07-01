@@ -39,6 +39,7 @@ char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 void quid_generate(char *quid);
+void filesync();
 
 /*
  * Database operations

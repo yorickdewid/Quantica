@@ -165,6 +165,11 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
+void filesync() {
+	engine_sync(&btx);
+	base_sync(&control);
+}
+
 int _db_put(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
