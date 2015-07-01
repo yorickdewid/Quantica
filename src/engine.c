@@ -17,7 +17,7 @@
 static int delete_larger = 0;
 static uint64_t last_blob = 0;
 
-static void flush_super(struct engine *e);
+static void flush_super(struct engine *e, bool fast);
 static void flush_dbsuper(struct engine *e);
 static void free_index_chunk(struct engine *e, uint64_t offset);
 static void free_dbchunk(struct engine *e, uint64_t offset);
@@ -138,7 +138,7 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 		return -1;
 
 	last_blob = 0;
-	flush_super(e);
+	flush_super(e, TRUE);
 	flush_dbsuper(e);
 
 	e->alloc = sizeof(struct engine_super);
@@ -168,7 +168,7 @@ void engine_close(struct engine *e) {
 }
 
 void engine_sync(struct engine *e) {
-	flush_super(e);
+	flush_super(e, FALSE);
 	flush_dbsuper(e);
 }
 
@@ -287,7 +287,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 	}
 }
 
-static void flush_super(struct engine *e) {
+static void flush_super(struct engine *e, bool fast) {
 	uint64_t crc64;
 	struct engine_super super;
 	memset(&super, 0, sizeof(struct engine_super));
@@ -296,6 +296,8 @@ static void flush_super(struct engine *e) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+	if (fast)
+		goto flush_disk;
 
 	lseek(e->fd, sizeof(struct engine_super), SEEK_SET);
 	if(!crc_file(e->fd, &crc64)) {
@@ -304,6 +306,7 @@ static void flush_super(struct engine *e) {
 	}
 	super.crc_zero_key = to_be64(crc64);
 
+flush_disk:
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
 		lprintf("[erro] Failed to write disk\n");
@@ -437,8 +440,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 	uint64_t right_child = from_be64(table->items[i + 1].child);
 
 	if (left_child != 0 && right_child != 0) {
-		/* replace the removed item by taking an item from one of the
-		   child tables */
+		/* replace the removed item by taking an item from one of the child tables */
 		uint64_t new_offset;
 		if (arc4random() & 1) {
 			new_offset = take_largest(e, left_child, &table->items[i].quid);
@@ -625,11 +627,11 @@ int engine_insert(struct engine *e, const quid_t *c_quid, const void *data, size
 	memcpy(&quid, c_quid, sizeof(quid_t));
 
 	insert_toplevel(e, &e->top, &quid, data, len);
-	flush_super(e);
+	flush_super(e, TRUE);
 	if(ISERROR())
 		return -1;
 
-    e->stats.keys++;
+	e->stats.keys++;
 	return 0;
 }
 
@@ -720,7 +722,7 @@ int engine_purge(struct engine *e, quid_t *quid) {
 	e->stats.keys--;
 
 	free_dbchunk(e, offset);
-	flush_super(e);
+	flush_super(e, TRUE);
 	return 0;
 }
 
@@ -822,12 +824,12 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 	if(ISERROR())
 		return -1;
 
-    nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
+	nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
 	set_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 
-	flush_super(e);
+	flush_super(e, TRUE);
 	return 0;
 }
 
@@ -881,9 +883,9 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 		}
 
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
-            insert_toplevel(ce, &ce->top, &table->items[i].quid, data, len);
-            ce->stats.keys++;
-            flush_super(ce);
+			insert_toplevel(ce, &ce->top, &table->items[i].quid, data, len);
+			ce->stats.keys++;
+			flush_super(ce, TRUE);
 		}
 
 		zfree(data);
@@ -926,8 +928,8 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 		return -1;
 	}
 
-    uint64_t offset = 0;
-    uint64_t table_offset = e->top;
+	uint64_t offset = 0;
+	uint64_t table_offset = e->top;
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -945,7 +947,7 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 				offset = insert_data(e, data, len);
 				table->items[i].offset = to_be64(offset);
 				flush_table(e, table, table_offset);
-				flush_super(e);
+				flush_super(e, TRUE);
 				return 0;
 			}
 			if (cmp < 0) {
