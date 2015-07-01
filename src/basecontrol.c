@@ -114,4 +114,5 @@ void base_close(struct base *base) {
 	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
+	lprintf("[info] Exist with EXSTAT_SUCCESS\n");
 }
