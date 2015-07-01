@@ -29,6 +29,7 @@ struct base_super {
 	uint16_t version;
 	char bindata[BINDATA_LENGTH];
 	int bincnt;
+	uint8_t exitstatus;
 	char magic[MAGIC_LENGTH];
 } __attribute__((packed));
 

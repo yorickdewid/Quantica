@@ -15,6 +15,13 @@
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 
+static enum {
+	EXSTAT_ERROR,
+	EXSTAT_INVALID,
+	EXSTAT_CHECKPOINT,
+	EXSTAT_SUCCESS
+} exit_status;
+
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i, len = INSTANCE_RANDOM;
@@ -53,6 +60,7 @@ void base_sync(struct base *base) {
 	super.lock = base->lock;
 	super.version = VERSION_RELESE;
 	super.bincnt = base->bincnt;
+	super.exitstatus = exit_status;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
@@ -84,21 +92,26 @@ void base_init(struct base *base) {
 		base->bincnt = super.bincnt;
 		assert(super.version==VERSION_RELESE);
 		assert(!strcmp(super.magic, BASE_MAGIC));
+		assert(super.exitstatus==EXSTAT_SUCCESS);
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
+		exit_status = EXSTAT_CHECKPOINT;
 	} else {
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
 		base->bincnt = 0;
+		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		base_sync(base);
+		exit_status = EXSTAT_CHECKPOINT;
 	}
 }
 
 void base_close(struct base *base) {
+	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
 }
