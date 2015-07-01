@@ -3,4 +3,4 @@
 
 unsigned long crc32_calculate(unsigned long in_crc32, const void *buf, size_t len);
 
-#endif // CRC32,H_INCLUDED
+#endif // CRC32_H_INCLUDED

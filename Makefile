@@ -23,6 +23,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/aes.c \
 		$(SRCDIR)/base64.c \
 		$(SRCDIR)/crc32.c \
+		$(SRCDIR)/crc64.c \
 		$(SRCDIR)/md5.c \
 		$(SRCDIR)/sha256.c \
 		$(SRCDIR)/vector.c \
