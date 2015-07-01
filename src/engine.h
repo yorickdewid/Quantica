@@ -88,6 +88,7 @@ struct engine_super {
 	__be64 free_top;
 	__be64 nkey;
 	__be64 nfree_table;
+	__be64 crc_zero_key;
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 

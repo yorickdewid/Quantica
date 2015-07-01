@@ -26,7 +26,7 @@ static struct engine btx;
 static struct base control;
 static uint8_t ready = FALSE;
 static qtime_t uptime;
-static quid_t instanceid;
+static quid_t sessionid;
 struct error _eglobal;
 
 static char *get_zero_key() {
@@ -40,7 +40,7 @@ void start_core() {
 	start_log();
 	ERRORZEOR();
 
-	quid_create(&instanceid);
+	quid_create(&sessionid);
 	base_init(&control);
 
 	/* Initialize engine */

@@ -76,6 +76,7 @@ void base_sync(struct base *base) {
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
 	if(file_exists(BASECONTROL)) {
+		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
 			return;
@@ -97,6 +98,7 @@ void base_init(struct base *base) {
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 		exit_status = EXSTAT_CHECKPOINT;
 	} else {
+		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
 		base->bincnt = 0;

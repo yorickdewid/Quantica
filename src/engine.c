@@ -9,6 +9,7 @@
 #include <error.h>
 #include "zmalloc.h"
 #include "arc4random.h"
+#include "crc64.h"
 #include "quid.h"
 #include "engine.h"
 #include "core.h"
@@ -107,6 +108,13 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
 	assert(from_be64(super.version)==VERSION_RELESE);
+
+	uint64_t crc64;
+	if(!crc_file(e->fd, &crc64)) {
+		lprintf("[erro] Failed to calculate CRC\n");
+		return -1;
+	}
+	assert(from_be64(super.crc_zero_key)==crc64);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -280,6 +288,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 }
 
 static void flush_super(struct engine *e) {
+	uint64_t crc64;
 	struct engine_super super;
 	memset(&super, 0, sizeof(struct engine_super));
 	super.version = to_be64(VERSION_RELESE);
@@ -287,6 +296,13 @@ static void flush_super(struct engine *e) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+
+	lseek(e->fd, sizeof(struct engine_super), SEEK_SET);
+	if(!crc_file(e->fd, &crc64)) {
+		lprintf("[erro] Failed to calculate CRC\n");
+		return;
+	}
+	super.crc_zero_key = to_be64(crc64);
 
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {

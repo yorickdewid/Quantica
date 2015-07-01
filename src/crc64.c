@@ -3,6 +3,8 @@
 #include <assert.h>
 
 #include <config.h>
+#include <common.h>
+#include <log.h>
 
 /* 64-bit CRC polynomial with these coefficients, but reversed:
 	64, 62, 57, 55, 54, 53, 52, 47, 46, 45, 40, 39, 38, 37, 35, 33, 32,
@@ -18,6 +20,7 @@ static uint64_t crc64_little_table[8][256];
 static uint64_t crc64_big_table[8][256];
 
 #define GF2_DIM 64      /* dimension of GF(2) vectors (length of CRC) */
+#define CRC_BUFFER_SIZE  4096
 
 /* Fill in the CRC-64 constants table. */
 static void crc64_init(uint64_t table[][256]) {
@@ -239,4 +242,19 @@ uint64_t crc64_combine(uint64_t crc1, uint64_t crc2, uintmax_t len2) {
 	/* return combined crc */
 	crc1 ^= crc2;
 	return crc1;
+}
+
+bool crc_file(int fd, uint64_t *rscrc64) {
+	unsigned char buf[CRC_BUFFER_SIZE];
+	uint64_t curpos = lseek(fd, 0, SEEK_CUR);
+
+	*rscrc64 = 0;
+	while(read(fd, buf, CRC_BUFFER_SIZE) > 0) {
+		*rscrc64 = crc64(*rscrc64, buf, CRC_BUFFER_SIZE);
+	}
+
+	lseek(fd, curpos, SEEK_SET);
+	if (!*rscrc64)
+		return FALSE;
+	return TRUE;
 }
