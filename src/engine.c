@@ -909,6 +909,7 @@ int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 	if (!e->stats.keys)
 		return 0;
 
+	lprintf("[info] Start vacuum process\n");
 	e->lock = LOCK;
 	engine_create(&ce, fname, dbname);
 	engine_copy(e, &ce, e->top);

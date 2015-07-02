@@ -91,13 +91,18 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
-		zassert(super.version==VERSION_RELESE);
-		zassert(!strcmp(super.magic, BASE_MAGIC));
-		//if (super.exitstatus!=EXSTAT_SUCCESS)
-		//	diag_exerr(base);
-
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
+
+		zassert(super.version==VERSION_RELESE);
+		zassert(!strcmp(super.magic, BASE_MAGIC));
+		if (super.exitstatus!=EXSTAT_SUCCESS) {
+			if (diag_exerr(base)) {
+				exit_status = EXSTAT_CHECKPOINT;
+			} else {
+				exit(1);
+			}
+		}
 		exit_status = EXSTAT_CHECKPOINT;
 	} else {
 		/* Create new database */
