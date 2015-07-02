@@ -5,23 +5,23 @@
 #include <config.h>
 #include <common.h>
 #include <log.h>
+#include "core.h"
 #include "quid.h"
 #include "engine.h"
 #include "diagnose.h"
 
 bool diag_exerr(struct base *base) {
-	char buf[QUID_LENGTH+1];
 	char tmp_key[QUID_LENGTH+1];
 	quid_t key;
 	struct engine engine;
-	quidtostr(buf, &base->zero_key);
 
 	lprintf("[info] Failure on exit, run diagnostics\n");
-	engine_init(&engine, buf, base->bindata);
+	engine_init(&engine, get_zero_key(), base->bindata);
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
 	char *bindata = generate_bindata_name(base);
 
+	engine_recover_storage(&engine);
 	if (engine_vacuum(&engine, tmp_key, bindata)<0) {
 		lprintf("[erro] Failed to vacuum\n");
 		return FALSE;

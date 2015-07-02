@@ -26,6 +26,7 @@ struct record_status {
 void start_core();
 void detach_core();
 
+char *get_zero_key();
 void set_instance_name(char name[]);
 char *get_instance_name();
 char *get_instance_key();

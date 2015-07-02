@@ -29,7 +29,7 @@ static qtime_t uptime;
 static quid_t sessionid;
 struct error _eglobal;
 
-static char *get_zero_key() {
+char *get_zero_key() {
 	static char buf[QUID_LENGTH+1];
 	quidtostr(buf, &control.zero_key);
 	return buf;

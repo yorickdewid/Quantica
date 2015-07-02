@@ -113,7 +113,9 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		lprintf("[erro] Failed to calculate CRC\n");
 		return -1;
 	}
-	zassert(from_be64(super.crc_zero_key)==crc64);
+	//zassert(from_be64(super.crc_zero_key)==crc64);
+	if (from_be64(super.crc_zero_key)!=crc64)
+		lprintf("[erro] Index CRC doenst match\n");
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -340,7 +342,7 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	info.free = 0;
 
 	uint64_t offset = alloc_dbchunk(e, len);
-	info.next = last_blob;
+	info.next = to_be64(last_blob);
 	last_blob = offset;
 
 	lseek(e->db_fd, offset, SEEK_SET);
@@ -832,20 +834,38 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 	return 0;
 }
 
-#if 0
-static void walk_dbstorage(struct engine *e) {
-	uint64_t offset = sizeof(struct engine_dbsuper);
+int engine_recover_storage(struct engine *e) {
+	uint64_t offset = last_blob;
 	struct blob_info info;
+	int cnt = 0;
 
-	while(1) {
-		lseek(e->db_fd, offset, SEEK_SET);
-		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
-			return;
-
-		offset = offset+page_align(sizeof(struct blob_info)+from_be32(info.len));
+	lprintf("[info] Start recovery process\n");
+	if (!offset) {
+		lprintf("[erro] Metadata lost\n");
+		return -1;
 	}
+
+	while (TRUE) {
+		cnt++;
+		lseek(e->db_fd, offset, SEEK_SET);
+		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
+			lprintf("[erro] Failed to read disk\n");
+			return -1;
+		}
+
+		size_t len = from_be32(info.len);
+		uint64_t next = from_be64(info.next);
+		printf("last %ld\n", last_blob);
+		printf("i %d len %ld\n", cnt, len);
+		zassert(len > 0);
+		if (next)
+			offset = next;
+		else
+			break;
+	}
+	lprintf("[info] Lost %d records\n", e->stats.keys - cnt);
+	return 0;
 }
-#endif // 0
 
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;

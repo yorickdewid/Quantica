@@ -151,6 +151,7 @@ int engine_setmeta(struct engine *e, const quid_t *quid, const struct metadata *
 
 int engine_delete(struct engine *e, const quid_t *quid);
 
+int engine_recover_storage(struct engine *e);
 int engine_vacuum(struct engine *e, const char *fname, const char *nfname);
 int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len);
 
