@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -39,7 +38,7 @@ static struct engine_table *alloc_table() {
 }
 
 static struct engine_table *get_table(struct engine *e, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	/* take from cache */
 	struct engine_cache *slot = &e->cache[offset % CACHE_SLOTS];
@@ -66,7 +65,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 
 /* Free a table acquired with alloc_table() or get_table() */
 static void put_table(struct engine *e, struct engine_table *table, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	/* overwrite cache */
 	struct engine_cache *slot = &e->cache[offset % CACHE_SLOTS];
@@ -79,7 +78,7 @@ static void put_table(struct engine *e, struct engine_table *table, uint64_t off
 
 /* Write a table and free it */
 static void flush_table(struct engine *e, struct engine_table *table, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	lseek(e->fd, offset, SEEK_SET);
 	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
@@ -107,14 +106,14 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->free_top = from_be64(super.free_top);
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
-	assert(from_be64(super.version)==VERSION_RELESE);
+	zassert(from_be64(super.version)==VERSION_RELESE);
 
 	uint64_t crc64;
 	if(!crc_file(e->fd, &crc64)) {
 		lprintf("[erro] Failed to calculate CRC\n");
 		return -1;
 	}
-	assert(from_be64(super.crc_zero_key)==crc64);
+	zassert(from_be64(super.crc_zero_key)==crc64);
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -122,7 +121,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		ERROR(EIO_READ, EL_FATAL);
 		return -1;
 	}
-	assert(from_be64(dbsuper.version)==VERSION_RELESE);
+	zassert(from_be64(dbsuper.version)==VERSION_RELESE);
 	last_blob = from_be64(dbsuper.last);
 
 	e->alloc = lseek(e->fd, 0, SEEK_END);
@@ -182,7 +181,7 @@ static size_t page_align(size_t val) {
 
 /* Allocate a chunk from the index file */
 static uint64_t alloc_index_chunk(struct engine *e, size_t len) {
-	assert(len > 0);
+	zassert(len > 0);
 
 	/* Use blocks from freelist instead of allocation */
 	if (e->free_top){
@@ -207,7 +206,7 @@ static uint64_t alloc_index_chunk(struct engine *e, size_t len) {
 
 /* Allocate a chunk from the database file */
 static uint64_t alloc_dbchunk(struct engine *e, size_t len) {
-	assert(len > 0);
+	zassert(len > 0);
 
 	if(!e->dbcache[DBCACHE_SLOTS-1].len)
 		goto new_block;
@@ -234,7 +233,7 @@ new_block:
 
 /* Mark a chunk as unused in the database file */
 static void free_index_chunk(struct engine *e, uint64_t offset) {
-	assert(offset > 0);
+	zassert(offset > 0);
 	struct engine_table *table = get_table(e, offset);
 
 	quid_t quid;
@@ -393,7 +392,7 @@ static uint64_t table_join(struct engine *e, uint64_t table_offset) {
    is stored to 'quid'. Returns offset to the item */
 static uint64_t take_smallest(struct engine *e, uint64_t table_offset, quid_t *quid) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size > 0);
+	zassert(table->size > 0);
 
 	uint64_t offset = 0;
 	uint64_t child = from_be64(table->items[0].child);
@@ -412,7 +411,7 @@ static uint64_t take_smallest(struct engine *e, uint64_t table_offset, quid_t *q
    is stored to 'quid'. Returns offset to the item */
 static uint64_t take_largest(struct engine *e, uint64_t table_offset, quid_t *quid) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size > 0);
+	zassert(table->size > 0);
 
 	uint64_t offset = 0;
 	uint64_t child = from_be64(table->items[table->size].child);
@@ -430,7 +429,7 @@ static uint64_t take_largest(struct engine *e, uint64_t table_offset, quid_t *qu
 /* Remove an item in position 'i' from the given table. The key of the
    removed item is stored to 'quid'. Returns offset to the item. */
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid) {
-	assert(i < table->size);
+	zassert(i < table->size);
 
 	if (quid)
 		memcpy(quid, &table->items[i].quid, sizeof(quid_t));
@@ -467,7 +466,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
    table. Returns offset to the new item. */
 static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *quid, const void *data, size_t len) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size < TABLE_SIZE-1);
+	zassert(table->size < TABLE_SIZE-1);
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
@@ -689,7 +688,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 		return NULL;
 	}
 	*len = from_be32(info.len);
-	assert(*len > 0);
+	zassert(*len > 0);
 
 	void *data = zmalloc(*len);
 	if (!data) {

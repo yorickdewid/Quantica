@@ -53,4 +53,10 @@ extern struct error _eglobal;
 #define GETERROR()	\
 	_eglobal.code
 
+#define zassert(e)  \
+	((void) ((e) ? (void)0 : __zassert (#e, __FILE__, __LINE__)))
+
+#define __zassert(e, file, line) \
+	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
+
 #endif // ERROR_H_INCLUDED

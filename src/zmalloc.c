@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
+#include <error.h>
 #include "zmalloc.h"
 
 #define HEADER_SIZE (sizeof(void*) * 3)
@@ -79,7 +80,7 @@ static void __zfree(void *mem) {
         return;
 
     /* Fail if the tree hierarchy has cycles. */
-    assert(prev(mem));
+    zassert(prev(mem));
     prev(mem) = NULL;
 
     __zfree(child(mem));

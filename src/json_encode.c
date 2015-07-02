@@ -1,8 +1,8 @@
 #include <string.h>
-#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 
+#include <error.h>
 #include "json_encode.h"
 #include "zmalloc.h"
 
@@ -120,7 +120,7 @@ json_value *json_array_new(size_t length) {
 }
 
 json_value *json_array_push (json_value *array, json_value *value) {
-	assert(array->type == json_array);
+	zassert(array->type == json_array);
 
 	if (!builderize (array) || !builderize (value))
 		return NULL;
@@ -169,7 +169,7 @@ json_value *json_object_push(json_value *object, const char *name, json_value *v
 json_value *json_object_push_length(json_value *object, unsigned int name_length, const char *name, json_value *value) {
 	char *name_copy;
 
-	assert(object->type == json_object);
+	zassert(object->type == json_object);
 
 	if (!(name_copy = (char *)zmalloc((name_length + 1) * sizeof(char))))
 		return NULL;
@@ -188,7 +188,7 @@ json_value *json_object_push_length(json_value *object, unsigned int name_length
 json_value *json_object_push_nocopy(json_value *object, unsigned int name_length, char *name, json_value *value) {
 	json_object_entry * entry;
 
-	assert(object->type == json_object);
+	zassert(object->type == json_object);
 
 	if (!builderize (object) || !builderize (value))
 		return NULL;
@@ -313,8 +313,8 @@ void json_object_sort(json_value *object, json_value *proto) {
 	if (!builderize(object))
 		return;  /* TODO error */
 
-	assert(object->type == json_object);
-	assert(proto->type == json_object);
+	zassert(object->type == json_object);
+	zassert(proto->type == json_object);
 
 	for (i=0; i<proto->u.object.length; ++i) {
 		unsigned int j;
@@ -340,9 +340,9 @@ void json_object_sort(json_value *object, json_value *proto) {
 json_value *json_object_merge(json_value *object_a, json_value *object_b){
 	unsigned int i;
 
-	assert(object_a->type == json_object);
-	assert(object_b->type == json_object);
-	assert(object_a != object_b);
+	zassert(object_a->type == json_object);
+	zassert(object_b->type == json_object);
+	zassert(object_a != object_b);
 
 	if (!builderize (object_a) || !builderize(object_b))
 		return NULL;

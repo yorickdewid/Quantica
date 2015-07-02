@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
-#include <assert.h>
 
 #include <config.h>
 #include <common.h>
 #include <log.h>
 #include <error.h>
 #include "arc4random.h"
+#include "diagnose.h"
 #include "basecontrol.h"
 
 #define BASECONTROL		"base_control"
@@ -91,9 +91,11 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
-		assert(super.version==VERSION_RELESE);
-		assert(!strcmp(super.magic, BASE_MAGIC));
-		assert(super.exitstatus==EXSTAT_SUCCESS);
+		zassert(super.version==VERSION_RELESE);
+		zassert(!strcmp(super.magic, BASE_MAGIC));
+		//if (super.exitstatus!=EXSTAT_SUCCESS)
+		//	diag_exerr(base);
+
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 		exit_status = EXSTAT_CHECKPOINT;

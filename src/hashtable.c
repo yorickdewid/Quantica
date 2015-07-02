@@ -1,8 +1,9 @@
+#include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 
 #include <common.h>
+#include <error.h>
 #include "zmalloc.h"
 #include "hashtable.h"
 
@@ -12,11 +13,11 @@ hashtable_t *alloc_hashtable(int size) {
 	int i;
 
 	d = (hashtable_t *)tree_zmalloc(sizeof(hashtable_t), NULL);
-	assert(d != 0);
+	zassert(d != 0);
 	d->size = size;
 	d->n = 0;
 	d->table = (struct item **)tree_zmalloc(sizeof(struct item *) * d->size, d);
-	assert(d->table != 0);
+	zassert(d->table != 0);
 
 	for(i=0; i<d->size; ++i) {
 		d->table[i] = 0;
@@ -82,11 +83,11 @@ void hashtable_put(hashtable_t *d, const char *key, const char *value) {
 	struct item *e;
 	unsigned long int h;
 
-	assert(key);
-	assert(value);
+	zassert(key);
+	zassert(value);
 
 	e = (struct item *)tree_zmalloc(sizeof(struct item), NULL);
-	assert(e);
+	zassert(e);
 
 	h = hash_generate(key) % d->size;
 	e->key = tree_zstrdup(key, e);

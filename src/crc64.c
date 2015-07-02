@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <inttypes.h>
-#include <assert.h>
 
 #include <config.h>
 #include <common.h>

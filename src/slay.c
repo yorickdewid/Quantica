@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <log.h>
-
+#include <error.h>
 #include "dstype.h"
 #include "slay.h"
 #include "quid.h"
@@ -513,7 +512,7 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 	}
 
 	if (slay->namesize) {
-		assert(!*name);
+		zassert(!*name);
 		void *src = ((uint8_t *)arrp)+sizeof(struct value_slay)+slay->size;
 		*name = zmalloc(slay->namesize);
 		memcpy(*name, src, slay->namesize);
