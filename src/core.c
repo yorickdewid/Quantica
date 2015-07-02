@@ -85,6 +85,12 @@ char *get_instance_key() {
 	return buf;
 }
 
+char *get_session_key() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &sessionid);
+	return buf;
+}
+
 char *get_uptime() {
 	static char buf[32];
 	qtime_t passed = get_timestamp()-uptime;

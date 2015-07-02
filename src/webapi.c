@@ -197,6 +197,12 @@ http_status_t api_instance(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_session(char **response, http_request_t *req) {
+	unused(req);
+	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":true}", get_session_key());
+	return HTTP_OK;
+}
+
 http_status_t api_sha(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
@@ -611,6 +617,7 @@ const struct webroute route[] = {
 	{"/help",		api_help,			FALSE},
 	{"/api",		api_help,			FALSE},
 	{"/instance",	api_instance,		FALSE},
+	{"/session",	api_session,		FALSE},
 	{"/sha1",		api_sha,			FALSE},
 	{"/md5",		api_md5,			FALSE},
 	{"/sha256",		api_sha256,			FALSE},
