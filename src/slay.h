@@ -12,7 +12,8 @@
 typedef enum {
 	SCHEMA_FIELD,
 	SCHEMA_ARRAY,
-	SCHEMA_OBJECT
+	SCHEMA_OBJECT,
+	SCHEMA_TABLE
 } schema_t;
 
 struct value_slay {

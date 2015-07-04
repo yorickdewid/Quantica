@@ -80,7 +80,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		if (objcnt == cnt) {
 			zfree(slay);
 
-			slay = create_row(SCHEMA_ARRAY, objcnt, (objcnt * QUID_LENGTH), slay_len);
+			slay = create_row(SCHEMA_TABLE, objcnt, (objcnt * QUID_LENGTH), slay_len);
 			void *next = movetodata_row(slay);
 			int z = 0;
 			for (; z<objcnt; ++z) {
@@ -476,6 +476,39 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			memset(buf, 0, obj->alloc_size);
 			buf = dict_object(obj, buf);
 			vector_free(obj);
+
+			break;
+		}
+		case SCHEMA_TABLE: {
+			size_t val_len;
+			dstype_t val_dt;
+			unsigned int i;
+
+			vector_t *arr = alloc_vector(VECTOR_SIZE);
+			for (i=0; i<elements; ++i) {
+				size_t namelen;
+				dstype_t dt;
+				dict_t *element = NULL;
+				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+				val_data = (char *)zrealloc(val_data, val_len+1);
+				((char *)val_data)[val_len] = '\0';
+				void *qbuf = _db_get(val_data, &dt);
+				if (!qbuf)
+					element = dict_element_cnew(arr, FALSE, NULL, "null");
+				else {
+					size_t buflen = strlen(qbuf);
+					element = resolv_quid(arr, qbuf, buflen, NULL, dt);
+				}
+				vector_append(arr, (void *)element);
+				zfree(val_data);
+			}
+
+			*dt = DT_JSON;
+			buf = zmalloc(arr->alloc_size);
+			memset(buf, 0, arr->alloc_size);
+			buf = dict_array(arr, buf);
+			vector_free(arr);
 
 			break;
 		}
