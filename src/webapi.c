@@ -208,6 +208,7 @@ http_status_t api_sha(char **response, http_request_t *req) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char strsha[SHA1_LENGTH+1];
+			strsha[SHA1_LENGTH] = '\0';
 			if (crypto_sha1(strsha, param_data)<0) {
 				strsha[SHA1_LENGTH] = '\0';
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
