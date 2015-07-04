@@ -28,6 +28,8 @@ enum token {
 	T_ASTERISK,
 	T_FROM,
 	T_WHERE,
+	T_ORDER,
+	T_HAVING,
 	/* logical */
 	T_AND,
 	T_ANY,
@@ -40,6 +42,7 @@ enum token {
 	T_NOT,
 	T_IS,
 	T_OR,
+	T_BY,
 	/* group */
 	T_BRACK_OPEN,
 	T_BRACK_CLOSE,
@@ -59,6 +62,7 @@ enum token {
 	T_SMALLER_EQUAL,
 	/* functional */
 	T_FUNC_QUID,
+	T_FUNC_NOW,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -106,6 +110,28 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				return &rs;
 			}
 			quid_generate(rs.quid);
+			return &rs;
+		} else if (tok->token == T_FUNC_NOW) {
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("datetime");
+			rs.data = tstostrf(zmalloc(20), 20, get_timestamp(), ISO_8601_FORMAT);
 			return &rs;
 		}
 		if (tok->token != T_ASTERISK) {
@@ -532,6 +558,12 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "INTO") || !strcmp(pch, "into")) {
 			tok->token = T_TARGET;
+		} else if (!strcmp(pch, "ORDER") || !strcmp(pch, "order")) {
+			tok->token = T_ORDER;
+		} else if (!strcmp(pch, "BY") || !strcmp(pch, "by")) {
+			tok->token = T_BY;
+		} else if (!strcmp(pch, "HAVING") || !strcmp(pch, "having")) {
+			tok->token = T_HAVING;
 		} else if (!strcmp(pch, "VALUES") || !strcmp(pch, "values")) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "(")) {
@@ -586,6 +618,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_IS;
 		} else if (!strcmp(pch, "QUID") || !strcmp(pch, "quid")) {
 			tok->token =  T_FUNC_QUID;
+		} else if (!strcmp(pch, "NOW") || !strcmp(pch, "now")) {
+			tok->token =  T_FUNC_NOW;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {

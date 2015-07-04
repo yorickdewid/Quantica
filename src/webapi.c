@@ -294,7 +294,12 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 			}
 			if (data->quid[0] != '\0')
 				snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", data->quid, data->items);
-			else if (data->data) {
+			else if (data->name) {
+				snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}", data->name, (char *)data->data);
+				//snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}", "timestamp", "wooeei");
+				zfree(data->name);
+				zfree(data->data);
+			} else if (data->data) {
 				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", (char *)data->data);
 				zfree(data->data);
 			} else
@@ -354,7 +359,7 @@ http_status_t api_gen_quid(char **response, http_request_t *req) {
 http_status_t api_time_now(char **response, http_request_t *req) {
 	unused(req);
 	char buf[26];
-	char *htime = tstostrf(buf, 32, get_timestamp(), "%d/%m/%Y %H:%M:%S %z");
+	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
 #if TN12
 	char buf2[TIMENAME_SIZE+1];
 	buf2[TIMENAME_SIZE] = '\0';
