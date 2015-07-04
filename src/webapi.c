@@ -296,7 +296,6 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 				snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", data->quid, data->items);
 			else if (data->name) {
 				snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}", data->name, (char *)data->data);
-				//snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"COMMAND_OK\",\"success\":true}", "timestamp", "wooeei");
 				zfree(data->name);
 				zfree(data->data);
 			} else if (data->data) {

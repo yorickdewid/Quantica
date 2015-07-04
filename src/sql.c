@@ -11,6 +11,7 @@
 #include "slay.h"
 #include "dict.h"
 #include "quid.h"
+#include "md5.h"
 #include "core.h"
 #include "core.h"
 #include "sql.h"
@@ -63,6 +64,7 @@ enum token {
 	/* functional */
 	T_FUNC_QUID,
 	T_FUNC_NOW,
+	T_FUNC_MD5,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -132,6 +134,40 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			}
 			rs.name = zstrdup("datetime");
 			rs.data = tstostrf(zmalloc(20), 20, get_timestamp(), ISO_8601_FORMAT);
+			return &rs;
+		} else if (tok->token == T_FUNC_MD5) {
+			char *strmd5 = zmalloc(MD5_SIZE+1);
+			strmd5[MD5_SIZE] = '\0';
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_md5(strmd5, tok->string);
+			if (stack->size<=0) {
+				ERROR(ESQL_PARSE_END, EL_WARN);
+				return &rs;
+			}
+			tok = stack_rpop(stack);
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strmd5;
 			return &rs;
 		}
 		if (tok->token != T_ASTERISK) {
@@ -620,6 +656,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_QUID;
 		} else if (!strcmp(pch, "NOW") || !strcmp(pch, "now")) {
 			tok->token =  T_FUNC_NOW;
+		} else if (!strcmp(pch, "MD5") || !strcmp(pch, "md5")) {
+			tok->token =  T_FUNC_MD5;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
