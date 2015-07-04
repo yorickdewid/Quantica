@@ -19,9 +19,8 @@ hashtable_t *alloc_hashtable(int size) {
 	d->table = (struct item **)tree_zmalloc(sizeof(struct item *) * d->size, d);
 	zassert(d->table != 0);
 
-	for(i=0; i<d->size; ++i) {
+	for(i=0; i<d->size; ++i)
 		d->table[i] = 0;
-	}
 
 	return d;
 }
@@ -44,16 +43,15 @@ static unsigned long int hash_generate(const char *s) {
 	unsigned const char *us;
 	unsigned long int h = 0;
 
-	for(us = (unsigned const char *) s; *us; ++us) {
+	for(us = (unsigned const char *)s; *us; ++us)
 		h = h * MULTIPLIER + *us;
-	}
 
 	return h;
 }
 
 static void hashtable_grow(hashtable_t *d) {
-	hashtable_t *d2;            /* new dictionary we'll create */
-	hashtable_t swap;   /* temporary structure for brain transplant */
+	hashtable_t *d2;	/* new dictionary we'll create */
+	hashtable_t swap;	/* temporary structure for brain transplant */
 	int i;
 	struct item *e;
 
@@ -97,9 +95,8 @@ void hashtable_put(hashtable_t *d, const char *key, const char *value) {
 	d->n++;
 
 	/* hashtable_grow table if there is not enough room */
-	if(d->n >= d->size * MAX_LOAD_FACTOR) {
+	if(d->n >= d->size * MAX_LOAD_FACTOR)
 		hashtable_grow(d);
-	}
 }
 
 /* return the most recently inserted value associated with a key */
@@ -120,18 +117,19 @@ const char *hashtable_get(hashtable_t *d, const char *key) {
 /* delete the most recently inserted record with the given key */
 /* if there is no such record, has no effect */
 void hashtable_delete(hashtable_t *d, const char *key) {
-	struct item **prev;          /* what to change when item is deleted */
-	struct item *e;              /* what to delete */
+	struct item **prev;			/* what to change when item is deleted */
+	struct item *e;				/* what to delete */
 
 	for(prev = &(d->table[hash_generate(key) % d->size]);
 		*prev != 0;
-		prev = &((*prev)->next)) {
-		if(!strcmp((*prev)->key, key)) {
-			/* got it */
-			e = *prev;
-			*prev = e->next;
-			tree_zfree(e);
-			return;
+		prev = &((*prev)->next))
+		{
+			if(!strcmp((*prev)->key, key)) {
+				/* got it */
+				e = *prev;
+				*prev = e->next;
+				tree_zfree(e);
+				return;
+			}
 		}
-	}
 }
