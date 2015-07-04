@@ -31,9 +31,12 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 
 	if (t[0].type == DICT_ARRAY) {
 		int cnt = 0;
+		int objcnt = 0;
+
 		dict_levelcount(t, 0, 2, &cnt);
 		*items = cnt;
 
+		int cobj[cnt][2];
 		slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
 		void *next = movetodata_row(slay);
 		for (i=1; i<r; ++i) {
@@ -55,6 +58,8 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 				else
 					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
 			} else if (t[i].type == DICT_OBJECT) {
+				cobj[objcnt][0] = t[i].start;
+				cobj[objcnt][1] = (t[i].end - t[i].start);
 				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
 				for (x=0; x<t[i].size; x++) {
@@ -62,6 +67,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 				}
 				i += j;
+				objcnt++;
 			} else if (t[i].type == DICT_ARRAY) {
 				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
@@ -69,6 +75,21 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 				}
 				i += j;
+			}
+		}
+		if (objcnt == cnt) {
+			zfree(slay);
+
+			slay = create_row(SCHEMA_ARRAY, objcnt, (objcnt * QUID_LENGTH), slay_len);
+			void *next = movetodata_row(slay);
+			int z = 0;
+			for (; z<objcnt; ++z) {
+				size_t clen = 0;
+				int citems = 0;
+				void *cslay = slay_parse_object(data+cobj[z][0], cobj[z][1], &clen, &citems);
+				char squid[QUID_LENGTH+1];
+				_db_put(squid, cslay, clen);
+				next = slay_wrap(next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
 			}
 		}
 	} else if (t[0].type == DICT_OBJECT) {
