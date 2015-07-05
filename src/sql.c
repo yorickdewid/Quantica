@@ -13,6 +13,7 @@
 #include "quid.h"
 #include "md5.h"
 #include "sha1.h"
+#include "sha256.h"
 #include "core.h"
 #include "core.h"
 #include "sql.h"
@@ -74,6 +75,7 @@ enum token {
 	T_FUNC_NOW,
 	T_FUNC_MD5,
 	T_FUNC_SHA1,
+	T_FUNC_SHA256,
 	T_FUNC_VACUUM,
 	T_FUNC_INSTANCE_NAME,
 	T_FUNC_INSTANCE_KEY,
@@ -175,6 +177,28 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			}
 			rs.name = zstrdup("hash");
 			rs.data = strsha;
+			return &rs;
+		} else if (tok->token == T_FUNC_SHA256) {
+			char *strsha256 = zmalloc(SHA256_SIZE+1);
+			strsha256[SHA256_SIZE] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_sha256(strsha256, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strsha256;
 			return &rs;
 		} else if (tok->token == T_FUNC_INSTANCE_NAME) {
 			STACK_EMPTY_POP();
@@ -664,6 +688,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_MD5;
 		} else if (!strcmp(pch, "SHA1") || !strcmp(pch, "sha1")) {
 			tok->token =  T_FUNC_SHA1;
+		} else if (!strcmp(pch, "SHA256") || !strcmp(pch, "sha256")) {
+			tok->token =  T_FUNC_SHA256;
 		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
 			tok->token =  T_FUNC_VACUUM;
 		} else if (!strcmp(pch, "INSTANCE_NAME") || !strcmp(pch, "instance_name")) {

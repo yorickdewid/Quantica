@@ -106,6 +106,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->free_top = from_be64(super.free_top);
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
+	e->list_size = from_be16(super.list_size);
 	zassert(from_be64(super.version)==VERSION_RELESE);
 
 	uint64_t crc64;
@@ -113,7 +114,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		lprintf("[erro] Failed to calculate CRC\n");
 		return -1;
 	}
-	//zassert(from_be64(super.crc_zero_key)==crc64);
+	/* TODO: run the diagnose process */
 	if (from_be64(super.crc_zero_key)!=crc64)
 		lprintf("[erro] Index CRC doenst match\n");
 
@@ -297,6 +298,7 @@ static void flush_super(struct engine *e, bool fast) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+	super.list_size = to_be16(e->list_size);
 	if (fast)
 		goto flush_disk;
 
@@ -633,6 +635,18 @@ int engine_insert(struct engine *e, const quid_t *c_quid, const void *data, size
 		return -1;
 
 	e->stats.keys++;
+
+//	struct engine_tablelist *list = zmalloc(sizeof(struct engine_tablelist));
+//	strcpy(list->quid, "ABCDEF");
+//	strcpy(list->name, "THis-isthename");
+//////KAAS
+/*	lseek(e->fd, offset, SEEK_SET);
+	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
+		lprintf("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}*/
+
 	return 0;
 }
 
