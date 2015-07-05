@@ -18,6 +18,13 @@
 #include "sql.h"
 
 #define STACK_SZ	15
+#define STACK_EMPTY_POP()				\
+	if (stack->size<=0) {				\
+		ERROR(ESQL_PARSE_END, EL_WARN);	\
+		return &rs;						\
+	}									\
+	tok = stack_rpop(stack);
+
 static int charcnt = 0;
 static int cnt = 0;
 
@@ -95,20 +102,12 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 	if (tok->token == T_SELECT) {
 		tok = stack_rpop(stack);
 		if (tok->token == T_FUNC_QUID) {
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
@@ -116,20 +115,12 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			quid_generate(rs.quid);
 			return &rs;
 		} else if (tok->token == T_FUNC_NOW) {
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
@@ -140,30 +131,18 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		} else if (tok->token == T_FUNC_MD5) {
 			char *strmd5 = zmalloc(MD5_SIZE+1);
 			strmd5[MD5_SIZE] = '\0';
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_md5(strmd5, tok->string);
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
@@ -174,30 +153,18 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		} else if (tok->token == T_FUNC_SHA1) {
 			char *strsha = zmalloc(SHA1_LENGTH+1);
 			strsha[SHA1_LENGTH] = '\0';
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha1(strsha, tok->string);
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
@@ -210,20 +177,12 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_FROM) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
@@ -238,17 +197,9 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			int length;
 		} *name = NULL;
 		schema_t schema = SCHEMA_ARRAY;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token == T_TARGET) {
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token == T_QUID) {
 			} else if (tok->token == T_NULL) {
 			} else {
@@ -256,11 +207,7 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				return &rs;
 			}
 			cnt--;
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 		}
 		if (cnt == 1)
 			schema = SCHEMA_FIELD;
@@ -287,21 +234,13 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				cnt--;
 			}
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 insert_arr:
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
@@ -358,11 +297,7 @@ insert_arr:
 		return &rs;
 	} else if (tok->token == T_UPDATE) {
 		int i = 0;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
@@ -375,20 +310,12 @@ insert_arr:
 		schema_t schema = SCHEMA_ARRAY;
 		if (--cnt == 1)
 			schema = SCHEMA_FIELD;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token == T_SEPARATE)
 			goto update_arr;
 		if (tok->token != T_BRACK_OPEN) {
@@ -412,21 +339,13 @@ insert_arr:
 				cnt--;
 			}
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 update_arr:
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
@@ -482,20 +401,12 @@ update_arr:
 		rs.items = j;
 		return &rs;
 	} else if (tok->token == T_DELETE) {
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_FROM) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
