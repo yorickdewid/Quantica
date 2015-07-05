@@ -6,8 +6,10 @@
 #include <stdint.h>
 #include <config.h>
 #include <common.h>
+#include "quid.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
+#define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist))
 
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
@@ -36,7 +38,7 @@ enum key_importance {
 };
 
 enum key_type {
-    MD_TYPE_DATA = 0,		/* Key maps to data */
+	MD_TYPE_DATA = 0,		/* Key maps to data */
 	MD_TYPE_SIGNED,			/* Key is an signed integer */
 	MD_TYPE_BOOL_FALSE,		/* Key is FALSE, no data */
 	MD_TYPE_BOOL_TRUE,		/* Key is TRUE, no data */
@@ -55,20 +57,20 @@ struct metadata {
 };
 
 struct engine_item {
-     quid_t quid;
-     struct metadata meta;
-     __be64 offset;
-     __be64 child;
+	quid_t quid;
+	struct metadata meta;
+	__be64 offset;
+	__be64 child;
 } __attribute__((packed));
 
 struct engine_table {
-     struct engine_item items[TABLE_SIZE];
-     uint16_t size;
+	struct engine_item items[TABLE_SIZE];
+	uint16_t size;
 } __attribute__((packed));
 
 struct engine_cache {
-     uint64_t offset;
-     struct engine_table *table;
+	uint64_t offset;
+	struct engine_table *table;
 };
 
 struct engine_dbcache {
@@ -76,9 +78,14 @@ struct engine_dbcache {
 	uint64_t offset;
 };
 
+struct engine_tablelist {
+	char quid[QUID_LENGTH];
+	char name[32];
+} __attribute__((packed));
+
 struct blob_info {
-     __be32 len;
-     __be64 next;
+	__be32 len;
+	__be64 next;
 	bool free;
 } __attribute__((packed));
 
@@ -89,6 +96,8 @@ struct engine_super {
 	__be64 nkey;
 	__be64 nfree_table;
 	__be64 crc_zero_key;
+	__be16 list_size;
+	struct engine_tablelist list[LIST_SIZE];
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
@@ -98,8 +107,8 @@ struct engine_dbsuper {
 } __attribute__((packed));
 
 struct engine_stats {
-     uint64_t keys;
-     uint64_t free_tables;
+	uint64_t keys;
+	uint64_t free_tables;
 };
 
 struct engine {
@@ -107,6 +116,7 @@ struct engine {
 	uint64_t free_top;
 	uint64_t alloc;
 	uint64_t db_alloc;
+	uint16_t list_size;
 	int fd;
 	int db_fd;
 	bool lock;
