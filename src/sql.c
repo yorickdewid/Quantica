@@ -77,6 +77,7 @@ enum token {
 	T_FUNC_VACUUM,
 	T_FUNC_INSTANCE_NAME,
 	T_FUNC_INSTANCE_KEY,
+	T_FUNC_SESSION_KEY,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -201,6 +202,19 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				return &rs;
 			}
 			strcpy(rs.quid, get_instance_key());
+			return &rs;
+		} else if (tok->token == T_FUNC_SESSION_KEY) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			strcpy(rs.quid, get_session_key());
 			return &rs;
 		}
 		if (tok->token != T_ASTERISK) {
@@ -656,6 +670,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_INSTANCE_NAME;
 		} else if (!strcmp(pch, "INSTANCE_KEY") || !strcmp(pch, "instance_key")) {
 			tok->token =  T_FUNC_INSTANCE_KEY;
+		} else if (!strcmp(pch, "SESSION_KEY") || !strcmp(pch, "session_key")) {
+			tok->token =  T_FUNC_SESSION_KEY;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
