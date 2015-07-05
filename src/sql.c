@@ -74,6 +74,7 @@ enum token {
 	T_FUNC_NOW,
 	T_FUNC_MD5,
 	T_FUNC_SHA1,
+	T_FUNC_VACUUM,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -412,6 +413,19 @@ update_arr:
 			return &rs;
 		}
 		db_delete(tok->string);
+	} else if (tok->token == T_FUNC_VACUUM) {
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_OPEN) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_CLOSE) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		db_vacuum();
+		return &rs;
 	} else {
 		ERROR(ESQL_PARSE_TOK, EL_WARN);
 	}
@@ -607,6 +621,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_MD5;
 		} else if (!strcmp(pch, "SHA1") || !strcmp(pch, "sha1")) {
 			tok->token =  T_FUNC_SHA1;
+		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
+			tok->token =  T_FUNC_VACUUM;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
