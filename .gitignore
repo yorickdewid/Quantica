@@ -33,3 +33,4 @@ bin/*
 *.layout
 *.depend
 *.cfg
+*.sublime-workspace
