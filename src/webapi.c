@@ -51,7 +51,7 @@ int max_sd;
 fd_set readfds;
 fd_set readsock;
 static unsigned long int client_requests = 0;
-static unsigned int run = 1;
+unsigned int run = 1;
 
 typedef enum {
 	HTTP_GET = 1,
@@ -203,7 +203,7 @@ http_status_t api_session(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_sha(char **response, http_request_t *req) {
+http_status_t api_sha1(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
@@ -623,7 +623,7 @@ const struct webroute route[] = {
 	{"/api",		api_help,			FALSE},
 	{"/instance",	api_instance,		FALSE},
 	{"/session",	api_session,		FALSE},
-	{"/sha1",		api_sha,			FALSE},
+	{"/sha1",		api_sha1,			FALSE},
 	{"/md5",		api_md5,			FALSE},
 	{"/sha256",		api_sha256,			FALSE},
 	{"/sql",		api_sqlquery,		FALSE},
@@ -638,7 +638,6 @@ const struct webroute route[] = {
 	{"/shutdown",	api_shutdown,		FALSE},
 	{"/base64/enc",	api_base64_enc,		FALSE},
 	{"/base64/dec",	api_base64_dec,		FALSE},
-	{"/shutdown",	api_shutdown,		FALSE},
 	{"/put",		api_db_put,			FALSE},
 	{"/store",		api_db_put,			FALSE},
 	{"/insert",		api_db_put,			FALSE},
