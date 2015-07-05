@@ -77,6 +77,7 @@ enum token {
 	T_FUNC_SHA1,
 	T_FUNC_SHA256,
 	T_FUNC_VACUUM,
+	T_FUNC_SYNC,
 	T_FUNC_INSTANCE_NAME,
 	T_FUNC_INSTANCE_KEY,
 	T_FUNC_SESSION_KEY,
@@ -493,6 +494,19 @@ update_arr:
 		}
 		db_vacuum();
 		return &rs;
+	} else if (tok->token == T_FUNC_SYNC) {
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_OPEN) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_CLOSE) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		filesync();
+		return &rs;
 	} else {
 		ERROR(ESQL_PARSE_TOK, EL_WARN);
 	}
@@ -692,6 +706,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_SHA256;
 		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
 			tok->token =  T_FUNC_VACUUM;
+		} else if (!strcmp(pch, "SYNC") || !strcmp(pch, "sync")) {
+			tok->token =  T_FUNC_SYNC;
 		} else if (!strcmp(pch, "INSTANCE_NAME") || !strcmp(pch, "instance_name")) {
 			tok->token =  T_FUNC_INSTANCE_NAME;
 		} else if (!strcmp(pch, "INSTANCE_KEY") || !strcmp(pch, "instance_key")) {
