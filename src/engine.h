@@ -13,6 +13,7 @@
 
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
+#define LIST_NAME_LENGTH 32
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
@@ -80,7 +81,7 @@ struct engine_dbcache {
 
 struct engine_tablelist_item {
 	quid_t quid;
-	char name[32];
+	char name[LIST_NAME_LENGTH];
 } __attribute__((packed));
 
 struct engine_tablelist {

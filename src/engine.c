@@ -1042,8 +1042,8 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 	}
 
 	/* Name is max 32 */
-	if (len>32) {
-		len = 32;
+	if (len>LIST_NAME_LENGTH) {
+		len = LIST_NAME_LENGTH;
 	}
 
 	/* does tablelist exist */
