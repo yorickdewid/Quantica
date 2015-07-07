@@ -86,7 +86,7 @@ struct engine_tablelist_item {
 struct engine_tablelist {
 	struct engine_tablelist_item items[LIST_SIZE];
 	uint16_t size;
-	__be64 next;
+	__be64 link;
 };
 
 struct blob_info {

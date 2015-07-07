@@ -1041,18 +1041,33 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 		return -1;
 	}
 
+	/* Name is max 32 */
 	if (len>32) {
 		len = 32;
 	}
 
+	/* does tablelist exist */
 	if (e->list_top != 0) {
 		struct engine_tablelist *tablelist = get_tablelist(e, e->list_top);
-		zassert(tablelist->size < LIST_SIZE-1);
+		zassert(tablelist->size <= LIST_SIZE-1);
 
 		memcpy(&tablelist->items[tablelist->size].quid, c_quid, sizeof(quid_t));
 		memcpy(&tablelist->items[tablelist->size].name, name, len);
 		tablelist->size++;
-		flush_tablelist(e, tablelist, e->list_top);
+		
+		/* check if we need to add a new table*/
+		if (tablelist->size >= LIST_SIZE) {
+			flush_tablelist(e, tablelist, e->list_top);
+
+			struct engine_tablelist *new_tablelist = alloc_tablelist();
+			new_tablelist->link = to_be64(e->list_top);
+			uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
+			flush_tablelist(e, new_tablelist, new_table_offset);
+			
+			e->list_top = new_table_offset;
+		} else {
+			flush_tablelist(e, tablelist, e->list_top);
+		}
 	} else {
 		struct engine_tablelist *new_tablelist = alloc_tablelist();
 		new_tablelist->size = 1;
