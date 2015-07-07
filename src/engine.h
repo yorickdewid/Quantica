@@ -144,7 +144,7 @@ void engine_close(struct engine *e);
  * Insert a new item with key 'quid' with the contents in 'data' to the
  * database file.
  */
-int engine_insert(struct engine *e, const quid_t *quid, const void *data, size_t len);
+int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len);
 
 /*
  * Look up item with the given key 'quid' in the database file. Length of the

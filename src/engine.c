@@ -672,18 +672,14 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	return ret;
 }
 
-int engine_insert(struct engine *e, const quid_t *c_quid, const void *data, size_t len) {
+int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return -1;
 	}
 
-	/* QUID must be in writable memory */
-	quid_t quid;
-	memcpy(&quid, c_quid, sizeof(quid_t));
-
-	insert_toplevel(e, &e->top, &quid, data, len);
+	insert_toplevel(e, &e->top, quid, data, len);
 	flush_super(e, TRUE);
 	if(ISERROR())
 		return -1;
