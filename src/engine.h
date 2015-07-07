@@ -9,7 +9,7 @@
 #include "quid.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
-#define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist))
+#define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist_item))
 
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
@@ -78,10 +78,16 @@ struct engine_dbcache {
 	uint64_t offset;
 };
 
-struct engine_tablelist {
-	char quid[QUID_LENGTH];
+struct engine_tablelist_item {
+	quid_t quid;
 	char name[32];
 } __attribute__((packed));
+
+struct engine_tablelist {
+	struct engine_tablelist_item items[LIST_SIZE];
+	uint16_t size;
+	__be64 next;
+};
 
 struct blob_info {
 	__be32 len;
@@ -96,8 +102,7 @@ struct engine_super {
 	__be64 nkey;
 	__be64 nfree_table;
 	__be64 crc_zero_key;
-	__be16 list_size;
-	struct engine_tablelist list[LIST_SIZE];
+	__be64 list_top;
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
@@ -116,7 +121,7 @@ struct engine {
 	uint64_t free_top;
 	uint64_t alloc;
 	uint64_t db_alloc;
-	uint16_t list_size;
+	uint64_t list_top;
 	int fd;
 	int db_fd;
 	bool lock;
@@ -164,6 +169,7 @@ int engine_delete(struct engine *e, const quid_t *quid);
 int engine_recover_storage(struct engine *e);
 int engine_vacuum(struct engine *e, const char *fname, const char *nfname);
 int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len);
+int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);
