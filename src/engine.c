@@ -911,8 +911,6 @@ int engine_recover_storage(struct engine *e) {
 
 		size_t len = from_be32(info.len);
 		uint64_t next = from_be64(info.next);
-		printf("last %ld\n", last_blob);
-		printf("i %d len %ld\n", cnt, len);
 		zassert(len > 0);
 		if (next)
 			offset = next;
