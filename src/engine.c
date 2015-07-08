@@ -1053,8 +1053,9 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 
 		memcpy(&tablelist->items[tablelist->size].quid, c_quid, sizeof(quid_t));
 		memcpy(&tablelist->items[tablelist->size].name, name, len);
+		tablelist->items[tablelist->size].len = to_be32(len);
 		tablelist->size++;
-		
+
 		/* check if we need to add a new table*/
 		if (tablelist->size >= LIST_SIZE) {
 			flush_tablelist(e, tablelist, e->list_top);
@@ -1073,6 +1074,7 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 		new_tablelist->size = 1;
 		memcpy(&new_tablelist->items[0].quid, c_quid, sizeof(quid_t));
 		memcpy(&new_tablelist->items[0].name, name, len);
+		new_tablelist->items[0].len = to_be32(len);
 
 		uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
 		flush_tablelist(e, new_tablelist, new_table_offset);
@@ -1099,8 +1101,14 @@ char *engine_list_get(struct engine *e, const quid_t *c_quid) {
 		int i = 0;
 		for (; i<tablelist->size; ++i) {
 			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
-			if (cmp == 0)
-				return tablelist->items[i].name;
+			if (cmp == 0) {
+				size_t len = from_be32(tablelist->items[i].len);
+				char *name = (char *)zmalloc(len+1);
+				name[len] = '\0';
+				memcpy(name, tablelist->items[i].name, len);
+				zfree(tablelist);
+				return name;
+			}
 		}
 		if (tablelist->link) {
 			offset = from_be64(tablelist->link);
@@ -1110,6 +1118,38 @@ char *engine_list_get(struct engine *e, const quid_t *c_quid) {
 	}
 
 	return NULL;
+}
+
+int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
+			if (cmp == 0) {
+				memcpy(&tablelist->items[i].name, name, len);
+				tablelist->items[i].len = to_be32(len);
+				flush_tablelist(e, tablelist, offset);
+				return 0;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	return -1;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {
