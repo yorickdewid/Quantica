@@ -616,39 +616,76 @@ http_status_t api_rec_meta(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_db_listget(char **response, http_request_t *req) {
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		char *name = db_list_get(param_quid);
+		if (!name) {
+			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
+			return HTTP_OK;
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"COMMAND_OK\",\"success\":true}", name);
+		zfree(name);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_db_listupdate(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_name = (char *)hashtable_get(req->data, "name");
+		char *param_quid = (char *)hashtable_get(req->data, "quid");
+		if (param_name && param_quid) {
+			if (db_list_update(param_quid, param_name)<0) {
+				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
+				return HTTP_OK;
+			}
+			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Table renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 const struct webroute route[] = {
-	{"/",			api_root,			FALSE},
-	{"/license",	api_license,		FALSE},
-	{"/help",		api_help,			FALSE},
-	{"/api",		api_help,			FALSE},
-	{"/instance",	api_instance,		FALSE},
-	{"/session",	api_session,		FALSE},
-	{"/sha1",		api_sha1,			FALSE},
-	{"/md5",		api_md5,			FALSE},
-	{"/sha256",		api_sha256,			FALSE},
-	{"/sql",		api_sqlquery,		FALSE},
-	{"/vacuum",		api_vacuum,			FALSE},
-	{"/sync",		api_sync,			FALSE},
-	{"/version",	api_version,		FALSE},
-	{"/status",		api_status,			FALSE},
-	{"/quid",		api_gen_quid,		FALSE},
-	{"/now",		api_time_now,		FALSE},
-	{"/time",		api_time_now,		FALSE},
-	{"/date",		api_time_now,		FALSE},
-	{"/shutdown",	api_shutdown,		FALSE},
-	{"/base64/enc",	api_base64_enc,		FALSE},
-	{"/base64/dec",	api_base64_dec,		FALSE},
-	{"/put",		api_db_put,			FALSE},
-	{"/store",		api_db_put,			FALSE},
-	{"/insert",		api_db_put,			FALSE},
-	{"/get",		api_db_get,			TRUE},
-	{"/retrieve",	api_db_get,			TRUE},
-	{"/get/type",	api_db_get_type,	TRUE},
-	{"/delete",		api_db_delete,		TRUE},
-	{"/remove",		api_db_delete,		TRUE},
-	{"/purge",		api_db_purge,		TRUE},
-	{"/update",		api_db_update,		TRUE},
-	{"/meta",		api_rec_meta,		TRUE},
+	{"/",				api_root,			FALSE},
+	{"/license",		api_license,		FALSE},
+	{"/help",			api_help,			FALSE},
+	{"/api",			api_help,			FALSE},
+	{"/instance",		api_instance,		FALSE},
+	{"/session",		api_session,		FALSE},
+	{"/sha1",			api_sha1,			FALSE},
+	{"/md5",			api_md5,			FALSE},
+	{"/sha256",			api_sha256,			FALSE},
+	{"/sql",			api_sqlquery,		FALSE},
+	{"/vacuum",			api_vacuum,			FALSE},
+	{"/sync",			api_sync,			FALSE},
+	{"/version",		api_version,		FALSE},
+	{"/status",			api_status,			FALSE},
+	{"/quid",			api_gen_quid,		FALSE},
+	{"/now",			api_time_now,		FALSE},
+	{"/time",			api_time_now,		FALSE},
+	{"/date",			api_time_now,		FALSE},
+	{"/shutdown",		api_shutdown,		FALSE},
+	{"/base64/enc",		api_base64_enc,		FALSE},
+	{"/base64/dec",		api_base64_dec,		FALSE},
+	{"/put",			api_db_put,			FALSE},
+	{"/store",			api_db_put,			FALSE},
+	{"/insert",			api_db_put,			FALSE},
+	{"/get",			api_db_get,			TRUE},
+	{"/retrieve",		api_db_get,			TRUE},
+	{"/get/type",		api_db_get_type,	TRUE},
+	{"/delete",			api_db_delete,		TRUE},
+	{"/remove",			api_db_delete,		TRUE},
+	{"/purge",			api_db_purge,		TRUE},
+	{"/update",			api_db_update,		TRUE},
+	{"/meta",			api_rec_meta,		TRUE},
+	{"/name",			api_db_listget,		TRUE},
+	{"/rename",			api_db_listupdate,	TRUE},
 };
 
 void handle_request(int sd, fd_set *set) {

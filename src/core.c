@@ -362,3 +362,20 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 		return -1;
 	return 0;
 }
+
+char *db_list_get(char *quid) {
+	if (!ready)
+		return NULL;
+	quid_t key;
+	strtoquid(quid, &key);
+ 	return engine_list_get(&btx, &key);
+}
+
+int db_list_update(char *quid, const char *name) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	strtoquid(quid, &key);
+
+	return engine_list_update(&btx, &key, name, strlen(name));;
+}

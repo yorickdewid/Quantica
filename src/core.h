@@ -60,4 +60,7 @@ int db_vacuum();
 int db_record_get_meta(char *quid, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
 
+char *db_list_get(char *quid);
+int db_list_update(char *quid, const char *name);
+
 #endif // CORE_H_INCLUDED
