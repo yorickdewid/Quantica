@@ -177,6 +177,8 @@ char *engine_list_get(struct engine *e, const quid_t *c_quid);
 int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 int engine_list_delete(struct engine *e, const quid_t *c_quid);
 
+char *engine_list_all(struct engine *e);
+
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);
 enum key_lifecycle get_meta_lifecycle(char *lifecycle);

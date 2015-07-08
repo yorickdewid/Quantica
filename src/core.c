@@ -379,3 +379,9 @@ int db_list_update(char *quid, const char *name) {
 
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
+
+char *db_list_all() {
+	if (!ready)
+		return NULL;
+ 	return engine_list_all(&btx);
+}

@@ -62,5 +62,6 @@ int db_record_set_meta(char *quid, struct record_status *status);
 
 char *db_list_get(char *quid);
 int db_list_update(char *quid, const char *name);
+char *db_list_all();
 
 #endif // CORE_H_INCLUDED

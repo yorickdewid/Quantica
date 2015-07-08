@@ -651,6 +651,22 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_listall(char **response, http_request_t *req) {
+	unused(req);
+	size_t len = 0, resplen;
+	char *table = db_list_all();
+
+	len = strlen(table);
+	resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE/2)) {
+		resplen = RESPONSE_SIZE+len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"table\":%s,\"description\":\"Listening tables\",\"status\":\"COMMAND_OK\",\"success\":true}", table);
+	zfree(table);
+	return HTTP_OK;
+}
+
 const struct webroute route[] = {
 	{"/",				api_root,			FALSE},
 	{"/license",		api_license,		FALSE},
@@ -676,6 +692,7 @@ const struct webroute route[] = {
 	{"/put",			api_db_put,			FALSE},
 	{"/store",			api_db_put,			FALSE},
 	{"/insert",			api_db_put,			FALSE},
+	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
 	{"/get/type",		api_db_get_type,	TRUE},

@@ -10,8 +10,11 @@
 #include "arc4random.h"
 #include "crc64.h"
 #include "quid.h"
+#include "dict.h"
 #include "engine.h"
 #include "core.h"
+
+#define VECTOR_SIZE	2048
 
 static int delete_larger = 0;
 static uint64_t last_blob = 0;
@@ -1184,6 +1187,40 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 	return -1;
 }
 
+char *engine_list_all(struct engine *e) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return NULL;
+	}
+
+	vector_t *obj = alloc_vector(VECTOR_SIZE);
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			char squid[QUID_LENGTH+1];
+			quidtostr(squid, &tablelist->items[i].quid);
+			dict_t *element = dict_element_new(obj, TRUE, squid, tablelist->items[i].name);
+			vector_append(obj, (void *)element);
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	char *buf = zmalloc(obj->alloc_size);
+	memset(buf, 0, obj->alloc_size);
+	buf = dict_object(obj, buf);
+	vector_free(obj);
+
+	return buf;
+}
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {
 	static char buf[STATUS_LIFECYCLE_SIZE];
