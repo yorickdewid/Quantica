@@ -1152,6 +1152,39 @@ int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name,
 	return -1;
 }
 
+int engine_list_delete(struct engine *e, const quid_t *c_quid) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
+			if (cmp == 0) {
+				memset(&tablelist->items[i].quid, 0, sizeof(quid_t));
+				tablelist->items[i].len = 0;
+				flush_tablelist(e, tablelist, offset);
+				return 0;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	return -1;
+}
+
+
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {
 	static char buf[STATUS_LIFECYCLE_SIZE];
 	switch (lifecycle) {
