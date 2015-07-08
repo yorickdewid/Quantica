@@ -444,7 +444,7 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 			}
 		}
 		resplen = RESPONSE_SIZE;
-		if (len > RESPONSE_SIZE) {
+		if (len > (RESPONSE_SIZE/2)) {
 			resplen = RESPONSE_SIZE+len;
 			*response = zrealloc(*response, resplen);
 		}
@@ -654,7 +654,12 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 http_status_t api_listall(char **response, http_request_t *req) {
 	unused(req);
 	size_t len = 0, resplen;
+
 	char *table = db_list_all();
+	if (!table) {
+		snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Server not ready\",\"status\":\"NOT_READY\",\"success\":false}", ENOT_READY);
+		return HTTP_OK;
+	}
 
 	len = strlen(table);
 	resplen = RESPONSE_SIZE;

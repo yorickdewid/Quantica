@@ -10,7 +10,8 @@ enum error_level {
 };
 
 enum error_code {
-	ENO_QUID = 9,
+	ENOT_READY = 8,
+	ENO_QUID,
 	ENO_DATA,
 	EIO_READ,
 	EIO_WRITE,
