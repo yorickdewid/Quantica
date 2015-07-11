@@ -14,5 +14,6 @@
 #define DBCACHE_DENSITY	75
 
 #define API_PORT	4017
+#define LICENSE		"BSD"
 
 #endif // CONFIG_H_INCLUDED

@@ -172,7 +172,7 @@ http_status_t api_root(char **response, http_request_t *req) {
 
 http_status_t api_license(char **response, http_request_t *req) {
 	unused(req);
-	strlcpy(*response, "{\"license\":\"BSD\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"license\":\"" LICENSE  "\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
