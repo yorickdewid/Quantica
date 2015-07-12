@@ -210,10 +210,8 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	zfree(rs.slay);
 
 	quidtostr(quid, &key);
-	if (rs.table) {
+	if (rs.table)
 		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
-		printf("INSERT TABLE %s\n", quid);
-	}
 	return 0;
 }
 
