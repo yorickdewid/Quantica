@@ -316,6 +316,7 @@ int db_purge(char *quid) {
 	strtoquid(quid, &key);
 	if (engine_purge(&btx, &key)<0)
 		return -1;
+	engine_list_delete(&btx, &key);
 	return 0;
 }
 
