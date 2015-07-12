@@ -1204,6 +1204,10 @@ char *engine_list_all(struct engine *e) {
 		for (; i<tablelist->size; ++i) {
 			char squid[QUID_LENGTH+1];
 			quidtostr(squid, &tablelist->items[i].quid);
+			size_t len = from_be32(tablelist->items[i].len);
+			if (!len)
+				continue;
+			tablelist->items[i].name[len] = '\0';
 			dict_t *element = dict_element_new(obj, TRUE, squid, tablelist->items[i].name);
 			vector_append(obj, (void *)element);
 		}

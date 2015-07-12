@@ -13,7 +13,7 @@
 
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
-#define LIST_NAME_LENGTH 32
+#define LIST_NAME_LENGTH 48
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
@@ -176,7 +176,6 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 char *engine_list_get(struct engine *e, const quid_t *c_quid);
 int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 int engine_list_delete(struct engine *e, const quid_t *c_quid);
-
 char *engine_list_all(struct engine *e);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);

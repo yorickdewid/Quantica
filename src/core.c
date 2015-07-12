@@ -197,16 +197,23 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	quid_t key;
 	size_t len = 0;
+	struct slay_result rs;
 	quid_create(&key);
 
-	void *slay = slay_put_data((char *)data, data_len, &len, items);
-	if (engine_insert(&btx, &key, slay, len)<0) {
-		zfree(slay);
+	memset(&rs, 0, sizeof(struct slay_result));
+	slay_put_data((char *)data, data_len, &len, &rs);
+	*items = rs.items;
+	if (engine_insert(&btx, &key, rs.slay, len)<0) {
+		zfree(rs.slay);
 		return -1;
 	}
-	zfree(slay);
+	zfree(rs.slay);
 
 	quidtostr(quid, &key);
+	if (rs.table) {
+		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
+		printf("INSERT TABLE %s\n", quid);
+	}
 	return 0;
 }
 
@@ -279,14 +286,17 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	quid_t key;
 	size_t len = 0;
+	struct slay_result rs;
 	strtoquid(quid, &key);
 
-	void *slay = slay_put_data((char *)data, data_len, &len, items);
-	if (engine_update(&btx, &key, slay, len)<0) {
-		zfree(slay);
+	memset(&rs, 0, sizeof(struct slay_result));
+	slay_put_data((char *)data, data_len, &len, &rs);
+	*items = rs.items;
+	if (engine_update(&btx, &key, rs.slay, len)<0) {
+		zfree(rs.slay);
 		return -1;
 	}
-	zfree(slay);
+	zfree(rs.slay);
 	return 0;
 }
 
@@ -297,6 +307,7 @@ int db_delete(char *quid) {
 	strtoquid(quid, &key);
 	if (engine_delete(&btx, &key)<0)
 		return -1;
+	engine_list_delete(&btx, &key);
 	return 0;
 }
 
@@ -376,7 +387,6 @@ int db_list_update(char *quid, const char *name) {
 		return -1;
 	quid_t key;
 	strtoquid(quid, &key);
-
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
 

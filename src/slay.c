@@ -14,9 +14,7 @@
 
 #define VECTOR_SIZE	1024
 
-void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items) {
-	void *slay = NULL;
-
+void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct slay_result *rs) {
 	int i;
 	int r;
 	dict_parser p;
@@ -26,7 +24,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 	r = dict_parse(&p, data, data_len, t, data_len);
 	if (r < 1) {
 		lprintf("[erro] Failed to parse dict\n");
-		return NULL;
+		return;
 	}
 
 	if (t[0].type == DICT_ARRAY) {
@@ -34,11 +32,11 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		int objcnt = 0;
 
 		dict_levelcount(t, 0, 2, &cnt);
-		*items = cnt;
+		rs->items = cnt;
 
 		int cobj[cnt][2];
-		slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
-		void *next = movetodata_row(slay);
+		rs->slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
+		void *next = movetodata_row(rs->slay);
 		for (i=1; i<r; ++i) {
 			if (t[i].type == DICT_PRIMITIVE) {
 				if (dict_cmp(data, &t[i], "null")) {
@@ -78,17 +76,18 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 			}
 		}
 		if (objcnt == cnt) {
-			zfree(slay);
+			zfree(rs->slay);
 
-			slay = create_row(SCHEMA_TABLE, objcnt, (objcnt * QUID_LENGTH), slay_len);
-			void *next = movetodata_row(slay);
-			int z = 0;
-			for (; z<objcnt; ++z) {
+			rs->slay = create_row(SCHEMA_TABLE, objcnt, (objcnt * QUID_LENGTH), slay_len);
+			rs->table = TRUE;
+			void *next = movetodata_row(rs->slay);
+			int rows = 0;
+			struct slay_result crs;
+			for (; rows<objcnt; ++rows) {
 				size_t clen = 0;
-				int citems = 0;
-				void *cslay = slay_parse_object(data+cobj[z][0], cobj[z][1], &clen, &citems);
+				slay_parse_object(data+cobj[rows][0], cobj[rows][1], &clen, &crs);
 				char squid[QUID_LENGTH+1];
-				_db_put(squid, cslay, clen);
+				_db_put(squid, crs.slay, clen);
 				next = slay_wrap(next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
 			}
 		}
@@ -96,10 +95,10 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		int cnt = 0;
 		dict_levelcount(t, 0, 2, &cnt);
 		cnt /= 2;
-		*items = cnt;
+		rs->items = cnt;
 
-		slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
-		void *next = movetodata_row(slay);
+		rs->slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
+		void *next = movetodata_row(rs->slay);
 		for (i=1; i<r; ++i) {
 			if (i%2 == 0) {
 				if (t[i].type == DICT_PRIMITIVE) {
@@ -139,8 +138,6 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		}
 
 	}
-
-	return slay;
 }
 
 void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len) {
@@ -200,44 +197,43 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
-void *slay_put_data(char *data, size_t data_len, size_t *len, int *items) {
-	void *slay = NULL;
+void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result *rs) {
+	rs->slay = NULL;
 	dstype_t adt = autotype(data, data_len);
 	switch (adt) {
 		case DT_QUID:
-			slay = slay_parse_quid((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_parse_quid((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_JSON:
-			slay = slay_parse_object((char *)data, data_len, len, items);
+			slay_parse_object((char *)data, data_len, len, rs);
 			break;
 		case DT_NULL:
-			slay = slay_null(len);
+			rs->slay = slay_null(len);
 			break;
 		case DT_CHAR:
-			slay = slay_char((char *)data, len);
-			*items = 1;
+			rs->slay = slay_char((char *)data, len);
+			rs->items = 1;
 			break;
 		case DT_BOOL_F:
-			slay = slay_bool(FALSE, len);
+			rs->slay = slay_bool(FALSE, len);
 			break;
 		case DT_BOOL_T:
-			slay = slay_bool(TRUE, len);
+			rs->slay = slay_bool(TRUE, len);
 			break;
 		case DT_FLOAT:
-			slay = slay_float((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_float((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_INT:
-			slay = slay_integer((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_integer((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_TEXT:
-			slay = slay_parse_text((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_parse_text((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 	}
-	return (void *)slay;
 }
 
 dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t dt) {
