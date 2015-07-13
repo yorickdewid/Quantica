@@ -39,6 +39,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/engine.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \
+		$(SRCDIR)/jenhash.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
 		$(SRCDIR)/sql.c \
