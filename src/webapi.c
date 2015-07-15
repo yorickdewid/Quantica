@@ -651,6 +651,37 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_table(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_name = (char *)hashtable_get(req->data, "name");
+		if (param_name) {
+			size_t len = 0, resplen;
+			char *data = db_table_get(param_name, &len);
+			if (!data) {
+				if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				}
+			}
+			resplen = RESPONSE_SIZE;
+			if (len > (RESPONSE_SIZE/2)) {
+				resplen = RESPONSE_SIZE+len;
+				*response = zrealloc(*response, resplen);
+			}
+			snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
+			zfree(data);
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_listall(char **response, http_request_t *req) {
 	unused(req);
 	size_t len = 0, resplen;
@@ -697,6 +728,7 @@ const struct webroute route[] = {
 	{"/put",			api_db_put,			FALSE},
 	{"/store",			api_db_put,			FALSE},
 	{"/insert",			api_db_put,			FALSE},
+	{"/table",			api_table,			FALSE},
 	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},

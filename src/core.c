@@ -378,7 +378,7 @@ char *db_list_get(char *quid) {
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
- 	return engine_list_get(&btx, &key);
+ 	return engine_list_get_val(&btx, &key);
 }
 
 int db_list_update(char *quid, const char *name) {
@@ -393,4 +393,21 @@ char *db_list_all() {
 	if (!ready)
 		return NULL;
  	return engine_list_all(&btx);
+}
+
+void *db_table_get(char *name, size_t *len) {
+	if (!ready)
+		return NULL;
+	quid_t key;
+	if (engine_list_get_key(&btx, &key, name, strlen(name))<0)
+		return NULL;
+
+	void *data = engine_get(&btx, &key, len);
+	if (!data)
+		return NULL;
+
+	dstype_t dt;
+	char *buf = slay_get_data(data, &dt);
+	zfree(data);
+	return buf;
 }
