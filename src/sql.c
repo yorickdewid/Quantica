@@ -269,11 +269,17 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			return &rs;
 		}
 		STACK_EMPTY_POP();
+		if (tok->token == T_STRING)
+			goto selete_tablelist;
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
 		rs.data = db_get(tok->string, len);
+		if (rs.data)
+			return &rs;
+selete_tablelist:
+		rs.data = db_table_get(tok->string, len);
 		if (rs.data)
 			return &rs;
 	} else if (tok->token == T_INSERT) {
