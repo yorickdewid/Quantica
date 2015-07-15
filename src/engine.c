@@ -1125,6 +1125,7 @@ char *engine_list_get_val(struct engine *e, const quid_t *c_quid) {
 		zfree(tablelist);
 	}
 
+	ERROR(ETBL_NOTFOUND, EL_WARN);
 	return NULL;
 }
 
@@ -1156,6 +1157,7 @@ int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t 
 		zfree(tablelist);
 	}
 
+	ERROR(ETBL_NOTFOUND, EL_WARN);
 	return -1;
 }
 
@@ -1190,6 +1192,7 @@ int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name,
 		zfree(tablelist);
 	}
 
+	ERROR(ETBL_NOTFOUND, EL_WARN);
 	return -1;
 }
 
@@ -1222,6 +1225,7 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 		zfree(tablelist);
 	}
 
+	ERROR(ETBL_NOTFOUND, EL_WARN);
 	return -1;
 }
 
