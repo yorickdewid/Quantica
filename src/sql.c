@@ -84,6 +84,7 @@ enum token {
 	T_FUNC_INSTANCE_KEY,
 	T_FUNC_SESSION_KEY,
 	T_FUNC_LICENSE,
+	T_FUNC_VERSION,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -257,6 +258,20 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			}
 			rs.name = zstrdup("license");
 			rs.data = zstrdup(LICENSE);
+			return &rs;
+		} else if (tok->token == T_FUNC_VERSION) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("version");
+			rs.data = zstrdup(get_version_string());
 			return &rs;
 		}
 		if (tok->token != T_ASTERISK) {
@@ -754,6 +769,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_SESSION_KEY;
 		} else if (!strcmp(pch, "LICENSE") || !strcmp(pch, "license")) {
 			tok->token =  T_FUNC_LICENSE;
+		} else if (!strcmp(pch, "VERSION") || !strcmp(pch, "version")) {
+			tok->token =  T_FUNC_VERSION;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {
