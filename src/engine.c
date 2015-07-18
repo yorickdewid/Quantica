@@ -1297,8 +1297,8 @@ char *get_str_lifecycle(enum key_lifecycle lifecycle) {
 char *get_str_type(enum key_type key_type) {
 	static char buf[STATUS_TYPE_SIZE];
 	switch (key_type) {
-		case MD_TYPE_SIGNED:
-			strlcpy(buf, "SIGNED", STATUS_TYPE_SIZE);
+		case MD_TYPE_TABLE:
+			strlcpy(buf, "TABLE", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_BOOL_FALSE:
 			strlcpy(buf, "BOOL_FALSE", STATUS_TYPE_SIZE);
@@ -1333,8 +1333,8 @@ enum key_lifecycle get_meta_lifecycle(char *lifecycle) {
 }
 
 enum key_type get_meta_type(char *key_type) {
-	if (!strcmp(key_type, "SIGNED"))
-		return MD_TYPE_SIGNED;
+	if (!strcmp(key_type, "TABLE"))
+		return MD_TYPE_TABLE;
 	else if (!strcmp(key_type, "BOOL_FALSE"))
 		return MD_TYPE_BOOL_FALSE;
 	else if (!strcmp(key_type, "BOOL_TRUE"))
