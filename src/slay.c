@@ -510,7 +510,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 		}
 	}
 
-	return buf;
+	return (void *)buf;
 }
 
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {

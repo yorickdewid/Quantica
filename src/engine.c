@@ -798,7 +798,7 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 				}
 				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
 				put_table(e, table, table_offset);
-				return meta;//&table->items[i].meta;
+				return meta;
 			}
 			if (cmp < 0) {
 				right = i;
