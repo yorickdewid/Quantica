@@ -39,11 +39,10 @@ enum key_importance {
 };
 
 enum key_type {
-	MD_TYPE_DATA = 0,		/* Key maps to data */
+	MD_TYPE_RECORD = 0,		/* Key maps to record */
 	MD_TYPE_TABLE,			/* Key represents a table */
-	MD_TYPE_BOOL_FALSE,		/* Key is FALSE, no data */
-	MD_TYPE_BOOL_TRUE,		/* Key is TRUE, no data */
-	MD_TYPE_POINTER			/* Key points to key */
+	MD_TYPE_POINTER,		/* Key points to key */
+	MD_TYPE_RAW				/* Key points to key */
 };
 
 struct metadata {

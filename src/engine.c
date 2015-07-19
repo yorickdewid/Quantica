@@ -1300,18 +1300,15 @@ char *get_str_type(enum key_type key_type) {
 		case MD_TYPE_TABLE:
 			strlcpy(buf, "TABLE", STATUS_TYPE_SIZE);
 			break;
-		case MD_TYPE_BOOL_FALSE:
-			strlcpy(buf, "BOOL_FALSE", STATUS_TYPE_SIZE);
-			break;
-		case MD_TYPE_BOOL_TRUE:
-			strlcpy(buf, "BOOL_TRUE", STATUS_TYPE_SIZE);
+		case MD_TYPE_RAW:
+			strlcpy(buf, "RAW", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_POINTER:
 			strlcpy(buf, "POINTER", STATUS_TYPE_SIZE);
 			break;
-		case MD_TYPE_DATA:
+		case MD_TYPE_RECORD:
 		default:
-			strlcpy(buf, "DATA", STATUS_TYPE_SIZE);
+			strlcpy(buf, "RECORD", STATUS_TYPE_SIZE);
 			break;
 	}
 	return buf;
@@ -1335,12 +1332,10 @@ enum key_lifecycle get_meta_lifecycle(char *lifecycle) {
 enum key_type get_meta_type(char *key_type) {
 	if (!strcmp(key_type, "TABLE"))
 		return MD_TYPE_TABLE;
-	else if (!strcmp(key_type, "BOOL_FALSE"))
-		return MD_TYPE_BOOL_FALSE;
-	else if (!strcmp(key_type, "BOOL_TRUE"))
-		return MD_TYPE_BOOL_TRUE;
+	else if (!strcmp(key_type, "RAW"))
+		return MD_TYPE_RAW;
 	else if (!strcmp(key_type, "POINTER"))
 		return MD_TYPE_POINTER;
 	else
-		return MD_TYPE_DATA;
+		return MD_TYPE_RECORD;
 }

@@ -33,6 +33,7 @@ void bootstrap(struct engine *e) {
 	md.importance = MD_IMPORTANT_CRITICAL;
 	md.syslock = LOCK;
 	md.exec = TRUE;
+	md.type = MD_TYPE_RAW;
 	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
@@ -45,6 +46,7 @@ void bootstrap(struct engine *e) {
 
 	md.importance = MD_IMPORTANT_LEVEL2;
 	md.syslock = LOCK;
+	md.type = MD_TYPE_RAW;
 	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
@@ -58,19 +60,20 @@ void bootstrap(struct engine *e) {
 	md.importance = MD_IMPORTANT_LEVEL3;
 	md.syslock = LOCK;
 	md.exec = TRUE;
+	md.type = MD_TYPE_RAW;
 	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 
-	/* Set backend intercommunication */
+	/* Set backend inter process communication */
 	const char skey3[] = "{00000000-00c1-a150-0000-00000000008b}";
 	strtoquid(skey3, &key);
-	const char data3[] = "1";
+	const char data3[] = "SELECT IPC();SELECT SPNEGO()";
 	if(engine_insert(e, &key, data3, strlen(data3))<0)
 		fprintf(stderr, "bootstrap: Insert failed\n");
 
 	md.importance = MD_IMPORTANT_LEVEL1;
 	md.syslock = LOCK;
-	md.type = MD_TYPE_BOOL_TRUE;
+	md.type = MD_TYPE_RAW;
 	if (engine_setmeta(e, &key, &md)<0)
 		fprintf(stderr, "bootstrap: Update meta failed\n");
 }
