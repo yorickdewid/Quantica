@@ -86,6 +86,8 @@ enum token {
 	T_FUNC_LICENSE,
 	T_FUNC_VERSION,
 	T_FUNC_UPTIME,
+	/* schema */
+	T_TABLELIST,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -300,7 +302,9 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		}
 		STACK_EMPTY_POP();
 		if (tok->token == T_STRING)
-			goto selete_tablelist;
+			goto select_alias;
+		if (tok->token == T_TABLELIST)
+			goto select_tablelist;
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
@@ -308,8 +312,12 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		rs.data = db_get(tok->string, len);
 		if (rs.data)
 			return &rs;
-selete_tablelist:
+select_alias:
 		rs.data = db_table_get(tok->string, len);
+		if (rs.data)
+			return &rs;
+select_tablelist:
+		rs.data = db_list_all();
 		if (rs.data)
 			return &rs;
 	} else if (tok->token == T_INSERT) {
@@ -760,6 +768,8 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_UNIQUE;
 		} else if (!strcmp(pch, "IS") || !strcmp(pch, "is")) {
 			tok->token =  T_IS;
+		} else if (!strcmp(pch, "TABLELIST") || !strcmp(pch, "tabelist")) {
+			tok->token =  T_TABLELIST;
 		} else if (!strcmp(pch, "QUID") || !strcmp(pch, "quid")) {
 			tok->token =  T_FUNC_QUID;
 		} else if (!strcmp(pch, "NOW") || !strcmp(pch, "now")) {
