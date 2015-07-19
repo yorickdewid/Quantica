@@ -8,6 +8,7 @@
 #define DBNAME_SIZE		64
 #define INSTANCE_LENGTH	32
 #define BINDATA_LENGTH	16
+#define MAGIC_LENGTH	10
 
 struct base {
 	quid_t instance_key;
@@ -28,7 +29,9 @@ struct base_super {
 	uint16_t version;
 	char bindata[BINDATA_LENGTH];
 	int bincnt;
-};
+	uint8_t exitstatus;
+	char magic[MAGIC_LENGTH];
+} __attribute__((packed));
 
 char *generate_bindata_name(struct base *base);
 

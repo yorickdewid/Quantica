@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,13 +8,19 @@
 #include <error.h>
 #include "zmalloc.h"
 #include "arc4random.h"
+#include "crc64.h"
+#include "jenhash.h"
 #include "quid.h"
+#include "dict.h"
 #include "engine.h"
 #include "core.h"
 
-static int delete_larger = 0;
+#define VECTOR_SIZE	2048
 
-static void flush_super(struct engine *e);
+static int delete_larger = 0;
+static uint64_t last_blob = 0;
+
+static void flush_super(struct engine *e, bool fast);
 static void flush_dbsuper(struct engine *e);
 static void free_index_chunk(struct engine *e, uint64_t offset);
 static void free_dbchunk(struct engine *e, uint64_t offset);
@@ -36,8 +41,19 @@ static struct engine_table *alloc_table() {
 	return table;
 }
 
+static struct engine_tablelist *alloc_tablelist() {
+	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
+	if (!tablelist) {
+		lprintf("[erro] Failed to request memory\n");
+		ERROR(EM_ALLOC, EL_FATAL);
+		return NULL;
+	}
+	memset(tablelist, 0, sizeof(struct engine_tablelist));
+	return tablelist;
+}
+
 static struct engine_table *get_table(struct engine *e, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	/* take from cache */
 	struct engine_cache *slot = &e->cache[offset % CACHE_SLOTS];
@@ -62,14 +78,33 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 	return table;
 }
 
+static struct engine_tablelist *get_tablelist(struct engine *e, uint64_t offset) {
+	zassert(offset != 0);
+
+	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
+	if (!tablelist) {
+		lprintf("[erro] Failed to request memory\n");
+		ERROR(EM_ALLOC, EL_FATAL);
+		return NULL;
+	}
+
+	lseek(e->fd, offset, SEEK_SET);
+	if (read(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
+		lprintf("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return NULL;
+	}
+	return tablelist;
+}
+
 /* Free a table acquired with alloc_table() or get_table() */
 static void put_table(struct engine *e, struct engine_table *table, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	/* overwrite cache */
 	struct engine_cache *slot = &e->cache[offset % CACHE_SLOTS];
 	if (slot->offset != 0) {
-		free(slot->table);
+		zfree(slot->table);
 	}
 	slot->offset = offset;
 	slot->table = table;
@@ -77,7 +112,7 @@ static void put_table(struct engine *e, struct engine_table *table, uint64_t off
 
 /* Write a table and free it */
 static void flush_table(struct engine *e, struct engine_table *table, uint64_t offset) {
-	assert(offset != 0);
+	zassert(offset != 0);
 
 	lseek(e->fd, offset, SEEK_SET);
 	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
@@ -86,6 +121,19 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 		return;
 	}
 	put_table(e, table, offset);
+}
+
+/* Write a tablelist and free it */
+static void flush_tablelist(struct engine *e, struct engine_tablelist *tablelist, uint64_t offset) {
+	zassert(offset != 0);
+
+	lseek(e->fd, offset, SEEK_SET);
+	if (write(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
+		lprintf("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
+	zfree(tablelist);
 }
 
 static int engine_open(struct engine *e, const char *idxname, const char *dbname) {
@@ -105,7 +153,17 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->free_top = from_be64(super.free_top);
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
-	assert(from_be64(super.version)==VERSION_RELESE);
+	e->list_top = from_be64(super.list_top);
+	zassert(from_be64(super.version)==VERSION_RELESE);
+
+	uint64_t crc64;
+	if(!crc_file(e->fd, &crc64)) {
+		lprintf("[erro] Failed to calculate CRC\n");
+		return -1;
+	}
+	/* TODO: run the diagnose process */
+	if (from_be64(super.crc_zero_key)!=crc64)
+		lprintf("[erro] Index CRC doenst match\n");
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -113,7 +171,8 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		ERROR(EIO_READ, EL_FATAL);
 		return -1;
 	}
-	assert(from_be64(dbsuper.version)==VERSION_RELESE);
+	zassert(from_be64(dbsuper.version)==VERSION_RELESE);
+	last_blob = from_be64(dbsuper.last);
 
 	e->alloc = lseek(e->fd, 0, SEEK_END);
 	e->db_alloc = lseek(e->db_fd, 0, SEEK_END);
@@ -127,7 +186,8 @@ static int engine_create(struct engine *e, const char *idxname, const char *dbna
 	if (e->fd < 0 || e->db_fd < 0)
 		return -1;
 
-	flush_super(e);
+	last_blob = 0;
+	flush_super(e, TRUE);
 	flush_dbsuper(e);
 
 	e->alloc = sizeof(struct engine_super);
@@ -144,20 +204,20 @@ void engine_init(struct engine *e, const char *fname, const char *dbname) {
 }
 
 void engine_close(struct engine *e) {
-	flush_super(e);
+	engine_sync(e);
 	close(e->fd);
 	close(e->db_fd);
 
 	size_t i;
 	for(i=0; i<CACHE_SLOTS; ++i) {
 		if(e->cache[i].offset) {
-			free(e->cache[i].table);
+			zfree(e->cache[i].table);
 		}
 	}
 }
 
 void engine_sync(struct engine *e) {
-	flush_super(e);
+	flush_super(e, FALSE);
 	flush_dbsuper(e);
 }
 
@@ -169,20 +229,7 @@ static size_t page_align(size_t val) {
 	return i;
 }
 
-/* Allocate a chunk from the index file */
-static uint64_t alloc_index_chunk(struct engine *e, size_t len) {
-	assert(len > 0);
-
-	/* Use blocks from freelist instead of allocation */
-	if (e->free_top){
-		uint64_t offset = e->free_top;
-		struct engine_table *table = get_table(e, offset);
-		e->free_top = from_be64(table->items[0].child);
-		e->stats.free_tables--;
-
-		return offset;
-	}
-
+static uint64_t page_swap(struct engine *e, size_t len) {
 	len = page_align(len);
 	uint64_t offset = e->alloc;
 
@@ -194,9 +241,33 @@ static uint64_t alloc_index_chunk(struct engine *e, size_t len) {
 	return offset;
 }
 
+/* Allocate a chunk from the index file for new table */
+static uint64_t alloc_table_chunk(struct engine *e, size_t len) {
+	zassert(len > 0);
+
+	/* Use blocks from freelist instead of allocation */
+	if (e->free_top){
+		uint64_t offset = e->free_top;
+		struct engine_table *table = get_table(e, offset);
+		e->free_top = from_be64(table->items[0].child);
+		e->stats.free_tables--;
+
+		return offset;
+	}
+
+	return page_swap(e, len);
+}
+
+/* Allocate a chunk from the index file */
+static uint64_t alloc_raw_chunk(struct engine *e, size_t len) {
+	zassert(len > 0);
+
+	return page_swap(e, len);
+}
+
 /* Allocate a chunk from the database file */
 static uint64_t alloc_dbchunk(struct engine *e, size_t len) {
-	assert(len > 0);
+	zassert(len > 0);
 
 	if(!e->dbcache[DBCACHE_SLOTS-1].len)
 		goto new_block;
@@ -223,7 +294,7 @@ new_block:
 
 /* Mark a chunk as unused in the database file */
 static void free_index_chunk(struct engine *e, uint64_t offset) {
-	assert(offset > 0);
+	zassert(offset > 0);
 	struct engine_table *table = get_table(e, offset);
 
 	quid_t quid;
@@ -250,6 +321,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 
 	int i, j;
 	info.free = 1;
+	info.next = 0;
 	struct engine_dbcache dbinfo;
 	size_t len = from_be32(info.len);
 	dbinfo.offset = offset;
@@ -275,7 +347,8 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 	}
 }
 
-static void flush_super(struct engine *e) {
+static void flush_super(struct engine *e, bool fast_flush) {
+	uint64_t crc64;
 	struct engine_super super;
 	memset(&super, 0, sizeof(struct engine_super));
 	super.version = to_be64(VERSION_RELESE);
@@ -283,7 +356,18 @@ static void flush_super(struct engine *e) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+	super.list_top = to_be64(e->list_top);
+	if (fast_flush)
+		goto flush_disk;
 
+	lseek(e->fd, sizeof(struct engine_super), SEEK_SET);
+	if(!crc_file(e->fd, &crc64)) {
+		lprintf("[erro] Failed to calculate CRC\n");
+		return;
+	}
+	super.crc_zero_key = to_be64(crc64);
+
+flush_disk:
 	lseek(e->fd, 0, SEEK_SET);
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
 		lprintf("[erro] Failed to write disk\n");
@@ -296,6 +380,7 @@ static void flush_dbsuper(struct engine *e) {
 	struct engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct engine_dbsuper));
 	dbsuper.version = to_be64(VERSION_RELESE);
+	dbsuper.last = to_be64(last_blob);
 
 	lseek(e->db_fd, 0, SEEK_SET);
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
@@ -317,6 +402,9 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	info.free = 0;
 
 	uint64_t offset = alloc_dbchunk(e, len);
+	info.next = to_be64(last_blob);
+	last_blob = offset;
+
 	lseek(e->db_fd, offset, SEEK_SET);
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprintf("[erro] Failed to write disk\n");
@@ -344,7 +432,7 @@ static uint64_t split_table(struct engine *e, struct engine_table *table, quid_t
 	table->size = TABLE_SIZE / 2;
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct engine_item));
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
+	uint64_t new_table_offset = alloc_table_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	return new_table_offset;
@@ -366,7 +454,7 @@ static uint64_t table_join(struct engine *e, uint64_t table_offset) {
    is stored to 'quid'. Returns offset to the item */
 static uint64_t take_smallest(struct engine *e, uint64_t table_offset, quid_t *quid) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size > 0);
+	zassert(table->size > 0);
 
 	uint64_t offset = 0;
 	uint64_t child = from_be64(table->items[0].child);
@@ -385,7 +473,7 @@ static uint64_t take_smallest(struct engine *e, uint64_t table_offset, quid_t *q
    is stored to 'quid'. Returns offset to the item */
 static uint64_t take_largest(struct engine *e, uint64_t table_offset, quid_t *quid) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size > 0);
+	zassert(table->size > 0);
 
 	uint64_t offset = 0;
 	uint64_t child = from_be64(table->items[table->size].child);
@@ -403,7 +491,7 @@ static uint64_t take_largest(struct engine *e, uint64_t table_offset, quid_t *qu
 /* Remove an item in position 'i' from the given table. The key of the
    removed item is stored to 'quid'. Returns offset to the item. */
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid) {
-	assert(i < table->size);
+	zassert(i < table->size);
 
 	if (quid)
 		memcpy(quid, &table->items[i].quid, sizeof(quid_t));
@@ -413,8 +501,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 	uint64_t right_child = from_be64(table->items[i + 1].child);
 
 	if (left_child != 0 && right_child != 0) {
-		/* replace the removed item by taking an item from one of the
-		   child tables */
+		/* replace the removed item by taking an item from one of the child tables */
 		uint64_t new_offset;
 		if (arc4random() & 1) {
 			new_offset = take_largest(e, left_child, &table->items[i].quid);
@@ -437,11 +524,11 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 	return offset;
 }
 
-/* Insert a new item with key 'quid' with the contents in 'data' to the given
-   table. Returns offset to the new item. */
+/* Insert a new item with key 'quid' with the contents in 'data' to the given table.
+   Returns offset to the new item. */
 static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *quid, const void *data, size_t len) {
 	struct engine_table *table = get_table(e, table_offset);
-	assert(table->size < TABLE_SIZE-1);
+	zassert(table->size < TABLE_SIZE-1);
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
@@ -478,7 +565,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 			put_table(e, child, left_child);
 			return ret;
 		}
-		/* overwrites SHA-1 */
+		/* overwrites QUID */
 		right_child = split_table(e, child, quid, &offset);
 		/* flush just in case changes happened */
 		flush_table(e, child, left_child);
@@ -582,30 +669,26 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
-	uint64_t new_table_offset = alloc_index_chunk(e, sizeof(struct engine_table));
+	uint64_t new_table_offset = alloc_table_chunk(e, sizeof(struct engine_table));
 	flush_table(e, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
 	return ret;
 }
 
-int engine_insert(struct engine *e, const quid_t *c_quid, const void *data, size_t len) {
+int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return -1;
 	}
 
-	/* QUID must be in writable memory */
-	quid_t quid;
-	memcpy(&quid, c_quid, sizeof(quid_t));
-
-	insert_toplevel(e, &e->top, &quid, data, len);
-	flush_super(e);
+	insert_toplevel(e, &e->top, quid, data, len);
+	flush_super(e, TRUE);
 	if(ISERROR())
 		return -1;
 
-    e->stats.keys++;
+	e->stats.keys++;
 	return 0;
 }
 
@@ -663,7 +746,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 		return NULL;
 	}
 	*len = from_be32(info.len);
-	assert(*len > 0);
+	zassert(*len > 0);
 
 	void *data = zmalloc(*len);
 	if (!data) {
@@ -696,7 +779,7 @@ int engine_purge(struct engine *e, quid_t *quid) {
 	e->stats.keys--;
 
 	free_dbchunk(e, offset);
-	flush_super(e);
+	flush_super(e, TRUE);
 	return 0;
 }
 
@@ -715,7 +798,7 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 				}
 				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
 				put_table(e, table, table_offset);
-				return meta;//&table->items[i].meta;
+				return meta;
 			}
 			if (cmp < 0) {
 				right = i;
@@ -798,29 +881,45 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 	if(ISERROR())
 		return -1;
 
-    nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
+	nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
 	set_meta(e, e->top, quid, &nmd);
 	if(ISERROR())
 		return -1;
 
-	flush_super(e);
+	flush_super(e, TRUE);
 	return 0;
 }
 
-#if 0
-static void walk_dbstorage(struct engine *e) {
-	uint64_t offset = sizeof(struct engine_dbsuper);
+int engine_recover_storage(struct engine *e) {
+	uint64_t offset = last_blob;
 	struct blob_info info;
+	int cnt = 0;
 
-	while(1) {
-		lseek(e->db_fd, offset, SEEK_SET);
-		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info))
-			return;
-
-		offset = offset+page_align(sizeof(struct blob_info)+from_be32(info.len));
+	lprintf("[info] Start recovery process\n");
+	if (!offset) {
+		lprintf("[erro] Metadata lost\n");
+		return -1;
 	}
+
+	while (TRUE) {
+		cnt++;
+		lseek(e->db_fd, offset, SEEK_SET);
+		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
+			lprintf("[erro] Failed to read disk\n");
+			return -1;
+		}
+
+		size_t len = from_be32(info.len);
+		uint64_t next = from_be64(info.next);
+		zassert(len > 0);
+		if (next)
+			offset = next;
+		else
+			break;
+	}
+	lprintf("[info] Lost %d records\n", e->stats.keys - cnt);
+	return 0;
 }
-#endif // 0
 
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
@@ -857,9 +956,9 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 		}
 
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
-            insert_toplevel(ce, &ce->top, &table->items[i].quid, data, len);
-            ce->stats.keys++;
-            flush_super(ce);
+			insert_toplevel(ce, &ce->top, &table->items[i].quid, data, len);
+			ce->stats.keys++;
+			flush_super(ce, TRUE);
 		}
 
 		zfree(data);
@@ -884,6 +983,7 @@ int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 	if (!e->stats.keys)
 		return 0;
 
+	lprintf("[info] Start vacuum process\n");
 	e->lock = LOCK;
 	engine_create(&ce, fname, dbname);
 	engine_copy(e, &ce, e->top);
@@ -902,8 +1002,8 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 		return -1;
 	}
 
-    uint64_t offset = 0;
-    uint64_t table_offset = e->top;
+	uint64_t offset = 0;
+	uint64_t table_offset = e->top;
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size, i;
@@ -921,7 +1021,7 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 				offset = insert_data(e, data, len);
 				table->items[i].offset = to_be64(offset);
 				flush_table(e, table, table_offset);
-				flush_super(e);
+				flush_super(e, TRUE);
 				return 0;
 			}
 			if (cmp < 0) {
@@ -936,6 +1036,236 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 	}
 	ERROR(EREC_NOTFOUND, EL_WARN);
 	return -1;
+}
+
+int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name, size_t len) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	/* Name is max 32 */
+	if (len>LIST_NAME_LENGTH) {
+		len = LIST_NAME_LENGTH;
+	}
+
+	unsigned int hash = jen_hash((unsigned char *)name, len);
+
+	/* does tablelist exist */
+	if (e->list_top != 0) {
+		struct engine_tablelist *tablelist = get_tablelist(e, e->list_top);
+		zassert(tablelist->size <= LIST_SIZE-1);
+
+		memcpy(&tablelist->items[tablelist->size].quid, c_quid, sizeof(quid_t));
+		memcpy(&tablelist->items[tablelist->size].name, name, len);
+		tablelist->items[tablelist->size].len = to_be32(len);
+		tablelist->items[tablelist->size].hash = to_be32(hash);
+		tablelist->size++;
+
+		/* check if we need to add a new table*/
+		if (tablelist->size >= LIST_SIZE) {
+			flush_tablelist(e, tablelist, e->list_top);
+
+			struct engine_tablelist *new_tablelist = alloc_tablelist();
+			new_tablelist->link = to_be64(e->list_top);
+			uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
+			flush_tablelist(e, new_tablelist, new_table_offset);
+			
+			e->list_top = new_table_offset;
+		} else {
+			flush_tablelist(e, tablelist, e->list_top);
+		}
+	} else {
+		struct engine_tablelist *new_tablelist = alloc_tablelist();
+		new_tablelist->size = 1;
+		memcpy(&new_tablelist->items[0].quid, c_quid, sizeof(quid_t));
+		memcpy(&new_tablelist->items[0].name, name, len);
+		new_tablelist->items[0].len = to_be32(len);
+		new_tablelist->items[0].hash = to_be32(hash);
+
+		uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
+		flush_tablelist(e, new_tablelist, new_table_offset);
+	 
+		e->list_top = new_table_offset;
+	}
+	flush_super(e, TRUE);
+
+	return 0;
+}
+
+char *engine_list_get_val(struct engine *e, const quid_t *c_quid) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return NULL;
+	}
+
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
+			if (cmp == 0) {
+				size_t len = from_be32(tablelist->items[i].len);
+				char *name = (char *)zmalloc(len+1);
+				name[len] = '\0';
+				memcpy(name, tablelist->items[i].name, len);
+				zfree(tablelist);
+				return name;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	ERROR(ETBL_NOTFOUND, EL_WARN);
+	return NULL;
+}
+
+int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t len) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	unsigned int hash = jen_hash((unsigned char *)name, len);
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			if (from_be32(tablelist->items[i].hash) == hash) {
+				memcpy(key, &tablelist->items[i].quid, sizeof(quid_t));
+				zfree(tablelist);
+				return 0;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	ERROR(ETBL_NOTFOUND, EL_WARN);
+	return -1;
+}
+
+int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	unsigned int hash = jen_hash((unsigned char *)name, len);
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
+			if (cmp == 0) {
+				memcpy(&tablelist->items[i].name, name, len);
+				tablelist->items[i].len = to_be32(len);
+				tablelist->items[i].hash = to_be32(hash);
+				flush_tablelist(e, tablelist, offset);
+				return 0;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	ERROR(ETBL_NOTFOUND, EL_WARN);
+	return -1;
+}
+
+int engine_list_delete(struct engine *e, const quid_t *c_quid) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
+			if (cmp == 0) {
+				memset(&tablelist->items[i].quid, 0, sizeof(quid_t));
+				tablelist->items[i].len = 0;
+				flush_tablelist(e, tablelist, offset);
+				return 0;
+			}
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	ERROR(ETBL_NOTFOUND, EL_WARN);
+	return -1;
+}
+
+char *engine_list_all(struct engine *e) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return NULL;
+	}
+
+	vector_t *obj = alloc_vector(VECTOR_SIZE);
+	uint64_t offset = e->list_top;
+	while (offset) {
+		struct engine_tablelist *tablelist = get_tablelist(e, offset);
+		zassert(tablelist->size <= LIST_SIZE);
+
+		int i = 0;
+		for (; i<tablelist->size; ++i) {
+			char squid[QUID_LENGTH+1];
+			quidtostr(squid, &tablelist->items[i].quid);
+			size_t len = from_be32(tablelist->items[i].len);
+			if (!len)
+				continue;
+			tablelist->items[i].name[len] = '\0';
+			dict_t *element = dict_element_new(obj, TRUE, squid, tablelist->items[i].name);
+			vector_append(obj, (void *)element);
+		}
+		if (tablelist->link) {
+			offset = from_be64(tablelist->link);
+		} else
+			offset = 0;
+		zfree(tablelist);
+	}
+
+	char *buf = zmalloc(obj->alloc_size);
+	memset(buf, 0, obj->alloc_size);
+	buf = dict_object(obj, buf);
+	vector_free(obj);
+
+	return buf;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {
@@ -967,21 +1297,18 @@ char *get_str_lifecycle(enum key_lifecycle lifecycle) {
 char *get_str_type(enum key_type key_type) {
 	static char buf[STATUS_TYPE_SIZE];
 	switch (key_type) {
-		case MD_TYPE_SIGNED:
-			strlcpy(buf, "SIGNED", STATUS_TYPE_SIZE);
+		case MD_TYPE_TABLE:
+			strlcpy(buf, "TABLE", STATUS_TYPE_SIZE);
 			break;
-		case MD_TYPE_BOOL_FALSE:
-			strlcpy(buf, "BOOL_FALSE", STATUS_TYPE_SIZE);
-			break;
-		case MD_TYPE_BOOL_TRUE:
-			strlcpy(buf, "BOOL_TRUE", STATUS_TYPE_SIZE);
+		case MD_TYPE_RAW:
+			strlcpy(buf, "RAW", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_POINTER:
 			strlcpy(buf, "POINTER", STATUS_TYPE_SIZE);
 			break;
-		case MD_TYPE_DATA:
+		case MD_TYPE_RECORD:
 		default:
-			strlcpy(buf, "DATA", STATUS_TYPE_SIZE);
+			strlcpy(buf, "RECORD", STATUS_TYPE_SIZE);
 			break;
 	}
 	return buf;
@@ -1003,14 +1330,12 @@ enum key_lifecycle get_meta_lifecycle(char *lifecycle) {
 }
 
 enum key_type get_meta_type(char *key_type) {
-	if (!strcmp(key_type, "SIGNED"))
-		return MD_TYPE_SIGNED;
-	else if (!strcmp(key_type, "BOOL_FALSE"))
-		return MD_TYPE_BOOL_FALSE;
-	else if (!strcmp(key_type, "BOOL_TRUE"))
-		return MD_TYPE_BOOL_TRUE;
+	if (!strcmp(key_type, "TABLE"))
+		return MD_TYPE_TABLE;
+	else if (!strcmp(key_type, "RAW"))
+		return MD_TYPE_RAW;
 	else if (!strcmp(key_type, "POINTER"))
 		return MD_TYPE_POINTER;
 	else
-		return MD_TYPE_DATA;
+		return MD_TYPE_RECORD;
 }

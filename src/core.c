@@ -26,10 +26,10 @@ static struct engine btx;
 static struct base control;
 static uint8_t ready = FALSE;
 static qtime_t uptime;
-static quid_t instanceid;
+static quid_t sessionid;
 struct error _eglobal;
 
-static char *get_zero_key() {
+char *get_zero_key() {
 	static char buf[QUID_LENGTH+1];
 	quidtostr(buf, &control.zero_key);
 	return buf;
@@ -40,7 +40,7 @@ void start_core() {
 	start_log();
 	ERRORZEOR();
 
-	quid_create(&instanceid);
+	quid_create(&sessionid);
 	base_init(&control);
 
 	/* Initialize engine */
@@ -59,7 +59,6 @@ void detach_core() {
 		return;
 	/* CLose all databases */
 	engine_close(&btx);
-
 	base_close(&control);
 
 	/* Stop the logger */
@@ -83,6 +82,12 @@ char *get_instance_name() {
 char *get_instance_key() {
 	static char buf[QUID_LENGTH+1];
 	quidtostr(buf, &control.instance_key);
+	return buf;
+}
+
+char *get_session_key() {
+	static char buf[QUID_LENGTH+1];
+	quidtostr(buf, &sessionid);
 	return buf;
 }
 
@@ -166,6 +171,11 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
+void filesync() {
+	engine_sync(&btx);
+	base_sync(&control);
+}
+
 int _db_put(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
@@ -187,16 +197,29 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	quid_t key;
 	size_t len = 0;
+	struct slay_result rs;
 	quid_create(&key);
 
-	void *slay = slay_put_data((char *)data, data_len, &len, items);
-	if (engine_insert(&btx, &key, slay, len)<0) {
-		zfree(slay);
+	memset(&rs, 0, sizeof(struct slay_result));
+	slay_put_data((char *)data, data_len, &len, &rs);
+	*items = rs.items;
+	if (engine_insert(&btx, &key, rs.slay, len)<0) {
+		zfree(rs.slay);
 		return -1;
 	}
-	zfree(slay);
+	zfree(rs.slay);
 
 	quidtostr(quid, &key);
+	if (rs.table) {
+		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
+
+		struct metadata meta;
+		if (engine_getmeta(&btx, &key, &meta)<0)
+			return -1;
+		meta.type = MD_TYPE_TABLE;
+		if (engine_setmeta(&btx, &key, &meta)<0)
+			return -1;
+	}
 	return 0;
 }
 
@@ -269,14 +292,17 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	quid_t key;
 	size_t len = 0;
+	struct slay_result rs;
 	strtoquid(quid, &key);
 
-	void *slay = slay_put_data((char *)data, data_len, &len, items);
-	if (engine_update(&btx, &key, slay, len)<0) {
-		zfree(slay);
+	memset(&rs, 0, sizeof(struct slay_result));
+	slay_put_data((char *)data, data_len, &len, &rs);
+	*items = rs.items;
+	if (engine_update(&btx, &key, rs.slay, len)<0) {
+		zfree(rs.slay);
 		return -1;
 	}
-	zfree(slay);
+	zfree(rs.slay);
 	return 0;
 }
 
@@ -284,7 +310,12 @@ int db_delete(char *quid) {
 	if (!ready)
 		return -1;
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
+	if (engine_getmeta(&btx, &key, &meta)<0)
+		return -1;
+	if (meta.type == MD_TYPE_TABLE)
+		engine_list_delete(&btx, &key);
 	if (engine_delete(&btx, &key)<0)
 		return -1;
 	return 0;
@@ -294,7 +325,12 @@ int db_purge(char *quid) {
 	if (!ready)
 		return -1;
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
+	if (engine_getmeta(&btx, &key, &meta)<0)
+		return -1;
+	if (meta.type == MD_TYPE_TABLE)
+		engine_list_delete(&btx, &key);
 	if (engine_purge(&btx, &key)<0)
 		return -1;
 	return 0;
@@ -351,4 +387,43 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	if (engine_setmeta(&btx, &key, &meta)<0)
 		return -1;
 	return 0;
+}
+
+char *db_list_get(char *quid) {
+	if (!ready)
+		return NULL;
+	quid_t key;
+	strtoquid(quid, &key);
+ 	return engine_list_get_val(&btx, &key);
+}
+
+int db_list_update(char *quid, const char *name) {
+	if (!ready)
+		return -1;
+	quid_t key;
+	strtoquid(quid, &key);
+	return engine_list_update(&btx, &key, name, strlen(name));;
+}
+
+char *db_list_all() {
+	if (!ready)
+		return NULL;
+ 	return engine_list_all(&btx);
+}
+
+void *db_table_get(char *name, size_t *len) {
+	if (!ready)
+		return NULL;
+	quid_t key;
+	if (engine_list_get_key(&btx, &key, name, strlen(name))<0)
+		return NULL;
+
+	void *data = engine_get(&btx, &key, len);
+	if (!data)
+		return NULL;
+
+	dstype_t dt;
+	char *buf = slay_get_data(data, &dt);
+	zfree(data);
+	return buf;
 }

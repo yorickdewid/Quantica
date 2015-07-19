@@ -12,7 +12,8 @@
 typedef enum {
 	SCHEMA_FIELD,
 	SCHEMA_ARRAY,
-	SCHEMA_OBJECT
+	SCHEMA_OBJECT,
+	SCHEMA_TABLE
 } schema_t;
 
 struct value_slay {
@@ -26,7 +27,13 @@ struct row_slay {
 	uint8_t schema;
 };
 
-void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items);
+struct slay_result {
+	void *slay;
+	int items;
+	bool table;
+};
+
+void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct slay_result *rs);
 void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len);
 void *slay_parse_text(char *data, size_t data_len, size_t *slay_len);
 void *slay_bool(bool boolean, size_t *slay_len);
@@ -34,7 +41,7 @@ void *slay_null(size_t *slay_len);
 void *slay_char(char *data, size_t *slay_len);
 void *slay_float(char *data, size_t data_len, size_t *slay_len);
 void *slay_integer(char *data, size_t data_len, size_t *slay_len);
-void *slay_put_data(char *data, size_t data_len, size_t *len, int *items);
+void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result *rs);
 void *slay_get_data(void *data, dstype_t *dt);
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
 void *get_row(void *arrp, schema_t *schema, uint64_t *el);

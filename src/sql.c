@@ -11,13 +11,24 @@
 #include "slay.h"
 #include "dict.h"
 #include "quid.h"
+#include "md5.h"
+#include "sha1.h"
+#include "sha256.h"
 #include "core.h"
 #include "core.h"
 #include "sql.h"
 
 #define STACK_SZ	15
+#define STACK_EMPTY_POP()				\
+	if (stack->size<=0) {				\
+		ERROR(ESQL_PARSE_END, EL_WARN);	\
+		return &rs;						\
+	}									\
+	tok = stack_rpop(stack);
+
 static int charcnt = 0;
 static int cnt = 0;
+extern unsigned int run;
 
 enum token {
 	/* actions */
@@ -28,6 +39,8 @@ enum token {
 	T_ASTERISK,
 	T_FROM,
 	T_WHERE,
+	T_ORDER,
+	T_HAVING,
 	/* logical */
 	T_AND,
 	T_ANY,
@@ -40,6 +53,7 @@ enum token {
 	T_NOT,
 	T_IS,
 	T_OR,
+	T_BY,
 	/* group */
 	T_BRACK_OPEN,
 	T_BRACK_CLOSE,
@@ -59,6 +73,21 @@ enum token {
 	T_SMALLER_EQUAL,
 	/* functional */
 	T_FUNC_QUID,
+	T_FUNC_NOW,
+	T_FUNC_MD5,
+	T_FUNC_SHA1,
+	T_FUNC_SHA256,
+	T_FUNC_VACUUM,
+	T_FUNC_SYNC,
+	T_FUNC_SHUTDOWN,
+	T_FUNC_INSTANCE_NAME,
+	T_FUNC_INSTANCE_KEY,
+	T_FUNC_SESSION_KEY,
+	T_FUNC_LICENSE,
+	T_FUNC_VERSION,
+	T_FUNC_UPTIME,
+	/* schema */
+	T_TABLELIST,
 	/* data */
 	T_INTEGER,
 	T_DOUBLE,
@@ -87,50 +116,208 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 	if (tok->token == T_SELECT) {
 		tok = stack_rpop(stack);
 		if (tok->token == T_FUNC_QUID) {
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			quid_generate(rs.quid);
 			return &rs;
+		} else if (tok->token == T_FUNC_NOW) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("datetime");
+			rs.data = tstostrf(zmalloc(20), 20, get_timestamp(), ISO_8601_FORMAT);
+			return &rs;
+		} else if (tok->token == T_FUNC_MD5) {
+			char *strmd5 = zmalloc(MD5_SIZE+1);
+			strmd5[MD5_SIZE] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_md5(strmd5, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strmd5;
+			return &rs;
+		} else if (tok->token == T_FUNC_SHA1) {
+			char *strsha = zmalloc(SHA1_LENGTH+1);
+			strsha[SHA1_LENGTH] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_sha1(strsha, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strsha;
+			return &rs;
+		} else if (tok->token == T_FUNC_SHA256) {
+			char *strsha256 = zmalloc(SHA256_SIZE+1);
+			strsha256[SHA256_SIZE] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_sha256(strsha256, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strsha256;
+			return &rs;
+		} else if (tok->token == T_FUNC_INSTANCE_NAME) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("name");
+			rs.data = zstrdup(get_instance_name());
+			return &rs;
+		} else if (tok->token == T_FUNC_INSTANCE_KEY) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			strcpy(rs.quid, get_instance_key());
+			return &rs;
+		} else if (tok->token == T_FUNC_SESSION_KEY) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			strcpy(rs.quid, get_session_key());
+			return &rs;
+		} else if (tok->token == T_FUNC_LICENSE) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("license");
+			rs.data = zstrdup(LICENSE);
+			return &rs;
+		} else if (tok->token == T_FUNC_VERSION) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("version");
+			rs.data = zstrdup(get_version_string());
+			return &rs;
+		} else if (tok->token == T_FUNC_UPTIME) {
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("uptime");
+			rs.data = zstrdup(get_uptime());
+			return &rs;
 		}
 		if (tok->token != T_ASTERISK) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_FROM) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
+		if (tok->token == T_STRING)
+			goto select_alias;
+		if (tok->token == T_TABLELIST)
+			goto select_tablelist;
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
 		rs.data = db_get(tok->string, len);
+		if (rs.data)
+			return &rs;
+select_alias:
+		rs.data = db_table_get(tok->string, len);
+		if (rs.data)
+			return &rs;
+select_tablelist:
+		rs.data = db_list_all();
 		if (rs.data)
 			return &rs;
 	} else if (tok->token == T_INSERT) {
@@ -140,17 +327,9 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			int length;
 		} *name = NULL;
 		schema_t schema = SCHEMA_ARRAY;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token == T_TARGET) {
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 			if (tok->token == T_QUID) {
 			} else if (tok->token == T_NULL) {
 			} else {
@@ -158,11 +337,7 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				return &rs;
 			}
 			cnt--;
-			if (stack->size<=0) {
-				ERROR(ESQL_PARSE_END, EL_WARN);
-				return &rs;
-			}
-			tok = stack_rpop(stack);
+			STACK_EMPTY_POP();
 		}
 		if (cnt == 1)
 			schema = SCHEMA_FIELD;
@@ -189,21 +364,13 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 				cnt--;
 			}
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 insert_arr:
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
@@ -260,11 +427,7 @@ insert_arr:
 		return &rs;
 	} else if (tok->token == T_UPDATE) {
 		int i = 0;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
@@ -277,20 +440,12 @@ insert_arr:
 		schema_t schema = SCHEMA_ARRAY;
 		if (--cnt == 1)
 			schema = SCHEMA_FIELD;
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token == T_SEPARATE)
 			goto update_arr;
 		if (tok->token != T_BRACK_OPEN) {
@@ -314,21 +469,13 @@ insert_arr:
 				cnt--;
 			}
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 update_arr:
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
@@ -384,25 +531,56 @@ update_arr:
 		rs.items = j;
 		return &rs;
 	} else if (tok->token == T_DELETE) {
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_FROM) {
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
-		if (stack->size<=0) {
-			ERROR(ESQL_PARSE_END, EL_WARN);
-			return &rs;
-		}
-		tok = stack_rpop(stack);
+		STACK_EMPTY_POP();
 		if (tok->token != T_QUID) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
 		db_delete(tok->string);
+	} else if (tok->token == T_FUNC_VACUUM) {
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_OPEN) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_CLOSE) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		db_vacuum();
+		return &rs;
+	} else if (tok->token == T_FUNC_SYNC) {
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_OPEN) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_CLOSE) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		filesync();
+		return &rs;
+	} else if (tok->token == T_FUNC_SHUTDOWN) {
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_OPEN) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		STACK_EMPTY_POP();
+		if (tok->token != T_BRACK_CLOSE) {
+			ERROR(ESQL_PARSE_TOK, EL_WARN);
+			return &rs;
+		}
+		run = 0;
+		return &rs;
 	} else {
 		ERROR(ESQL_PARSE_TOK, EL_WARN);
 	}
@@ -532,6 +710,12 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "INTO") || !strcmp(pch, "into")) {
 			tok->token = T_TARGET;
+		} else if (!strcmp(pch, "ORDER") || !strcmp(pch, "order")) {
+			tok->token = T_ORDER;
+		} else if (!strcmp(pch, "BY") || !strcmp(pch, "by")) {
+			tok->token = T_BY;
+		} else if (!strcmp(pch, "HAVING") || !strcmp(pch, "having")) {
+			tok->token = T_HAVING;
 		} else if (!strcmp(pch, "VALUES") || !strcmp(pch, "values")) {
 			tok->token = T_SEPARATE;
 		} else if (!strcmp(pch, "(")) {
@@ -584,8 +768,36 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_UNIQUE;
 		} else if (!strcmp(pch, "IS") || !strcmp(pch, "is")) {
 			tok->token =  T_IS;
+		} else if (!strcmp(pch, "TABLELIST") || !strcmp(pch, "tabelist")) {
+			tok->token =  T_TABLELIST;
 		} else if (!strcmp(pch, "QUID") || !strcmp(pch, "quid")) {
 			tok->token =  T_FUNC_QUID;
+		} else if (!strcmp(pch, "NOW") || !strcmp(pch, "now")) {
+			tok->token =  T_FUNC_NOW;
+		} else if (!strcmp(pch, "MD5") || !strcmp(pch, "md5")) {
+			tok->token =  T_FUNC_MD5;
+		} else if (!strcmp(pch, "SHA1") || !strcmp(pch, "sha1")) {
+			tok->token =  T_FUNC_SHA1;
+		} else if (!strcmp(pch, "SHA256") || !strcmp(pch, "sha256")) {
+			tok->token =  T_FUNC_SHA256;
+		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
+			tok->token =  T_FUNC_VACUUM;
+		} else if (!strcmp(pch, "SYNC") || !strcmp(pch, "sync")) {
+			tok->token =  T_FUNC_SYNC;
+		} else if (!strcmp(pch, "SHUTDOWN") || !strcmp(pch, "shutdown")) {
+			tok->token =  T_FUNC_SHUTDOWN;
+		} else if (!strcmp(pch, "INSTANCE_NAME") || !strcmp(pch, "instance_name")) {
+			tok->token =  T_FUNC_INSTANCE_NAME;
+		} else if (!strcmp(pch, "INSTANCE_KEY") || !strcmp(pch, "instance_key")) {
+			tok->token =  T_FUNC_INSTANCE_KEY;
+		} else if (!strcmp(pch, "SESSION_KEY") || !strcmp(pch, "session_key")) {
+			tok->token =  T_FUNC_SESSION_KEY;
+		} else if (!strcmp(pch, "LICENSE") || !strcmp(pch, "license")) {
+			tok->token =  T_FUNC_LICENSE;
+		} else if (!strcmp(pch, "VERSION") || !strcmp(pch, "version")) {
+			tok->token =  T_FUNC_VERSION;
+		} else if (!strcmp(pch, "UPTIME") || !strcmp(pch, "uptime")) {
+			tok->token =  T_FUNC_UPTIME;
 		} else if (!strcmp(pch, ";")) {
 			tok->token =  T_COMMIT;
 		} else if (!strcmp(pch, "TRUE") || !strcmp(pch, "true")) {

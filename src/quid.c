@@ -20,8 +20,6 @@
 #include "arc4random.h"
 #include "quid.h"
 
-//static int rnd_seed = RND_SEED_CYCLE;
-
 static void format_quid(quid_t *, unsigned short, cuuid_time_t);
 static void get_current_time(cuuid_time_t *);
 

@@ -2,17 +2,25 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
-#include <assert.h>
 
 #include <config.h>
 #include <common.h>
 #include <log.h>
 #include <error.h>
 #include "arc4random.h"
+#include "diagnose.h"
 #include "basecontrol.h"
 
 #define BASECONTROL		"base_control"
 #define INSTANCE_RANDOM	5
+#define BASE_MAGIC		"$EOBCTRL$"
+
+static enum {
+	EXSTAT_ERROR,
+	EXSTAT_INVALID,
+	EXSTAT_CHECKPOINT,
+	EXSTAT_SUCCESS
+} exit_status;
 
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -52,8 +60,10 @@ void base_sync(struct base *base) {
 	super.lock = base->lock;
 	super.version = VERSION_RELESE;
 	super.bincnt = base->bincnt;
+	super.exitstatus = exit_status;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
+	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
 	lseek(base->fd, 0, SEEK_SET);
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
@@ -66,6 +76,7 @@ void base_sync(struct base *base) {
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
 	if(file_exists(BASECONTROL)) {
+		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
 			return;
@@ -80,22 +91,37 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
-		assert(super.version==VERSION_RELESE);
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
+
+		zassert(super.version==VERSION_RELESE);
+		zassert(!strcmp(super.magic, BASE_MAGIC));
+		if (super.exitstatus!=EXSTAT_SUCCESS) {
+			if (diag_exerr(base)) {
+				exit_status = EXSTAT_CHECKPOINT;
+			} else {
+				exit(1);
+			}
+		}
+		exit_status = EXSTAT_CHECKPOINT;
 	} else {
+		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
 		base->bincnt = 0;
+		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		base_sync(base);
+		exit_status = EXSTAT_CHECKPOINT;
 	}
 }
 
 void base_close(struct base *base) {
+	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
+	lprintf("[info] Exist with EXSTAT_SUCCESS\n");
 }

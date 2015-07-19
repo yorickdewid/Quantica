@@ -28,6 +28,9 @@
 #define RSIZE(e) sizeof(e)/sizeof(e[0])
 #define unused(v) (void)(v)
 
+#define _IN_
+#define _OUT_
+
 #ifdef LINUX
 size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);

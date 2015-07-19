@@ -1,9 +1,0 @@
-## TODO
-
-This is the list of things that could be implemented in the next release:
-- Test for caches [both]
-- Test for write after delete
-- Atomic operations (insert, delete)
-- Split database into zones
-- JSON storage
-- Function execution

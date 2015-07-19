@@ -10,7 +10,8 @@ enum error_level {
 };
 
 enum error_code {
-	ENO_QUID = 9,
+	ENOT_READY = 8,
+	ENO_QUID,
 	ENO_DATA,
 	EIO_READ,
 	EIO_WRITE,
@@ -19,6 +20,7 @@ enum error_code {
 	EDB_LOCKED,
 	EREC_LOCKED,
 	EREC_NOTFOUND,
+	ETBL_NOTFOUND,
 	ESQL_TOKEN,
 	ESQL_PARSE_END,
 	ESQL_PARSE_VAL,
@@ -52,5 +54,11 @@ extern struct error _eglobal;
 
 #define GETERROR()	\
 	_eglobal.code
+
+#define zassert(e)  \
+	((void) ((e) ? (void)0 : __zassert (#e, __FILE__, __LINE__)))
+
+#define __zassert(e, file, line) \
+	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
 
 #endif // ERROR_H_INCLUDED

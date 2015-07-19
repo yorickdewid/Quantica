@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <log.h>
-
+#include <error.h>
 #include "dstype.h"
 #include "slay.h"
 #include "quid.h"
@@ -15,9 +14,7 @@
 
 #define VECTOR_SIZE	1024
 
-void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *items) {
-	void *slay = NULL;
-
+void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct slay_result *rs) {
 	int i;
 	int r;
 	dict_parser p;
@@ -27,16 +24,19 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 	r = dict_parse(&p, data, data_len, t, data_len);
 	if (r < 1) {
 		lprintf("[erro] Failed to parse dict\n");
-		return NULL;
+		return;
 	}
 
 	if (t[0].type == DICT_ARRAY) {
 		int cnt = 0;
-		dict_levelcount(t, 0, 2, &cnt);
-		*items = cnt;
+		int objcnt = 0;
 
-		slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
-		void *next = movetodata_row(slay);
+		dict_levelcount(t, 0, 2, &cnt);
+		rs->items = cnt;
+
+		int cobj[cnt][2];
+		rs->slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
+		void *next = movetodata_row(rs->slay);
 		for (i=1; i<r; ++i) {
 			if (t[i].type == DICT_PRIMITIVE) {
 				if (dict_cmp(data, &t[i], "null")) {
@@ -56,6 +56,8 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 				else
 					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
 			} else if (t[i].type == DICT_OBJECT) {
+				cobj[objcnt][0] = t[i].start;
+				cobj[objcnt][1] = (t[i].end - t[i].start);
 				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
 				for (x=0; x<t[i].size; x++) {
@@ -63,6 +65,7 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
 				}
 				i += j;
+				objcnt++;
 			} else if (t[i].type == DICT_ARRAY) {
 				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
@@ -72,14 +75,30 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 				i += j;
 			}
 		}
+		if (objcnt == cnt) {
+			zfree(rs->slay);
+
+			rs->slay = create_row(SCHEMA_TABLE, objcnt, (objcnt * QUID_LENGTH), slay_len);
+			rs->table = TRUE;
+			void *next = movetodata_row(rs->slay);
+			int rows = 0;
+			struct slay_result crs;
+			for (; rows<objcnt; ++rows) {
+				size_t clen = 0;
+				slay_parse_object(data+cobj[rows][0], cobj[rows][1], &clen, &crs);
+				char squid[QUID_LENGTH+1];
+				_db_put(squid, crs.slay, clen);
+				next = slay_wrap(next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
+			}
+		}
 	} else if (t[0].type == DICT_OBJECT) {
 		int cnt = 0;
 		dict_levelcount(t, 0, 2, &cnt);
 		cnt /= 2;
-		*items = cnt;
+		rs->items = cnt;
 
-		slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
-		void *next = movetodata_row(slay);
+		rs->slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
+		void *next = movetodata_row(rs->slay);
 		for (i=1; i<r; ++i) {
 			if (i%2 == 0) {
 				if (t[i].type == DICT_PRIMITIVE) {
@@ -119,8 +138,6 @@ void *slay_parse_object(char *data, size_t data_len, size_t *slay_len, int *item
 		}
 
 	}
-
-	return slay;
 }
 
 void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len) {
@@ -180,44 +197,43 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
-void *slay_put_data(char *data, size_t data_len, size_t *len, int *items) {
-	void *slay = NULL;
+void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result *rs) {
+	rs->slay = NULL;
 	dstype_t adt = autotype(data, data_len);
 	switch (adt) {
 		case DT_QUID:
-			slay = slay_parse_quid((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_parse_quid((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_JSON:
-			slay = slay_parse_object((char *)data, data_len, len, items);
+			slay_parse_object((char *)data, data_len, len, rs);
 			break;
 		case DT_NULL:
-			slay = slay_null(len);
+			rs->slay = slay_null(len);
 			break;
 		case DT_CHAR:
-			slay = slay_char((char *)data, len);
-			*items = 1;
+			rs->slay = slay_char((char *)data, len);
+			rs->items = 1;
 			break;
 		case DT_BOOL_F:
-			slay = slay_bool(FALSE, len);
+			rs->slay = slay_bool(FALSE, len);
 			break;
 		case DT_BOOL_T:
-			slay = slay_bool(TRUE, len);
+			rs->slay = slay_bool(TRUE, len);
 			break;
 		case DT_FLOAT:
-			slay = slay_float((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_float((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_INT:
-			slay = slay_integer((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_integer((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 		case DT_TEXT:
-			slay = slay_parse_text((char *)data, data_len, len);
-			*items = 1;
+			rs->slay = slay_parse_text((char *)data, data_len, len);
+			rs->items = 1;
 			break;
 	}
-	return (void *)slay;
 }
 
 dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t dt) {
@@ -378,7 +394,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(arr->alloc_size);
+			buf = zmalloc(arr->alloc_size);
 			memset(buf, 0, arr->alloc_size);
 			buf = dict_array(arr, buf);
 			vector_free(arr);
@@ -452,16 +468,49 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = malloc(obj->alloc_size);
+			buf = zmalloc(obj->alloc_size);
 			memset(buf, 0, obj->alloc_size);
 			buf = dict_object(obj, buf);
 			vector_free(obj);
 
 			break;
 		}
+		case SCHEMA_TABLE: {
+			size_t val_len;
+			dstype_t val_dt;
+			unsigned int i;
+
+			vector_t *arr = alloc_vector(VECTOR_SIZE);
+			for (i=0; i<elements; ++i) {
+				size_t namelen;
+				dstype_t dt;
+				dict_t *element = NULL;
+				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+				val_data = (char *)zrealloc(val_data, val_len+1);
+				((char *)val_data)[val_len] = '\0';
+				void *qbuf = _db_get(val_data, &dt);
+				if (!qbuf)
+					element = dict_element_cnew(arr, FALSE, NULL, "null");
+				else {
+					size_t buflen = strlen(qbuf);
+					element = resolv_quid(arr, qbuf, buflen, NULL, dt);
+				}
+				vector_append(arr, (void *)element);
+				zfree(val_data);
+			}
+
+			*dt = DT_JSON;
+			buf = zmalloc(arr->alloc_size);
+			memset(buf, 0, arr->alloc_size);
+			buf = dict_array(arr, buf);
+			vector_free(arr);
+
+			break;
+		}
 	}
 
-	return buf;
+	return (void *)buf;
 }
 
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
@@ -513,7 +562,7 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 	}
 
 	if (slay->namesize) {
-		assert(!*name);
+		zassert(!*name);
 		void *src = ((uint8_t *)arrp)+sizeof(struct value_slay)+slay->size;
 		*name = zmalloc(slay->namesize);
 		memcpy(*name, src, slay->namesize);

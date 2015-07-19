@@ -23,6 +23,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/aes.c \
 		$(SRCDIR)/base64.c \
 		$(SRCDIR)/crc32.c \
+		$(SRCDIR)/crc64.c \
 		$(SRCDIR)/md5.c \
 		$(SRCDIR)/sha256.c \
 		$(SRCDIR)/vector.c \
@@ -31,12 +32,14 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/json_parse.c \
 		$(SRCDIR)/json_encode.c \
+		$(SRCDIR)/diagnose.c \
 		$(SRCDIR)/dstype.c \
 		$(SRCDIR)/slay.c \
 		$(SRCDIR)/basecontrol.c \
 		$(SRCDIR)/engine.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \
+		$(SRCDIR)/jenhash.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
 		$(SRCDIR)/sql.c \

@@ -3,7 +3,9 @@
 
 #include <time.h>
 
-#define TIMENAME_SIZE 12
+#define TIMENAME_SIZE	12
+#define ISO_8601_FORMAT	"%F %T"
+#define US_FORMAT		"%d/%m/%Y %H:%M:%S %z"
 
 typedef long long int qtime_t;
 

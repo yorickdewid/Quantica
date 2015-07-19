@@ -12,8 +12,8 @@ struct item {
 };
 
 struct hashtable {
-	int size;           /* size of the pointer table */
-	int n;              /* number of elements stored */
+	int size;			/* size of the pointer table */
+	int n;				/* number of elements stored */
 	struct item **table;
 };
 

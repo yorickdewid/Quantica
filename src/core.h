@@ -26,9 +26,11 @@ struct record_status {
 void start_core();
 void detach_core();
 
+char *get_zero_key();
 void set_instance_name(char name[]);
 char *get_instance_name();
 char *get_instance_key();
+char *get_session_key();
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
@@ -39,6 +41,7 @@ char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 void quid_generate(char *quid);
+void filesync();
 
 /*
  * Database operations
@@ -56,5 +59,10 @@ int db_vacuum();
 
 int db_record_get_meta(char *quid, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
+
+char *db_list_get(char *quid);
+int db_list_update(char *quid, const char *name);
+char *db_list_all();
+void *db_table_get(char *name, size_t *len);
 
 #endif // CORE_H_INCLUDED
