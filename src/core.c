@@ -210,8 +210,16 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	zfree(rs.slay);
 
 	quidtostr(quid, &key);
-	if (rs.table)
+	if (rs.table) {
 		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
+
+		struct metadata meta;
+		if (engine_getmeta(&btx, &key, &meta)<0)
+			return -1;
+		meta.type = MD_TYPE_TABLE;
+		if (engine_setmeta(&btx, &key, &meta)<0)
+			return -1;
+	}
 	return 0;
 }
 
@@ -302,10 +310,14 @@ int db_delete(char *quid) {
 	if (!ready)
 		return -1;
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
+	if (engine_getmeta(&btx, &key, &meta)<0)
+		return -1;
+	if (meta.type == MD_TYPE_TABLE)
+		engine_list_delete(&btx, &key);
 	if (engine_delete(&btx, &key)<0)
 		return -1;
-	engine_list_delete(&btx, &key);
 	return 0;
 }
 
@@ -313,10 +325,14 @@ int db_purge(char *quid) {
 	if (!ready)
 		return -1;
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
+	if (engine_getmeta(&btx, &key, &meta)<0)
+		return -1;
+	if (meta.type == MD_TYPE_TABLE)
+		engine_list_delete(&btx, &key);
 	if (engine_purge(&btx, &key)<0)
 		return -1;
-	engine_list_delete(&btx, &key);
 	return 0;
 }
 

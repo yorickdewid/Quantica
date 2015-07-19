@@ -740,7 +740,7 @@ const struct webroute route[] = {
 	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
-	{"/get/type",		api_db_get_type,	TRUE},
+	{"/type",			api_db_get_type,	TRUE},
 	{"/delete",			api_db_delete,		TRUE},
 	{"/remove",			api_db_delete,		TRUE},
 	{"/purge",			api_db_purge,		TRUE},
