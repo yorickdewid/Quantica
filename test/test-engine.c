@@ -78,7 +78,7 @@ static void test_engine_meta(){
 		.exec = 1,
 		.freeze = 1,
 		.error = 0,
-		.type = MD_TYPE_BOOL_TRUE,
+		.type = MD_TYPE_RAW,
 	};
 	int r2 = engine_setmeta(&e, &quid, &md);
 	ASSERT(!r2);
