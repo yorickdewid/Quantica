@@ -12,8 +12,8 @@
 #include "jenhash.h"
 #include "quid.h"
 #include "dict.h"
-#include "engine.h"
 #include "core.h"
+#include "engine.h"
 
 #define VECTOR_SIZE	2048
 
@@ -1071,7 +1071,7 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 			new_tablelist->link = to_be64(e->list_top);
 			uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
 			flush_tablelist(e, new_tablelist, new_table_offset);
-			
+
 			e->list_top = new_table_offset;
 		} else {
 			flush_tablelist(e, tablelist, e->list_top);
@@ -1086,7 +1086,7 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 
 		uint64_t new_table_offset = alloc_raw_chunk(e, sizeof(struct engine_tablelist));
 		flush_tablelist(e, new_tablelist, new_table_offset);
-	 
+
 		e->list_top = new_table_offset;
 	}
 	flush_super(e, TRUE);
