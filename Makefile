@@ -36,6 +36,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/dstype.c \
 		$(SRCDIR)/slay.c \
 		$(SRCDIR)/basecontrol.c \
+		$(SRCDIR)/index.c \
 		$(SRCDIR)/engine.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \
