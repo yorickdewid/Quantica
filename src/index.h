@@ -19,6 +19,9 @@ typedef struct {
 	long int ptr[MM+1];
 } node_t;
 
-static int get(int x, int *a, int n);
+status_t index_insert(int x);
+status_t index_get(int x);
+status_t index_delete(int x);
+void index_print(long int t);
 
 #endif // INDEX_H_INCLUDED
