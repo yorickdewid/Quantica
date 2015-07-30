@@ -84,7 +84,8 @@ void *get_in_addr(struct sockaddr *sa) {
 		return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void handle_shutdown(int sigal) {
+void handle_shutdown(int signal) {
+	lprintf("[info] Received SIG:%d\n", signal);
 	lprintf("[info] Shutting down\n");
 
 	shutdown(serversock4, SHUT_RDWR);
@@ -95,7 +96,7 @@ void handle_shutdown(int sigal) {
 	lprintf("[info] Cleanup and detach core\n");
 	detach_core();
 
-	exit(sigal);
+	exit(0);
 }
 
 void raw_response(FILE *socket_stream, vector_t *headers, const char *status) {
