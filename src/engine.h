@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdint.h>
+
 #include <config.h>
 #include <common.h>
 #include "quid.h"

@@ -65,7 +65,7 @@ void freenode(long int t) {
 }
 
 void rdstart() {
-	if (fseek(fptree, 0L, SEEK_SET)) {
+	if (fseek(fptree, 0, SEEK_SET)) {
 		lprintf("[erro] Failed to read disk\n");
 		return;
 	}
@@ -155,23 +155,22 @@ static status_t insert(int x, long int t, int *y, long int *u) {
 		*y = x;
 		return INSERTNOTCOMPLETE;
 	}
+
 	readnode(t, &nod);
-	n = & nod.cnt;
+	n = &nod.cnt;
 	k = nod.key;
 	p = nod.ptr;
-	/*  Select pointer p[i] and try to insert x in  the subtree of whichp[i]
-	  is  the root:  */
+	/*  Select pointer p[i] and try to insert x in  the subtree of whichp[i] is  the root:  */
 	i = get(x, k, *n);
 	if (i < *n && x == k[i])
 		return DUPLICATEKEY;
 	code = insert(x, p[i], &xnew, &tnew);
 	if (code != INSERTNOTCOMPLETE)
 		return code;
-	/* Insertion in subtree did not completely succeed; try to insert xnew and
-	tnew in the current node:  */
-	if (*n < MM){
+	/* Insertion in subtree did not completely succeed; try to insert xnew and tnew in the current node:  */
+	if (*n < INDEX_SIZE) {
 		i = get(xnew, k, *n);
-		for (j = *n; j > i; j--){
+		for (j = *n; j > i; j--) {
 			k[j] = k[j-1];
 			p[j+1] = p[j];
 		}
@@ -181,52 +180,52 @@ static status_t insert(int x, long int t, int *y, long int *u) {
 		writenode(t, &nod);
 		return SUCCESS;
 	}
-	/*  The current node was already full, so split it.  Pass item k[M] in the
+	/*  The current node was already full, so split it.  Pass item k[INDEX_SIZE/2] in the
 	 middle of the augmented sequence back through parameter y, so that it
 	 can move upward in the tree.  Also, pass a pointer to the newly created
 	 node back through u.  Return INSERTNOTCOMPLETE, to report that insertion
 	 was not completed:    */
-	if (i == MM) {
-	  k_final = xnew;
-	  p_final = tnew;
-	 } else {
-		  k_final = k[MM-1];
-		  p_final = p[MM];
-		  for (j=MM-1; j>i; j--){
-			  k[j] = k[j-1];
-			  p[j+1] = p[j];
-		  }
-			k[i] = xnew;
-			p[i+1] = tnew;
+	if (i == INDEX_SIZE) {
+		k_final = xnew;
+		p_final = tnew;
+	} else {
+		k_final = k[INDEX_SIZE-1];
+		p_final = p[INDEX_SIZE];
+		for (j=INDEX_SIZE-1; j>i; j--) {
+			k[j] = k[j-1];
+			p[j+1] = p[j];
+		}
+		k[i] = xnew;
+		p[i+1] = tnew;
 	}
-	*y = k[M];
-	*n = M;
+	*y = k[INDEX_MSIZE];
+	*n = INDEX_MSIZE;
 	*u = getnode();
-	newnod.cnt = M;
-	for (j=0; j< M-1; j++){
-		newnod.key[j] = k[j+M+1];
-		newnod.ptr[j] = p[j+M+1];
+	newnod.cnt = INDEX_MSIZE;
+	for (j=0; j< INDEX_MSIZE-1; j++) {
+		newnod.key[j] = k[j+INDEX_MSIZE+1];
+		newnod.ptr[j] = p[j+INDEX_MSIZE+1];
 	}
-	newnod.ptr[M-1] = p[MM];
-	newnod.key[M-1] = k_final;
-	newnod.ptr[M] = p_final;
+	newnod.ptr[INDEX_MSIZE-1] = p[INDEX_SIZE];
+	newnod.key[INDEX_MSIZE-1] = k_final;
+	newnod.ptr[INDEX_MSIZE] = p_final;
 	writenode(t, &nod);
 	writenode(*u, &newnod);
 	return INSERTNOTCOMPLETE;
 }
 
-status_t index_insert(int x) {
+status_t index_insert(int key) {
 	long int tnew, u;
-	int xnew;
-	status_t code = insert(x, root, &xnew, &tnew);
+	int keynew;
+	status_t code = insert(key, root, &keynew, &tnew);
 
 	if (code == DUPLICATEKEY)
-		printf("Duplicate uid %d ignored \n", x);
+		printf("Duplicate uid %d ignored \n", key);
 	else {
 	 	if (code == INSERTNOTCOMPLETE) {
 			u = getnode();
 			rootnode.cnt = 1;
-			rootnode.key[0] = xnew;
+			rootnode.key[0] = keynew;
 			rootnode.ptr[0] = root;
 			rootnode.ptr[1] = tnew;
 			root = u;
@@ -238,12 +237,12 @@ status_t index_insert(int x) {
 }
 
 static status_t delete(int x, long int t) {
-	int i, j, *k, *n,*item, *nleft, *nright, *lkey, *rkey, borrowleft=0, nq, *addr;
+	int i, j, *k, *n,*item, *nleft, *nright, *lkey, *rkey, borrowleft = 0, nq, *addr;
 	status_t code;
 	long int *p, left, right, *lptr, *rptr, q, q1;
 	node_t nod, nod1, nod2, nodL, nodR;
 
- 	if (t == NIL)
+	if (t == NIL)
 		return NOTFOUND;
 	readnode(t, &nod);
 	n = &nod.cnt;
@@ -255,14 +254,14 @@ static status_t delete(int x, long int t) {
 	if (p[0] == NIL) {
 		if (i == *n || x < k[i])
 			return NOTFOUND;
-	 	/* x is now equal to k[i], located in a leaf:  */
-	 	for (j=i+1; j < *n; j++){
+		/* x is now equal to k[i], located in a leaf:  */
+		for (j=i+1; j < *n; j++) {
 			k[j-1] = k[j];
 			p[j] = p[j+1];
 		}
 		--*n;
 		writenode(t, &nod);
-		return *n >= (t==root ? 1 : M) ? SUCCESS : UNDERFLOW;
+		return *n >= (t==root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 	}
 
 	/*  t is an interior node (not a leaf): */
@@ -273,40 +272,43 @@ static status_t delete(int x, long int t) {
 	/* x found in interior node.  Go to left child *p[i] and then follow a
 
 	  path all the way to a leaf, using rightmost branches:  */
-  if (i < *n && x == *item){
-	  q = p[i];
-	  readnode(q, &nod1);
-	  nq = nod1.cnt;
-	  while (q1 = nod1.ptr[nq], q1!= NIL){
-			 q = q1;
-			 readnode(q, &nod1);
-			 nq = nod1.cnt;
-	  }
-	  /*  Exchange k[i] with the rightmost item in that leaf:   */
-	  addr = nod1.key + nq -1;
-	  *item = *addr;
-	  *addr = x;
-	  writenode(t, &nod);
-	  writenode(q, &nod1);
-  }
+	if (i < *n && x == *item) {
+		q = p[i];
+		readnode(q, &nod1);
+		nq = nod1.cnt;
+		while (q1 = nod1.ptr[nq], q1!= NIL){
+			q = q1;
+			readnode(q, &nod1);
+			nq = nod1.cnt;
+		}
 
-  /*  Delete x in subtree with root p[i]:  */
+		/*  Exchange k[i] with the rightmost item in that leaf:   */
+		addr = nod1.key + nq -1;
+		*item = *addr;
+		*addr = x;
+		writenode(t, &nod);
+		writenode(q, &nod1);
+	}
+
+	/*  Delete x in subtree with root p[i]:  */
 	code = delete(x, left);
 	if (code != UNDERFLOW)
 		return code;
+
 	/*  Underflow, borrow, and , if necessary, merge:  */
 	if (i < *n)
 		readnode(p[i+1], &nodR);
-	if (i == *n || nodR.cnt == M){
-	  if (i > 0){
-		 readnode(p[i-1], &nodL);
-		 if (i == *n || nodL.cnt > M)
-			borrowleft = 1;
-	  }
+	if (i == *n || nodR.cnt == INDEX_MSIZE) {
+		if (i > 0) {
+			readnode(p[i-1], &nodL);
+			if (i == *n || nodL.cnt > INDEX_MSIZE)
+				borrowleft = 1;
+		}
 	}
+
 	/* borrow from left sibling */
 	if (borrowleft) {
-	  item = k+i-1;
+		item = k+i-1;
 		left = p[i-1];
 		right = p[i];
 		nod1 = nodL;
@@ -322,7 +324,7 @@ static status_t delete(int x, long int t) {
 	rkey = nod2.key;
 	lptr = nod1.ptr;
 	rptr = nod2.ptr;
-	if (borrowleft){
+	if (borrowleft) {
 		rptr[*nright + 1] = rptr[*nright];
 		for (j=*nright; j>0; j--){
 			rkey[j] = rkey[j-1];
@@ -332,53 +334,52 @@ static status_t delete(int x, long int t) {
 		rkey[0] = *item;
 		rptr[0] = lptr[*nleft];
 		*item = lkey[*nleft - 1];
-		if (--*nleft >= M){
-		  writenode(t, &nod);
-		  writenode(left, &nod1);
-		  writenode(right, &nod2);
-		  return SUCCESS;
+		if (--*nleft >= INDEX_MSIZE) {
+			writenode(t, &nod);
+			writenode(left, &nod1);
+			writenode(right, &nod2);
+			return SUCCESS;
 		}
-	} else
-	/* borrow from right sibling */
-	 if (*nright > M){
-		 lkey[M-1] = *item;
-		 lptr[M] = rptr[0];
-		 *item = rkey[0];
-		 ++*nleft;
-		 --*nright;
-		 for (j=0; j < *nright; j++){
-			 rptr[j] = rptr[j+1];
-			 rkey[j] = rkey[j+1];
-		 }
-		 rptr[*nright] = rptr[*nright + 1];
-		 writenode(t, &nod);
-		 writenode(left, &nod1);
-		 writenode(right, &nod2);
-		 return SUCCESS;
-	 }
-	 /*  Merge   */
-	 lkey[M-1] = *item;
-	 lptr[M] = rptr[0];
-	 for (j=0; j<M; j++){
-		lkey[M+j] = rkey[j];
-		lptr[M+j+1] = rptr[j+1];
-	 }
-	 *nleft = MM;
-	 freenode(right);
-	 for (j=i+1; j < *n; j++){
-		 k[j-1] = k[j];
-		 p[j] = p[j+1];
-	 }
-	 --*n;
-	 writenode(t, &nod);
-	 writenode(left, &nod1);
+	} else {
+		/* borrow from right sibling */
+		if (*nright > INDEX_MSIZE){
+			lkey[INDEX_MSIZE-1] = *item;
+			lptr[INDEX_MSIZE] = rptr[0];
+			*item = rkey[0];
+			++*nleft;
+			--*nright;
+			for (j=0; j < *nright; j++) {
+				rptr[j] = rptr[j+1];
+				rkey[j] = rkey[j+1];
+			}
+			rptr[*nright] = rptr[*nright + 1];
+			writenode(t, &nod);
+			writenode(left, &nod1);
+			writenode(right, &nod2);
+			return SUCCESS;
+		}
+	}
 
-	 return *n >= (t==root ? 1 : M) ? SUCCESS : UNDERFLOW;
+	/*  Merge   */
+	lkey[INDEX_MSIZE-1] = *item;
+	lptr[INDEX_MSIZE] = rptr[0];
+	for (j=0; j<INDEX_MSIZE; j++){
+		lkey[INDEX_MSIZE+j] = rkey[j];
+		lptr[INDEX_MSIZE+j+1] = rptr[j+1];
+	}
+	*nleft = INDEX_SIZE;
+	freenode(right);
+	for (j=i+1; j < *n; j++){
+		k[j-1] = k[j];
+		p[j] = p[j+1];
+	}
+	--*n;
+	writenode(t, &nod);
+	writenode(left, &nod1);
+
+	return *n >= (t==root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
-/*  Driver function for node deletion, called only in the main function.
-	Most of the work is delegated to 'del'.
-*/
 status_t index_delete(int x) {
 	long int newroot;
 

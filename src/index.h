@@ -1,9 +1,9 @@
 #ifndef INDEX_H_INCLUDED
 #define INDEX_H_INCLUDED
 
-#define M 2
-#define MM 4
-#define NIL (-1L)
+#define INDEX_SIZE 4
+#define INDEX_MSIZE (INDEX_SIZE/2)
+#define NIL -1
 
 typedef enum {
 	INSERTNOTCOMPLETE,
@@ -15,8 +15,8 @@ typedef enum {
 
 typedef struct {
 	int cnt;
-	int key[MM];
-	long int ptr[MM+1];
+	int key[INDEX_SIZE];
+	long int ptr[INDEX_SIZE+1];
 } node_t;
 
 status_t index_insert(int x);
