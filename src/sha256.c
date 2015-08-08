@@ -24,7 +24,7 @@ static const unsigned int k[64] = {
 	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
-void sha256_transform(sha256_ctx *ctx, const unsigned char data[]) {
+static void sha256_transform(sha256_ctx *ctx, const unsigned char data[]) {
 	unsigned int a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
 	for (i = 0, j = 0; i < 16; ++i, j += 4)
