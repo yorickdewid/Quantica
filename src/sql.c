@@ -13,7 +13,7 @@
 #include "quid.h"
 #include "md5.h"
 #include "sha1.h"
-#include "sha256.h"
+#include "sha2.h"
 #include "core.h"
 #include "core.h"
 #include "sql.h"
@@ -187,8 +187,8 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			rs.data = strsha;
 			return &rs;
 		} else if (tok->token == T_FUNC_SHA256) {
-			char *strsha256 = zmalloc(SHA256_SIZE+1);
-			strsha256[SHA256_SIZE] = '\0';
+			char *strsha256 = zmalloc(SHA256_DIGEST_SIZE+1);
+			strsha256[SHA256_DIGEST_SIZE] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
 				ERROR(ESQL_PARSE_TOK, EL_WARN);

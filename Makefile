@@ -20,12 +20,12 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/strtoken.c \
 		$(SRCDIR)/quid.c \
 		$(SRCDIR)/sha1.c \
+		$(SRCDIR)/sha2.c \
 		$(SRCDIR)/aes.c \
 		$(SRCDIR)/base64.c \
 		$(SRCDIR)/crc32.c \
 		$(SRCDIR)/crc64.c \
 		$(SRCDIR)/md5.c \
-		$(SRCDIR)/sha256.c \
 		$(SRCDIR)/vector.c \
 		$(SRCDIR)/dict.c \
 		$(SRCDIR)/stack.c \
@@ -50,8 +50,8 @@ SOURCES=$(SRCDIR)/common.c \
 		$(TESTDIR)/test-base64.c \
 		$(TESTDIR)/test-crc32.c \
 		$(TESTDIR)/test-sha1.c \
+		$(TESTDIR)/test-sha2.c \
 		$(TESTDIR)/test-md5.c \
-		$(TESTDIR)/test-sha256.c \
 		$(TESTDIR)/benchmark-quid.c \
 		$(TESTDIR)/test-engine.c \
 		$(TESTDIR)/test-bootstrap.c \

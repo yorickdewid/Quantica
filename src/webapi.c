@@ -29,7 +29,7 @@
 #include "sha1.h"
 #include "md5.h"
 #include "dstype.h"
-#include "sha256.h"
+#include "sha2.h"
 #include "vector.h"
 #include "time.h"
 #include "hashtable.h"
@@ -246,8 +246,8 @@ http_status_t api_sha256(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
-			char strsha256[SHA256_SIZE+1];
-			strsha256[SHA256_SIZE] = '\0';
+			char strsha256[SHA256_DIGEST_SIZE+1];
+			strsha256[SHA256_DIGEST_SIZE] = '\0';
 			crypto_sha256(strsha256, param_data);
 			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha256);
 			return HTTP_OK;

@@ -8,8 +8,8 @@
 #include "zmalloc.h"
 #include "quid.h"
 #include "sha1.h"
+#include "sha2.h"
 #include "md5.h"
-#include "sha256.h"
 #include "aes.h"
 #include "crc32.h"
 #include "base64.h"
@@ -133,7 +133,7 @@ int crypto_sha256(char *s, const char *data) {
 	sha256_init(&ctx);
 	sha256_update(&ctx, (const unsigned char *)data, strlen(data));
 	sha256_final(&ctx, digest);
-	sha256_strsum(s, digest);
+	sha2_strsum(s, digest, SHA256_DIGEST_SIZE);
 	return 0;
 }
 
