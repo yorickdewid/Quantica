@@ -34,3 +34,7 @@ bin/*
 *.depend
 *.cfg
 *.sublime-workspace
+*.suo
+*.vs/
+*.opensdf
+*.sdf
