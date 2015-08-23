@@ -19,10 +19,13 @@ void print_usage() {
 		PROGNAME " %s ("__DATE__", "__TIME__")\n"
 		"Usage: "PROGNAME" [-?hvfd]\n"
 		"\nOptions:\n"
-		"  -?,-h         : this help\n"
-		"  -v            : show version and exit\n"
-		"  -d            : run as daemon (default)\n"
-		"  -f            : run in foreground\n"
+		"  -?,-h    this help\n"
+		"  -v       show version and exit\n"
+		"  -d       run as daemon (default)\n"
+		"  -f       run in foreground\n"
+#if 0
+		"  -q       run silent, no logging\n"
+#endif
 	, get_version_string());
 }
 
