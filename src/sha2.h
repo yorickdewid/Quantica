@@ -1,35 +1,28 @@
 #ifndef SHA2_H_INCLUDED
 #define SHA2_H_INCLUDED
 
-#define SHA224_DIGEST_SIZE	28
-#define SHA256_DIGEST_SIZE	32
-#define SHA384_DIGEST_SIZE	48
-#define SHA512_DIGEST_SIZE	64
+#define SHA224_DIGEST_SIZE	56
+#define SHA256_DIGEST_SIZE	64
+#define SHA384_DIGEST_SIZE	96
+#define SHA512_DIGEST_SIZE	128
 
-#define SHA256_BLOCK_SIZE	64
-#define SHA512_BLOCK_SIZE	128
+#define SHA256_BLOCK_SIZE	32
+#define SHA512_BLOCK_SIZE	64
 #define SHA384_BLOCK_SIZE	SHA512_BLOCK_SIZE
 #define SHA224_BLOCK_SIZE	SHA256_BLOCK_SIZE
-
-#ifndef SHA2_TYPES
-#define SHA2_TYPES
-typedef unsigned char uint8;
-typedef unsigned int  uint32;
-typedef unsigned long long uint64;
-#endif
 
 typedef struct {
 	unsigned int tot_len;
 	unsigned int len;
 	unsigned char block[2 * SHA256_BLOCK_SIZE];
-	uint32 h[8];
+	unsigned int h[8];
 } sha256_ctx;
 
 typedef struct {
 	unsigned int tot_len;
 	unsigned int len;
 	unsigned char block[2 * SHA512_BLOCK_SIZE];
-	uint64 h[8];
+	unsigned long long h[8];
 } sha512_ctx;
 
 typedef sha512_ctx sha384_ctx;

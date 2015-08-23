@@ -9,6 +9,7 @@
 #include "quid.h"
 #include "sha1.h"
 #include "sha2.h"
+#include "hmac.h"
 #include "md5.h"
 #include "aes.h"
 #include "crc32.h"
@@ -118,7 +119,7 @@ int crypto_sha1(char *s, const char *data) {
 }
 
 int crypto_md5(char *s, const char *data) {
-	unsigned char digest[16];
+	unsigned char digest[MD5_BLOCK_SIZE];
 	md5_ctx md5;
 	md5_init(&md5);
 	md5_update(&md5, data, strlen(data));
@@ -134,6 +135,26 @@ int crypto_sha256(char *s, const char *data) {
 	sha256_update(&ctx, (const unsigned char *)data, strlen(data));
 	sha256_final(&ctx, digest);
 	sha2_strsum(s, digest, SHA256_DIGEST_SIZE);
+	return 0;
+}
+
+int crypto_sha512(char *s, const char *data) {
+	unsigned char digest[SHA512_BLOCK_SIZE];
+	sha512_ctx ctx;
+
+	sha512_init(&ctx);
+	sha512_update(&ctx, (const unsigned char *)data, strlen(data));
+	sha512_final(&ctx, digest);
+	sha2_strsum(s, digest, SHA512_DIGEST_SIZE);
+	return 0;
+}
+
+int crypto_hmac(unsigned char *s, const char *key, const char *data) {
+	hmac_sha256_ctx ctx;
+
+	hmac_sha256_init(&ctx, (const unsigned char *)key, strlen(key));
+	hmac_sha256_update(&ctx, (const unsigned char *)data, strlen(data));
+	hmac_sha256_final(&ctx, s, SHA256_DIGEST_SIZE);
 	return 0;
 }
 

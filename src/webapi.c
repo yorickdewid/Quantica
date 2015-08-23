@@ -259,6 +259,23 @@ http_status_t api_sha256(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_sha512(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char strsha512[SHA512_DIGEST_SIZE+1];
+			strsha512[SHA512_DIGEST_SIZE] = '\0';
+			crypto_sha512(strsha512, param_data);
+			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha512);
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_sqlquery(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
@@ -722,6 +739,7 @@ const struct webroute route[] = {
 	{"/sha1",			api_sha1,			FALSE},
 	{"/md5",			api_md5,			FALSE},
 	{"/sha256",			api_sha256,			FALSE},
+	{"/sha512",			api_sha512,			FALSE},
 	{"/sql",			api_sqlquery,		FALSE},
 	{"/vacuum",			api_vacuum,			FALSE},
 	{"/sync",			api_sync,			FALSE},
