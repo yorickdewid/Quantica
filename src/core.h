@@ -36,6 +36,7 @@ int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
 int crypto_sha256(char *s, const char *data);
 int crypto_sha512(char *s, const char *data);
+int crypto_hmac_sha256(char *s, const char *key, const char *data);
 sqlresult_t *exec_sqlquery(const char *query, size_t *len);
 char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);

@@ -246,8 +246,8 @@ http_status_t api_sha256(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
-			char strsha256[SHA256_DIGEST_SIZE+1];
-			strsha256[SHA256_DIGEST_SIZE] = '\0';
+			char strsha256[(2*SHA256_DIGEST_SIZE)+1];
+			strsha256[2*SHA256_DIGEST_SIZE] = '\0';
 			crypto_sha256(strsha256, param_data);
 			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha256);
 			return HTTP_OK;
@@ -263,10 +263,27 @@ http_status_t api_sha512(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
-			char strsha512[SHA512_DIGEST_SIZE+1];
-			strsha512[SHA512_DIGEST_SIZE] = '\0';
+			char strsha512[(2*SHA512_DIGEST_SIZE)+1];
+			strsha512[(2*SHA512_DIGEST_SIZE)] = '\0';
 			crypto_sha512(strsha512, param_data);
 			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha512);
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_hmac_sha256(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		if (param_data) {
+			char mac[SHA256_BLOCK_SIZE+1];
+			mac[SHA256_BLOCK_SIZE] = '\0';
+			crypto_hmac_sha256(mac, "kaas", param_data);
+			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", mac);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
@@ -740,6 +757,7 @@ const struct webroute route[] = {
 	{"/md5",			api_md5,			FALSE},
 	{"/sha256",			api_sha256,			FALSE},
 	{"/sha512",			api_sha512,			FALSE},
+	{"/hmac/sha256",	api_hmac_sha256,	FALSE},
 	{"/sql",			api_sqlquery,		FALSE},
 	{"/vacuum",			api_vacuum,			FALSE},
 	{"/sync",			api_sync,			FALSE},

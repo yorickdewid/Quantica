@@ -130,31 +130,23 @@ int crypto_md5(char *s, const char *data) {
 
 int crypto_sha256(char *s, const char *data) {
 	unsigned char digest[SHA256_BLOCK_SIZE];
-	sha256_ctx ctx;
-	sha256_init(&ctx);
-	sha256_update(&ctx, (const unsigned char *)data, strlen(data));
-	sha256_final(&ctx, digest);
-	sha2_strsum(s, digest, SHA256_DIGEST_SIZE);
+	sha256((const unsigned char *)data, strlen(data), digest);
+	sha2_strsum(s, digest, 2*SHA256_DIGEST_SIZE);
 	return 0;
 }
 
 int crypto_sha512(char *s, const char *data) {
 	unsigned char digest[SHA512_BLOCK_SIZE];
-	sha512_ctx ctx;
-
-	sha512_init(&ctx);
-	sha512_update(&ctx, (const unsigned char *)data, strlen(data));
-	sha512_final(&ctx, digest);
-	sha2_strsum(s, digest, SHA512_DIGEST_SIZE);
+	sha512((const unsigned char *)data, strlen(data), digest);
+	sha2_strsum(s, digest, 2*SHA512_DIGEST_SIZE);
 	return 0;
 }
 
-int crypto_hmac(unsigned char *s, const char *key, const char *data) {
-	hmac_sha256_ctx ctx;
+int crypto_hmac_sha256(char *s, const char *key, const char *data) {
+	unsigned char mac[SHA256_DIGEST_SIZE];
 
-	hmac_sha256_init(&ctx, (const unsigned char *)key, strlen(key));
-	hmac_sha256_update(&ctx, (const unsigned char *)data, strlen(data));
-	hmac_sha256_final(&ctx, s, SHA256_DIGEST_SIZE);
+	hmac_sha256((const unsigned char *)key, strlen(key), (unsigned char *)data, strlen(data), mac, SHA256_DIGEST_SIZE);
+	sha2_strsum(s, mac, SHA256_BLOCK_SIZE);
 	return 0;
 }
 
@@ -415,7 +407,7 @@ char *db_list_get(char *quid) {
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
- 	return engine_list_get_val(&btx, &key);
+	return engine_list_get_val(&btx, &key);
 }
 
 int db_list_update(char *quid, const char *name) {
@@ -429,7 +421,7 @@ int db_list_update(char *quid, const char *name) {
 char *db_list_all() {
 	if (!ready)
 		return NULL;
- 	return engine_list_all(&btx);
+	return engine_list_all(&btx);
 }
 
 void *db_table_get(char *name, size_t *len) {

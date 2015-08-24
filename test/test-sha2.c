@@ -3,38 +3,6 @@
 #include "test.h"
 #include "../src/sha2.h"
 
-void sha224(const unsigned char *message, unsigned int len, unsigned char *digest) {
-    sha224_ctx ctx;
-
-    sha224_init(&ctx);
-    sha224_update(&ctx, message, len);
-    sha224_final(&ctx, digest);
-}
-
-void sha384(const unsigned char *message, unsigned int len, unsigned char *digest) {
-    sha384_ctx ctx;
-
-    sha384_init(&ctx);
-    sha384_update(&ctx, message, len);
-    sha384_final(&ctx, digest);
-}
-
-void sha256(const unsigned char *message, unsigned int len, unsigned char *digest) {
-    sha256_ctx ctx;
-
-    sha256_init(&ctx);
-    sha256_update(&ctx, message, len);
-    sha256_final(&ctx, digest);
-}
-
-void sha512(const unsigned char *message, unsigned int len, unsigned char *digest) {
-    sha512_ctx ctx;
-
-    sha512_init(&ctx);
-    sha512_update(&ctx, message, len);
-    sha512_final(&ctx, digest);
-}
-
 void test(const char *vector, unsigned char *digest, unsigned int digest_size) {
 	char output[2 * SHA512_DIGEST_SIZE + 1];
 	int i;
