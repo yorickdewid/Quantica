@@ -266,7 +266,7 @@ http_status_t api_sha512(char **response, http_request_t *req) {
 			char strsha512[(2*SHA512_DIGEST_SIZE)+1];
 			strsha512[(2*SHA512_DIGEST_SIZE)] = '\0';
 			crypto_sha512(strsha512, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha512);
+			snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha512);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
@@ -284,7 +284,7 @@ http_status_t api_hmac_sha256(char **response, http_request_t *req) {
 			char mac[SHA256_BLOCK_SIZE+1];
 			mac[SHA256_BLOCK_SIZE] = '\0';
 			crypto_hmac_sha256(mac, param_key, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", mac);
+			snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", mac);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);

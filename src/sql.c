@@ -78,6 +78,8 @@ enum token {
 	T_FUNC_SHA1,
 	T_FUNC_SHA256,
 	T_FUNC_SHA512,
+	T_FUNC_HMAC_SHA256,
+	T_FUNC_HMAC_SHA512,
 	T_FUNC_VACUUM,
 	T_FUNC_SYNC,
 	T_FUNC_SHUTDOWN,
@@ -230,6 +232,62 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			}
 			rs.name = zstrdup("hash");
 			rs.data = strsha512;
+			return &rs;
+		} else if (tok->token == T_FUNC_HMAC_SHA256) {
+			char *strmac = zmalloc(SHA256_BLOCK_SIZE+1);
+			strmac[SHA256_BLOCK_SIZE] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			char *key = tok->string;
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_hmac_sha256(strmac, key, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hmac");
+			rs.data = strmac;
+			return &rs;
+		} else if (tok->token == T_FUNC_HMAC_SHA512) {
+			char *strmac = zmalloc(SHA512_BLOCK_SIZE+1);
+			strmac[SHA512_BLOCK_SIZE] = '\0';
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_OPEN) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			char *key = tok->string;
+			STACK_EMPTY_POP();
+			if (tok->token != T_STRING) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_hmac_sha512(strmac, key, tok->string);
+			STACK_EMPTY_POP();
+			if (tok->token != T_BRACK_CLOSE) {
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hmac");
+			rs.data = strmac;
 			return &rs;
 		} else if (tok->token == T_FUNC_INSTANCE_NAME) {
 			STACK_EMPTY_POP();
@@ -805,6 +863,10 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_SHA256;
 		} else if (!strcmp(pch, "SHA512") || !strcmp(pch, "sha512")) {
 			tok->token =  T_FUNC_SHA512;
+		} else if (!strcmp(pch, "HMAC_SHA256") || !strcmp(pch, "hmac_sha256")) {
+			tok->token =  T_FUNC_HMAC_SHA256;
+		} else if (!strcmp(pch, "HMAC_SHA512") || !strcmp(pch, "hmac_sha512")) {
+			tok->token =  T_FUNC_HMAC_SHA512;
 		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
 			tok->token =  T_FUNC_VACUUM;
 		} else if (!strcmp(pch, "SYNC") || !strcmp(pch, "sync")) {
