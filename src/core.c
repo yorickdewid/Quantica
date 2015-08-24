@@ -150,6 +150,14 @@ int crypto_hmac_sha256(char *s, const char *key, const char *data) {
 	return 0;
 }
 
+int crypto_hmac_sha512(char *s, const char *key, const char *data) {
+	unsigned char mac[SHA512_DIGEST_SIZE];
+
+	hmac_sha512((const unsigned char *)key, strlen(key), (unsigned char *)data, strlen(data), mac, SHA512_DIGEST_SIZE);
+	sha2_strsum(s, mac, SHA512_BLOCK_SIZE);
+	return 0;
+}
+
 char *crypto_base64_enc(const char *data) {
 	size_t encsz = base64_encode_len(strlen(data));
 	char *s = (char *)zmalloc(encsz+1);

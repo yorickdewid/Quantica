@@ -279,10 +279,29 @@ http_status_t api_sha512(char **response, http_request_t *req) {
 http_status_t api_hmac_sha256(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
+		char *param_key = (char *)hashtable_get(req->data, "key");
+		if (param_data && param_key) {
 			char mac[SHA256_BLOCK_SIZE+1];
 			mac[SHA256_BLOCK_SIZE] = '\0';
-			crypto_hmac_sha256(mac, "kaas", param_data);
+			crypto_hmac_sha256(mac, param_key, param_data);
+			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", mac);
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
+http_status_t api_hmac_sha512(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST) {
+		char *param_data = (char *)hashtable_get(req->data, "data");
+		char *param_key = (char *)hashtable_get(req->data, "key");
+		if (param_data && param_key) {
+			char mac[SHA512_BLOCK_SIZE+1];
+			mac[SHA512_BLOCK_SIZE] = '\0';
+			crypto_hmac_sha512(mac, param_key, param_data);
 			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"COMMAND_OK\",\"success\":true}", mac);
 			return HTTP_OK;
 		}
@@ -758,6 +777,7 @@ const struct webroute route[] = {
 	{"/sha256",			api_sha256,			FALSE},
 	{"/sha512",			api_sha512,			FALSE},
 	{"/hmac/sha256",	api_hmac_sha256,	FALSE},
+	{"/hmac/sha512",	api_hmac_sha512,	FALSE},
 	{"/sql",			api_sqlquery,		FALSE},
 	{"/vacuum",			api_vacuum,			FALSE},
 	{"/sync",			api_sync,			FALSE},
