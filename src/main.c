@@ -23,10 +23,7 @@ void print_usage() {
 		"  -v       show version and exit\n"
 		"  -d       run as daemon (default)\n"
 		"  -f       run in foreground\n"
-#if 0
-		"  -q       run silent, no logging\n"
-#endif
-	, get_version_string());
+		, get_version_string());
 }
 
 int daemonize() {
@@ -49,7 +46,7 @@ int daemonize() {
 		return 1;
 	}
 
-#if 0
+#if SECURE_CHROOT
 	if ((chdir("/")) < 0) {
 			lprintf("[erro] Failed to change directory\n");
 			return 1;
