@@ -21,6 +21,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/quid.c \
 		$(SRCDIR)/sha1.c \
 		$(SRCDIR)/sha2.c \
+		$(SRCDIR)/hmac.c \
 		$(SRCDIR)/aes.c \
 		$(SRCDIR)/base64.c \
 		$(SRCDIR)/crc32.c \
