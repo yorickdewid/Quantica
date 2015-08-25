@@ -44,8 +44,8 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/jenhash.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
-		$(SRCDIR)/sql.c \
-		$(TESTDIR)/benchmark-engine.c \
+		$(SRCDIR)/sql.c
+TEST_SOURCES=$(TESTDIR)/benchmark-engine.c \
 		$(TESTDIR)/test-quid.c \
 		$(TESTDIR)/test-aes.c \
 		$(TESTDIR)/test-base64.c \
@@ -58,7 +58,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(TESTDIR)/test-bootstrap.c \
 		$(TESTDIR)/test-json_check.c
 OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o
-TESTOBJECTS=$(SOURCES:.c=.o) $(TESTDIR)/runner.o
+TESTOBJECTS=$(SOURCES:.c=.o) $(TEST_SOURCES:.c=.o) $(TESTDIR)/runner.o
 EXECUTABLE=quantica
 EXECUTABLETEST=quantica_test
 
