@@ -2,6 +2,7 @@ INCLUDE=include
 SRCDIR=src
 TESTDIR=test
 BINDIR=bin
+UTILDIR=util
 VALGRIND=valgrind
 VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
 CFLAGS=-c -g -O0 -pedantic -std=c99 -Wall -Werror -Wextra -DDEBUG -DX64 -DTN12
@@ -90,7 +91,11 @@ $(EXECUTABLETEST): $(TESTOBJECTS)
 memcheck: debug
 	cd $(BINDIR) && $(VALGRIND) $(VALFLAGS) ./$(EXECUTABLE) -f
 
-cleanall: clean cleandb cleandebug cleantest
+fixeof:
+	cc $(UTILDIR)/lfeof.c -pedantic -std=c99 -Wall -Werror -Wextra -o util/lfeof
+	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
+
+cleanall: clean cleandb cleandebug cleantest cleanutil
 
 clean:
 	@rm -rf $(SRCDIR)/*.o
@@ -105,3 +110,7 @@ cleandebug: clean
 
 cleantest: clean
 	@rm -rf $(BINDIR)/$(EXECUTABLETEST)
+
+cleanutil:
+	@rm -rf $(UTILDIR)/*.o
+	@rm -rf $(UTILDIR)/lfeof

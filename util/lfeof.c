@@ -32,7 +32,6 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {
-    char ch;
     FILE *fd = NULL;
 
     if (argc < 2) {
