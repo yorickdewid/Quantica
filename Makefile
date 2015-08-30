@@ -92,8 +92,11 @@ memcheck: debug
 	cd $(BINDIR) && $(VALGRIND) $(VALFLAGS) ./$(EXECUTABLE) -f
 
 fixeof:
-	cc $(UTILDIR)/lfeof.c -pedantic -std=c99 -Wall -Werror -Wextra -o util/lfeof
-	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
+	$(CC) $(UTILDIR)/lfeof.c -pedantic -std=c99 -Wall -Werror -Wextra -o $(BINDIR)/lfeof
+	find . -type f -name *.[c\|h] -print -exec $(BINDIR)/lfeof {} \;
+
+genquid:
+	$(CC) -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
 cleanall: clean cleandb cleandebug cleantest cleanutil
 
@@ -113,4 +116,5 @@ cleantest: clean
 
 cleanutil:
 	@rm -rf $(UTILDIR)/*.o
-	@rm -rf $(UTILDIR)/lfeof
+	@rm -rf $(BINDIR)/lfeof
+	@rm -rf $(BINDIR)/genquid
