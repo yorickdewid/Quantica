@@ -96,7 +96,7 @@ fixeof:
 	find . -type f -name *.[c\|h] -print -exec $(BINDIR)/lfeof {} \;
 
 genquid:
-	$(CC) -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
+	$(CC) -O3 -pedantic -std=c99 -Wall -Werror -Wextra -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
 cleanall: clean cleandb cleandebug cleantest cleanutil
 

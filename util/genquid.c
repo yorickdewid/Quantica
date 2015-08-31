@@ -34,7 +34,7 @@
 #include "../src/quid.h"
 
 int main(int argc, char *argv[]) {
-	unsigned long int i;
+	long int i;
 
 	if (argc < 2) {
 		fprintf(stderr, "%s [COUNT]\n", argv[0]);
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 		char squid[35] = {'\0'};
 		quid_create(&key);
 		quidtostr(squid, &key);
-		printf("%d: %s\n", i, squid);
+		printf("%ld: %s\n", i, squid);
 	}
 	return 0;
 }
