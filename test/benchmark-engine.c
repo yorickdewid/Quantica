@@ -17,7 +17,7 @@
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-#define NUM		200000
+#define NUM			200000
 #define R_NUM		(NUM/200)
 #define IDXNAME		"bmark_engine.idx"
 #define DBNAME		"bmark_engine.db"
@@ -58,14 +58,17 @@ static void print_header() {
 static void db_write_test() {
 	quid_t key;
 	int v_len = strlen(val);
+	char squid[35] = {'\0'};
 	start_timer();
 	int i;
 	for(i=0; i<NUM; ++i) {
 		memset(&key, 0, sizeof(quid_t));
 		quid_create(&key);
+		quidtostr(squid, &key);
+		memcpy(&quidr[i], &key, sizeof(quid_t));
 		if (engine_insert(&e, &key, val, v_len)<0)
 			FATAL("engine_insert");
-		memcpy(&quidr[i], &key, sizeof(quid_t));
+
 		if(!(i%10000))
 			LOGF("finished %d ops%30s\r", i, "");
 	}
@@ -176,6 +179,45 @@ static void db_read_bounds_test() {
 	       ,cost);
 }
 
+#if 0
+static void db_delete_test() {
+	quid_t key;
+	int all=0, i;
+	char squid[35] = {'\0'};
+	start_timer();
+	for(i=0; i<NUM; ++i) {
+		memset(&key, 0, sizeof(quid_t));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
+		quidtostr(squid, &key);
+
+		size_t len;
+		if(engine_delete(&e, &key)<0) {
+			quidtostr(squid, &key);
+			LOGF("Cannot delete key %s[%d]\n", squid, i);
+			FATAL("engine_delete");
+		}
+		void *data = engine_get(&e, &key, &len);
+		if(data==NULL) {
+			all++;
+		} else {
+			FATAL("Key found");
+		}
+
+		zfree(data);
+
+		if((i%10000)==0)
+			LOGF("finished %d ops%30s\r",i,"");
+	}
+	LINE();
+	double cost = get_timer();
+	LOGF("|deleterandom	(delete:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.6f(sec)\n"
+	       ,all
+	       ,(double)(cost/R_NUM)
+	       ,(double)(R_NUM/cost)
+	       ,cost);
+}
+#endif
+
 static void db_delete_random_test() {
 	quid_t key;
 	int all=0,i;
@@ -188,13 +230,14 @@ static void db_delete_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		if(engine_delete(&e, &key)<0)
+		if(engine_delete(&e, &key)<0) {
+			quidtostr(squid, &key);
 			FATAL("engine_delete");
+		}
 		void *data = engine_get(&e, &key, &len);
 		if(data==NULL) {
 			all++;
 		} else {
-			quidtostr(squid, &key);
 			FATAL("Key found");
 		}
 
@@ -251,6 +294,9 @@ BENCHMARK_IMPL(engine) {
 	db_read_seq_test();
 	db_read_random_test();
 	db_read_bounds_test();
+#if 0
+	db_delete_test();
+#endif
 	db_delete_random_test();
 	db_read_test();
 
