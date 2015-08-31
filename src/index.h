@@ -14,7 +14,7 @@ typedef enum {
 
 typedef struct {
 	int64_t key;
-	uint64_t offset;
+	uint64_t valset;
 } item_t;
 
 typedef struct {
@@ -23,7 +23,7 @@ typedef struct {
 	long int ptr[INDEX_SIZE+1];
 } node_t;
 
-status_t index_insert(int64_t key);
+status_t index_insert(int64_t key, int64_t offset);
 status_t index_get(int64_t key);
 status_t index_delete(int64_t key);
 void index_print(long int t);
