@@ -108,7 +108,7 @@ struct stoken {
 	int length;
 };
 
-sqlresult_t *parse(stack_t *stack, size_t *len) {
+sqlresult_t *parse(qstack_t *stack, size_t *len) {
 	static sqlresult_t rs;
 	memset(&rs, '\0', sizeof(sqlresult_t));
 	if (stack->size<=0) {
@@ -774,7 +774,7 @@ char *explode_sql(char *sql) {
 	return _osql;
 }
 
-int tokenize(stack_t *stack, char sql[]) {
+int tokenize(qstack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
 	char *pch = strtoken(_ustr," ,");
 	while(pch != NULL) {
@@ -951,7 +951,7 @@ sqlresult_t *sql_exec(const char *sql, size_t *len) {
 	ERRORZEOR();
 	charcnt = 0;
 	cnt = 0;
-	stack_t tokenstream;
+	qstack_t tokenstream;
 	stack_init(&tokenstream, STACK_SZ);
 	if (tokenize(&tokenstream, (char *)sql))
 		rs = parse(&tokenstream, len);
