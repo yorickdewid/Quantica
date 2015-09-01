@@ -28,22 +28,22 @@ void readnode(long int offset, node_t *pnode) {
 		return;
 	}
 	if (fseek(fptree, offset, SEEK_SET)) {
-		lprintf("[erro] Failed to read disk\n");
+		lprint("[erro] Failed to read disk\n");
 		return;
 	}
 	if (fread(pnode, sizeof(node_t), 1, fptree) == 0)
-		lprintf("[erro] Failed to read disk\n");
+		lprint("[erro] Failed to read disk\n");
 }
 
 static void flush_node(long int t, node_t *pnode) {
 	if (t == root)
 		rootnode = *pnode;
 	if (fseek(fptree, t, SEEK_SET)) {
-		lprintf("[erro] Failed to write disk\n");
+		lprint("[erro] Failed to write disk\n");
 		return;
 	}
 	if (fwrite(pnode, sizeof(node_t), 1, fptree) == 0)
-		lprintf("[erro] Failed to write disk\n");
+		lprint("[erro] Failed to write disk\n");
 }
 
 static long int alloc_node() {
@@ -52,7 +52,7 @@ static long int alloc_node() {
 
 	if (freelist == -1) {
 		if (fseek(fptree, 0, SEEK_END)) {
-			lprintf("[erro] Failed to write disk\n");
+			lprint("[erro] Failed to write disk\n");
 			return -1;
 		}
 		t = ftell(fptree);
@@ -76,11 +76,11 @@ void freenode(long int t) {
 
 void rdstart() {
 	if (fseek(fptree, 0, SEEK_SET)) {
-		lprintf("[erro] Failed to read disk\n");
+		lprint("[erro] Failed to read disk\n");
 		return;
 	}
 	if (fread(&index_root, sizeof(index_root), 1, fptree) == 0)
-		lprintf("[erro] Failed to read disk\n");
+		lprint("[erro] Failed to read disk\n");
 	readnode(index_root.root, &rootnode);
 	root = index_root.root;
 	freelist = index_root.freelist;
@@ -90,11 +90,11 @@ void wrstart() {
 	index_root.root = root;
 	index_root.freelist = freelist;
 	if (fseek(fptree, 0, SEEK_SET)) {
-		lprintf("[erro] Failed to write disk\n");
+		lprint("[erro] Failed to write disk\n");
 		return;
 	}
 	if (fwrite(&index_root, sizeof(index_root), 1, fptree) == 0)
-		lprintf("[erro] Failed to write disk\n");
+		lprint("[erro] Failed to write disk\n");
 	if (root != -1)
 		flush_node(root, &rootnode);
 }

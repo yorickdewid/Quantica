@@ -23,7 +23,7 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 	dict_init(&p);
 	r = dict_parse(&p, data, data_len, t, data_len);
 	if (r < 1) {
-		lprintf("[erro] Failed to parse dict\n");
+		lprint("[erro] Failed to parse dict\n");
 		return;
 	}
 

@@ -3,6 +3,8 @@
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
+
 #include "arc4random.h"
 
 typedef struct {
@@ -57,6 +59,8 @@ static void arc4_stir(arc4_stream_t *as) {
 	if (fd >= 0) {
 		if (read(fd, rdat.rnd, sizeof(rdat.rnd))>0)
 			close(fd);
+		else
+			lprint("[erro] Failed to read disk\n");
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));
 

@@ -67,7 +67,7 @@ void base_sync(struct base *base) {
 
 	lseek(base->fd, 0, SEEK_SET);
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
-		lprintf("[erro] Failed to read " BASECONTROL "\n");
+		lprint("[erro] Failed to read " BASECONTROL "\n");
 		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
@@ -83,7 +83,7 @@ void base_init(struct base *base) {
 
 		struct base_super super;
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
-			lprintf("[erro] Failed to read " BASECONTROL "\n");
+			lprint("[erro] Failed to read " BASECONTROL "\n");
 			ERROR(EIO_READ, EL_FATAL);
 			return;
 		}
@@ -123,5 +123,5 @@ void base_close(struct base *base) {
 	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
-	lprintf("[info] Exist with EXSTAT_SUCCESS\n");
+	lprint("[info] Exist with EXSTAT_SUCCESS\n");
 }

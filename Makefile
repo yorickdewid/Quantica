@@ -98,21 +98,16 @@ fixeof:
 genquid:
 	$(CC) -O3 -pedantic -std=c99 -Wall -Werror -Wextra -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
-cleanall: clean cleandb cleandebug cleantest cleanutil
+cleanall: clean cleandb cleanutil
 
 clean:
 	@rm -rf $(SRCDIR)/*.o
 	@rm -rf $(TESTDIR)/*.o
+	@rm -rf $(BINDIR)/$(EXECUTABLE)
+	@rm -rf $(BINDIR)/$(EXECUTABLETEST)
 
 cleandb:
-	@rm -rf $(BINDIR)/*.db* $(BINDIR)/*.idx* $(BINDIR)/*.log*
-	@rm -rf $(BINDIR)/*._db $(BINDIR)/*._idx $(BINDIR)/*._log
-
-cleandebug: clean
-	@rm -rf $(BINDIR)/$(EXECUTABLE)
-
-cleantest: clean
-	@rm -rf $(BINDIR)/$(EXECUTABLETEST)
+	@rm -rf $(BINDIR)/*
 
 cleanutil:
 	@rm -rf $(UTILDIR)/*.o
