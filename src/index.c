@@ -125,7 +125,7 @@ status_t index_get(int64_t key) {
 	node_t node;
 	long int offset = root;
 
-	printf("Looking for: %ld\n", key);
+	printf("Looking for: %lld\n", key);
 
 	puts("Search path:");
 	while (offset != -1) {
@@ -135,7 +135,7 @@ status_t index_get(int64_t key) {
 
 #ifdef DEBUG
 		for (j=0; j<n; ++j)
-			printf("  %ld", kv[j].key);
+			printf("  %lld", kv[j].key);
 		puts("");
 #endif // DEBUG
 
@@ -144,11 +144,11 @@ status_t index_get(int64_t key) {
 			node_t node_found;
 
 #ifdef DEBUG
-			printf("valset %ld\n", kv[i].valset);
+			printf("valset %lld\n", kv[i].valset);
 			printf("Found in position %d of node with contents: ", i);
 			readnode(offset, &node_found);
 			for (i=0; i<node_found.cnt; ++i)
-				printf("  %ld", node_found.items[i].key);
+				printf("  %lld", node_found.items[i].key);
 			puts("");
 #endif // DEBUG
 
@@ -248,9 +248,8 @@ status_t index_insert(int64_t key, int64_t valset) {
 	status_t code = insert(key, valset, root, &keynew, &valsetnew, &offsetnew);
 
 	if (code == DUPLICATEKEY)
-		printf("Duplicate uid %ld ignored \n", key);
+		printf("Duplicate uid %lld ignored \n", key);
 	else if (code == INSERTNOTCOMPLETE) {
-		puts("HIT");
 		offset = alloc_node();
 		rootnode.cnt = 1;
 		rootnode.items[0].key = keynew;
@@ -442,7 +441,7 @@ void index_print(long int offset) {
 		n = nod.cnt;
 		printf("%*s", position, "");
 		for (i=0; i<n; i++)
-			printf(" %ld", kv[i].key);
+			printf(" %lld", kv[i].key);
 		puts("");
 		for (i=0; i<=n; i++)
 			index_print(nod.ptr[i]);
@@ -459,9 +458,7 @@ void index_init(char *treefilnam) {
 	if (fptree == NULL) {
 		fptree = fopen(treefilnam, "w+b");
 		wrstart();
-		puts("NEW DB");
 	} else {
-		puts("OPEN DB");
 		rdstart();
 		index_print(root);
 	}
