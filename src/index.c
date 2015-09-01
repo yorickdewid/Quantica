@@ -99,7 +99,7 @@ void wrstart() {
 		flush_node(root, &rootnode);
 }
 
-static int get(int64_t key, item_t *kv, int n) {
+static int get(long long int key, item_t *kv, int n) {
 	int i, left, right;
 
 	if (key <= kv[0].key)
@@ -119,7 +119,7 @@ static int get(int64_t key, item_t *kv, int n) {
 	return right;
 }
 
-status_t index_get(int64_t key) {
+status_t index_get(long long int key) {
 	int i, j, n;
 	item_t *kv = NULL;
 	node_t node;
@@ -163,10 +163,10 @@ status_t index_get(int64_t key) {
 	Insert x in B-tree with root offset.  If not completely successful, the
 	integer *y and the pointer *u remain to be inserted.
 */
-static status_t insert(int64_t key, int64_t valset, long int offset, int64_t *keynew, int64_t *valsetnew, long int *offsetnew) {
-	long int tnew, p_final, *p;
+static status_t insert(long long int key, long long int valset, long int offset, long long int *keynew, long long int *valsetnew, long int *offsetnew) {
+	long int offsetnew_r, p_final, *p;
 	int i, j, *n;
-	int64_t k_final, v_final, xnew, valsetnew_r;
+	long long int k_final, v_final, keynew_r, valsetnew_r;
 	item_t *kv = NULL;
 	status_t code;
 	node_t nod, newnod;
@@ -187,19 +187,19 @@ static status_t insert(int64_t key, int64_t valset, long int offset, int64_t *ke
 	i = get(key, kv, *n);
 	if (i < *n && key == kv[i].key)
 		return DUPLICATEKEY;
-	code = insert(key, valset, p[i], &xnew, &valsetnew_r, &tnew);
+	code = insert(key, valset, p[i], &keynew_r, &valsetnew_r, &offsetnew_r);
 	if (code != INSERTNOTCOMPLETE)
 		return code;
-	/* Insertion in subtree did not completely succeed; try to insert xnew and tnew in the current node:  */
+	/* Insertion in subtree did not completely succeed; try to insert keynew_r and offsetnew_r in the current node:  */
 	if (*n < INDEX_SIZE) {
-		i = get(xnew, kv, *n);
+		i = get(keynew_r, kv, *n);
 		for (j = *n; j > i; j--) {
 			kv[j] = kv[j-1];
 			p[j+1] = p[j];
 		}
-		kv[i].key = xnew;
+		kv[i].key = keynew_r;
 		kv[i].valset = valsetnew_r;
-		p[i+1] = tnew;
+		p[i+1] = offsetnew_r;
 		++*n;
 		flush_node(offset, &nod);
 		return SUCCESS;
@@ -210,8 +210,8 @@ static status_t insert(int64_t key, int64_t valset, long int offset, int64_t *ke
 	 node back through u.  Return INSERTNOTCOMPLETE, to report that insertion
 	 was not completed:    */
 	if (i == INDEX_SIZE) {
-		k_final = xnew;
-		p_final = tnew;
+		k_final = keynew_r;
+		p_final = offsetnew_r;
 		v_final = valsetnew_r;
 	} else {
 		k_final = kv[INDEX_SIZE-1].key;
@@ -221,8 +221,8 @@ static status_t insert(int64_t key, int64_t valset, long int offset, int64_t *ke
 			kv[j] = kv[j-1];
 			p[j+1] = p[j];
 		}
-		kv[i].key = xnew;
-		p[i+1] = tnew;
+		kv[i].key = keynew_r;
+		p[i+1] = offsetnew_r;
 	}
 	*keynew = kv[INDEX_MSIZE].key;
 	*valsetnew = kv[INDEX_MSIZE].valset;
@@ -242,9 +242,9 @@ static status_t insert(int64_t key, int64_t valset, long int offset, int64_t *ke
 	return INSERTNOTCOMPLETE;
 }
 
-status_t index_insert(int64_t key, int64_t valset) {
+status_t index_insert(long long int key, long long int valset) {
 	long int offsetnew, offset;
-	int64_t keynew, valsetnew;
+	long long int keynew, valsetnew;
 	status_t code = insert(key, valset, root, &keynew, &valsetnew, &offsetnew);
 
 	if (code == DUPLICATEKEY)
@@ -263,7 +263,7 @@ status_t index_insert(int64_t key, int64_t valset) {
 	return code;
 }
 
-static status_t delete(int64_t key, long int t) {
+static status_t delete(long long int key, long int t) {
 	int i, j, *n, *nleft, *nright, borrowleft = 0, nq;
 	status_t code;
 	item_t *kv;
@@ -412,7 +412,7 @@ static status_t delete(int64_t key, long int t) {
 	return *n >= (t==root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
-status_t index_delete(int64_t key) {
+status_t index_delete(long long int key) {
 	long int newroot;
 
 	status_t code = delete(key, root);

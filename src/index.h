@@ -13,8 +13,8 @@ typedef enum {
 } status_t;
 
 typedef struct {
-	int64_t key;
-	uint64_t valset;
+	long long int key;
+	unsigned long long int valset;
 } item_t;
 
 typedef struct {
@@ -23,9 +23,9 @@ typedef struct {
 	long int ptr[INDEX_SIZE+1];
 } node_t;
 
-status_t index_insert(int64_t key, int64_t offset);
-status_t index_get(int64_t key);
-status_t index_delete(int64_t key);
+status_t index_insert(long long int key, long long int offset);
+status_t index_get(long long int key);
+status_t index_delete(long long int key);
 void index_print(long int t);
 void index_print_root();
 void index_init(char *treefilnam);
