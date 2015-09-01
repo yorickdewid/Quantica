@@ -8,6 +8,11 @@
 
 #include <time.h>
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 #include "test.h"
 #include "../src/quid.h"
 
@@ -16,12 +21,32 @@
 static struct timespec start;
 
 static void start_timer() {
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	start.tv_sec = mts.tv_sec;
+	start.tv_nsec = mts.tv_nsec;
+#else
 	clock_gettime(CLOCK_MONOTONIC, &start);
+#endif
 }
 
 static double get_timer() {
 	struct timespec end;
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	end.tv_sec = mts.tv_sec;
+	end.tv_nsec = mts.tv_nsec;
+#else
 	clock_gettime(CLOCK_MONOTONIC, &end);
+#endif
 	long seconds  = end.tv_sec - start.tv_sec;
 	long nseconds = end.tv_nsec - start.tv_nsec;
 	return seconds + (double)nseconds / 1.0e9;
