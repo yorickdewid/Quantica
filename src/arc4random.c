@@ -55,8 +55,8 @@ static void arc4_stir(arc4_stream_t *as) {
 	rdat.pid = getpid();
 	fd = open(RANDOMDEV, O_RDONLY, 0);
 	if (fd >= 0) {
-		read(fd, rdat.rnd, sizeof(rdat.rnd));
-		close(fd);
+		if (read(fd, rdat.rnd, sizeof(rdat.rnd))>0)
+			close(fd);
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));
 
