@@ -23,6 +23,11 @@ typedef struct {
 	long int ptr[INDEX_SIZE+1];
 } node_t;
 
+struct index {
+	long int root;
+	long int freelist;
+};
+
 status_t index_insert(long long int key, long long int offset);
 status_t index_get(long long int key);
 status_t index_delete(long long int key);

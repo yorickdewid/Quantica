@@ -98,6 +98,9 @@ fixeof:
 genquid:
 	$(CC) -O3 -pedantic -std=c99 -Wall -Werror -Wextra -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
+genlookup3:
+	$(CC) -O3 -pedantic -std=c99 -Wall -Werror -Wextra -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
+
 cleanall: clean cleandb cleanutil
 
 clean:
