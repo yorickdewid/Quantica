@@ -116,3 +116,4 @@ cleanutil:
 	@rm -rf $(UTILDIR)/*.o
 	@rm -rf $(BINDIR)/lfeof
 	@rm -rf $(BINDIR)/genquid
+	@rm -rf $(BINDIR)/genlookup3

@@ -31,36 +31,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[]) {
-    FILE *fd = NULL;
+int main(int argc, const char *argv[]) {
+	FILE *fd = NULL;
 
-    if (argc < 2) {
-        fprintf(stderr, "%s [FILE]\n", argv[0]);
-        return 1;
-    }
-    if ((fd = fopen(argv[1], "r+")) == NULL) {
-        perror("Cannot open file\n");
-        return 1;
-    }
+	if (argc < 2) {
+		fprintf(stderr, "%s [FILE]\n", argv[0]);
+		return 1;
+	}
+	if ((fd = fopen(argv[1], "r+")) == NULL) {
+		perror("Cannot open file\n");
+		return 1;
+	}
 
-    // obtain file size
-    fseek(fd, 0, SEEK_END);
-    long int psz = ftell(fd);
-    rewind(fd);
+	// obtain file size
+	fseek(fd, 0, SEEK_END);
+	long int psz = ftell(fd);
+	rewind(fd);
 
-    // allocate memory to contain the whole file:
-    char *buff = (char*)malloc(sizeof(char)*psz);
-    if (!buff) {
-        fputs("Memory error", stderr);
-        return 1;
-    }
+	// allocate memory to contain the whole file:
+	char *buff = (char*)malloc(sizeof(char)*psz);
+	if (!buff) {
+		fputs("Memory error", stderr);
+		return 1;
+	}
 
-    // check LF and add one if needed
-    fread(buff, 1, psz, fd);
-    if (buff[psz-1] != '\n')
-        fwrite("\n", 1, 1, fd);
+	// check LF and add one if needed
+	fread(buff, 1, psz, fd);
+	if (buff[psz-1] != '\n')
+		fwrite("\n", 1, 1, fd);
 
-    free(buff);
-    fclose(fd);
-    return 0;
+	free(buff);
+	fclose(fd);
+	return 0;
 }
