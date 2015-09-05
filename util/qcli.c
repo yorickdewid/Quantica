@@ -48,6 +48,7 @@ char url[URL_SIZE];
 static char line[1024];
 static int debug = 0;
 static int run = 1;
+static CURL *curl = NULL;
 
 struct write_result {
 	char *data;
@@ -74,18 +75,30 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream)
 	return size * nmemb;
 }
 
+void request_init() {
+	curl_global_init(CURL_GLOBAL_ALL);
+	curl = curl_easy_init();
+	if(!curl) {
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+	}
+}
+
+void request_cleanup() {
+	curl_easy_cleanup(curl);
+	curl_global_cleanup();
+}
+
+
 static char *request(const char *url, const char *sql) {
-	CURL *curl = NULL;
 	CURLcode status;
 	struct curl_slist *headers = NULL;
 	char *data = NULL;
 	long code;
 	char query[URL_SIZE];
 
-	curl_global_init(CURL_GLOBAL_ALL);
-	curl = curl_easy_init();
 	if(!curl)
-		goto error;
+		request_init();
 
 	data = malloc(BUFFER_SIZE);
 	if(!data)
@@ -100,8 +113,6 @@ static char *request(const char *url, const char *sql) {
 	strcpy(query, "query=");
 	strcat(query, sql);
 
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-
 	headers = curl_slist_append(headers, "User-Agent: Quantica CLI");
 	headers = curl_slist_append(headers, "Accept: application/json");
 	headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -111,6 +122,7 @@ static char *request(const char *url, const char *sql) {
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, query);
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, debug);
+	curl_easy_setopt(curl, CURLOPT_URL, url);
 
 	status = curl_easy_perform(curl);
 	if (status != 0) {
@@ -125,9 +137,7 @@ static char *request(const char *url, const char *sql) {
 		goto error;
 	}
 
-	curl_easy_cleanup(curl);
 	curl_slist_free_all(headers);
-	curl_global_cleanup();
 
 	/* Zero-terminate the result */
 	data[write_result.pos] = '\0';
@@ -157,6 +167,45 @@ struct localfunction {
 	{"quit", "Exit shell", &local_exit},
 };
 
+json_t *parse(char *text) {
+	json_error_t error;
+	json_t *root = json_loads(text, 0, &error);
+	free(text);
+
+	if (!root) {
+		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+		return NULL;
+	}
+
+	if(!json_is_object(root)) {
+		fprintf(stderr, "error: cannot parse result\n");
+		json_decref(root);
+		return NULL;
+	}
+
+	json_t *desc = json_object_get(root, "description");
+	if(!json_is_string(desc)) {
+		fprintf(stderr, "error: cannot parse result\n");
+		return NULL;
+	}
+
+	json_t *success = json_object_get(root, "success");
+	if (!json_is_boolean(success)) {
+		fprintf(stderr, "error: cannot parse result\n");
+		return NULL;
+	}
+
+	if (json_is_false(success)) {
+		fprintf(stderr, "error: %s\n", json_string_value(desc));
+		return NULL;
+	}
+	json_object_del(root, "success");
+	json_object_del(root, "description");
+	json_object_del(root, "status");
+
+	return root;
+}
+
 /* Check if local command exist and execute it
  */
 static int localcommand(char *cmd) {
@@ -179,7 +228,14 @@ static int localcommand(char *cmd) {
 		}
 	}
 	char *text = request(url, cmd);
-	puts(text);
+	if(!text)
+		return 0;
+
+	json_t *json = parse(text);
+	if (!json)
+		return 1;
+
+	puts(json_dumps(json, JSON_ENSURE_ASCII));
 	return 0;
 }
 
@@ -187,8 +243,6 @@ int main(int argc, char *argv[]) {
 	extern char *optarg;
 	extern int optind;
 	char *text;
-	json_t *root;
-	json_error_t error;
 	int c, err = 0; 
 	int sflag=0;
 	char *host = DEF_HOST;
@@ -218,38 +272,18 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
+	request_init();
+
 	snprintf(url, URL_SIZE, URL_FORMAT, sflag ? "https" : "http", host, port);
 	text = request(url, "SELECT VERSION()");
 	if(!text)
 		return 1;
 
-	root = json_loads(text, 0, &error);
-	free(text);
-
-	if (!root) {
-		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+	json_t *json = parse(text);
+	if (!json)
 		return 1;
-	}
 
-	if(!json_is_object(root)) {
-		fprintf(stderr, "error: cannot parse result\n");
-		json_decref(root);
-		return 1;
-	}
-
-	json_t *success = json_object_get(root, "success");
-	if (!json_is_boolean(success)) {
-		fprintf(stderr, "error: cannot parse result\n");
-		return 1;
-	}
-
-	json_t *desc = json_object_get(root, "description");
-	if(!json_is_string(desc)) {
-		fprintf(stderr, "error: cannot parse result\n");
-		return 1;
-	}
-
-	json_t *version = json_object_get(root, "version");
+	json_t *version = json_object_get(json, "version");
 	if(!json_is_string(version)) {
 		fprintf(stderr, "error: cannot parse result\n");
 		return 1;
@@ -269,6 +303,7 @@ int main(int argc, char *argv[]) {
 		localcommand(cmd);
 	}
 
-	json_decref(root);
+	request_cleanup();
+	json_decref(json);
 	return 0;
 }
