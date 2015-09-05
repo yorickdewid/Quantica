@@ -11,6 +11,7 @@ matrix:
 script:
   - make fixeof
   - make genquid
+  - make qcli
   - make debug
   - make test
   - ./bin/quantica_test
