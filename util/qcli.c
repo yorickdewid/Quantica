@@ -1,19 +1,53 @@
+/*
+ * Copyright (c) 2015 Quantica, Quenza
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * * Neither the name of Quenza nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <jansson.h>
 #include <curl/curl.h>
 
 #define ASZ(a) sizeof(a)/sizeof(a[0])
 
-#define BUFFER_SIZE  (256 * 1024)  /* 256 KB */
-#define URL_SIZE     256
+#define BUFFER_SIZE		(256 * 1024)  /* 256 KB */
+#define URL_SIZE		256
+#define URL_FORMAT		"%s://%s:%s/sql"
+#define DEF_HOST		"localhost"
+#define DEF_PORT		"4017"
 
 char url[URL_SIZE];
 static char line[1024];
-char *_url = "localhost";
-char *_port = "4017";
+static int debug = 0;
+static int run = 1;
 
 struct write_result {
 	char *data;
@@ -76,6 +110,7 @@ static char *request(const char *url, const char *sql) {
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, query);
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, debug);
 
 	status = curl_easy_perform(curl);
 	if (status != 0) {
@@ -111,7 +146,7 @@ error:
 }
 
 void local_exit() {
-	exit(0);
+	run = 0;
 }
 
 struct localfunction {
@@ -133,6 +168,10 @@ static int localcommand(char *cmd) {
 			printf(" %s\t\t%s\n", localfunclist[i].name, localfunclist[i].description);
 			continue;
 		}
+		if (!strcmp("\\q", cmd) || !strcmp("exit", cmd)) {
+			run = 0;
+			return 1;
+		}
 		if (!strcmp(localfunclist[i].name, cmd)) {
 			vfunc = localfunclist[i].vf;
 			vfunc();
@@ -144,19 +183,42 @@ static int localcommand(char *cmd) {
 	return 0;
 }
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
+	extern char *optarg;
+	extern int optind;
 	char *text;
-
 	json_t *root;
 	json_error_t error;
+	int c, err = 0; 
+	int sflag=0;
+	char *host = DEF_HOST;
+	char *port = DEF_PORT;
+	static char usage[] = "Usage: %s [-ds] [-h host] [-p port] \n";
 
-	if (argc > 1) {
-	if (!strcmp(argv[1], "-h"))
-			fprintf(stderr, "usage: %s hostname port\n", argv[0]);
-		return 2;
+	while ((c = getopt(argc, argv, "dh:p:s")) != -1)
+		switch (c) {
+		case 'd':
+			debug = 1;
+			break;
+		case 'h':
+			host = optarg;
+			break;
+		case 'p':
+			port = optarg;
+			break;
+		case 's':
+			sflag = 1;
+			break;
+		case '?':
+			err = 1;
+			break;
+		}
+	if (err) {
+		fprintf(stderr, usage, argv[0]);
+		exit(1);
 	}
 
-	snprintf(url, URL_SIZE, "http://%s:%s/sql", _url, _port);
+	snprintf(url, URL_SIZE, URL_FORMAT, sflag ? "https" : "http", host, port);
 	text = request(url, "SELECT VERSION()");
 	if(!text)
 		return 1;
@@ -194,7 +256,7 @@ int main(int argc, const char *argv[]) {
 	}
 	printf("Quantica: %s\n", json_string_value(version));
 
-	while (1) {
+	while (run) {
 		printf(">>> ");
 		fflush(NULL);
 
