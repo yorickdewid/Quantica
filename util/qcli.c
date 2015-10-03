@@ -211,6 +211,7 @@ json_t *parse(char *text) {
 static int localcommand(char *cmd) {
 	unsigned int i;
 	void (*vfunc)(void);
+
 	for (i=0; i<ASZ(localfunclist); ++i) {
 		/* Show a list of available commands */
 		if (!strcmp("help", cmd)) {
@@ -242,34 +243,33 @@ static int localcommand(char *cmd) {
 int main(int argc, char *argv[]) {
 	extern char *optarg;
 	extern int optind;
+	extern int opterr;
 	char *text;
-	int c, err = 0; 
+	int c;
 	int sflag=0;
 	char *host = DEF_HOST;
 	char *port = DEF_PORT;
 	static char usage[] = "Usage: %s [-ds] [-h host] [-p port] \n";
 
-	while ((c = getopt(argc, argv, "dh:p:s")) != -1)
+	opterr = 0;
+	while ((c = getopt(argc, argv, "dh:p:s"))>0) {
 		switch (c) {
-		case 'd':
-			debug = 1;
-			break;
-		case 'h':
-			host = optarg;
-			break;
-		case 'p':
-			port = optarg;
-			break;
-		case 's':
-			sflag = 1;
-			break;
-		case '?':
-			err = 1;
-			break;
+			case 'd':
+				debug = 1;
+				break;
+			case 'h':
+				host = optarg;
+				break;
+			case 'p':
+				port = optarg;
+				break;
+			case 's':
+				sflag = 1;
+				break;
+			default:
+				fprintf(stderr, usage, argv[0]);
+				return 1;
 		}
-	if (err) {
-		fprintf(stderr, usage, argv[0]);
-		exit(1);
 	}
 
 	request_init();
@@ -299,6 +299,9 @@ int main(int argc, char *argv[]) {
 			return 0;
 
 		char *cmd = skipwhite(line);
+		if (!strlen(cmd))
+			continue;
+
 		cmd[strlen(cmd)-1] = '\0';
 		localcommand(cmd);
 	}
