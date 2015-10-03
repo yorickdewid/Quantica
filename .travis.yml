@@ -1,17 +1,27 @@
 language: c
+
 os:
   - linux
   - osx
+
 compiler:
   - clang
   - gcc
+
 matrix:
   allow_failures:
     - os: osx
+
+before_script:
+  - git clone https://github.com/akheron/jansson
+  - autoreconf -i
+  - ./configure
+  - make
+  - make install
+
 script:
   - make fixeof
   - make genquid
-  - make qcli
   - make debug
   - make test
   - ./bin/quantica_test
