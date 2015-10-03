@@ -19,7 +19,6 @@ before_script:
   - ./configure
   - make
   - sudo make install
-  - sudo /sbin/ldconfig
   - cd ..
   - rm -fr jansson
 
