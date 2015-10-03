@@ -18,7 +18,10 @@ before_script:
   - autoreconf -i
   - ./configure
   - make
-  - make install
+  - sudo make install
+  - sudo /sbin/ldconfig
+  - cd ..
+  - rm -fr jansson
 
 script:
   - make fixeof
