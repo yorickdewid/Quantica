@@ -102,7 +102,7 @@ genlookup3:
 	$(CC) -O3 -pedantic -std=c99 -Wall -Werror -Wextra -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
 qcli:
-	$(CC) -pedantic -std=c99 -Wall -Werror -Wextra $(UTILDIR)/qcli.c -ljansson -lcurl -o $(BINDIR)/qcli
+	$(CC) -g -O0 -pedantic -std=c99 -Wall -Werror -Wextra $(UTILDIR)/qcli.c -ljansson -lcurl -o $(BINDIR)/qcli
 
 cleanall: clean cleandb cleanutil
 

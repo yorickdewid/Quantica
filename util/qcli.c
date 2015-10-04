@@ -126,7 +126,6 @@ static char *request(const char *url, const char *sql) {
 
 	status = curl_easy_perform(curl);
 	if (status != 0) {
-		fprintf(stderr, "error: unable to request data from %s:\n", url);
 		fprintf(stderr, "%s\n", curl_easy_strerror(status));
 		goto error;
 	}
@@ -212,16 +211,19 @@ static int localcommand(char *cmd) {
 	unsigned int i;
 	void (*vfunc)(void);
 
-	for (i=0; i<ASZ(localfunclist); ++i) {
-		/* Show a list of available commands */
-		if (!strcmp("help", cmd)) {
+	/* Show a list of available commands */
+	if (!strcmp("help", cmd)) {
+		for (i=0; i<ASZ(localfunclist); ++i) {
 			printf(" %s\t\t%s\n", localfunclist[i].name, localfunclist[i].description);
-			continue;
 		}
-		if (!strcmp("\\q", cmd) || !strcmp("exit", cmd)) {
-			run = 0;
-			return 1;
-		}
+		return 0;
+	}
+	if (!strcmp("\\q", cmd) || !strcmp("exit", cmd)) {
+		run = 0;
+		return 1;
+	}
+
+	for (i=0; i<ASZ(localfunclist); ++i) {
 		if (!strcmp(localfunclist[i].name, cmd)) {
 			vfunc = localfunclist[i].vf;
 			vfunc();
