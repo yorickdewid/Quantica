@@ -173,36 +173,40 @@ json_t *parse(char *text) {
 
 	if (!root) {
 		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-		return NULL;
+		goto err;
 	}
 
 	if(!json_is_object(root)) {
 		fprintf(stderr, "error: cannot parse result\n");
-		json_decref(root);
-		return NULL;
+		goto err;
 	}
 
 	json_t *desc = json_object_get(root, "description");
 	if(!json_is_string(desc)) {
 		fprintf(stderr, "error: cannot parse result\n");
-		return NULL;
+		goto err;
 	}
 
 	json_t *success = json_object_get(root, "success");
 	if (!json_is_boolean(success)) {
 		fprintf(stderr, "error: cannot parse result\n");
-		return NULL;
+		goto err;
 	}
 
 	if (json_is_false(success)) {
 		fprintf(stderr, "error: %s\n", json_string_value(desc));
-		return NULL;
+		goto err;
 	}
 	json_object_del(root, "success");
 	json_object_del(root, "description");
 	json_object_del(root, "status");
 
 	return root;
+
+err:
+	json_decref(root);
+
+	return NULL;
 }
 
 /* Check if local command exist and execute it
@@ -238,7 +242,12 @@ static int localcommand(char *cmd) {
 	if (!json)
 		return 1;
 
-	puts(json_dumps(json, JSON_ENSURE_ASCII));
+	char *rs = json_dumps(json, JSON_ENSURE_ASCII);
+	puts(rs);
+
+	json_decref(json);
+	free(rs);
+
 	return 0;
 }
 
@@ -309,6 +318,5 @@ int main(int argc, char *argv[]) {
 	}
 
 	request_cleanup();
-	json_decref(json);
 	return 0;
 }
