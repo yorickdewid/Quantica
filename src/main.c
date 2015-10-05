@@ -31,7 +31,7 @@ int daemonize() {
 
 	pid = fork();
 	if (pid < 0) {
-		lprintf("[erro] Failed to fork into background\n");
+		lprint("[erro] Failed to fork into background\n");
 		return 1;
 	}
 
@@ -42,13 +42,13 @@ int daemonize() {
 
 	sid = setsid();
 	if (sid < 0) {
-		lprintf("[erro] Failed to promote to session leader\n");
+		lprint("[erro] Failed to promote to session leader\n");
 		return 1;
 	}
 
 #if SECURE_CHROOT
 	if ((chdir("/")) < 0) {
-			lprintf("[erro] Failed to change directory\n");
+			lprint("[erro] Failed to change directory\n");
 			return 1;
 	}
 #endif
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 					break;
 				case 'F':
 				case 'f':
-					lprintf("[info] Running in foreground\n");
+					lprint("[info] Running in foreground\n");
 					start_webapi();
 					break;
 				case 'H':
