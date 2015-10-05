@@ -1236,6 +1236,8 @@ int start_webapi() {
 				serversock6 = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 				if (serversock6 < 0) {
 					lprint("[erro] Failed to create socket6\n");
+					freeaddrinfo(servinfo);
+					detach_core();
 					return 1;
 				}
 

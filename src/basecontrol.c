@@ -82,6 +82,7 @@ void base_init(struct base *base) {
 			return;
 
 		struct base_super super;
+		memset(&super, 0, sizeof(struct base_super));
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			ERROR(EIO_READ, EL_FATAL);

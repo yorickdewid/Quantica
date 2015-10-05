@@ -513,7 +513,7 @@ insert_arr:
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
-		strcpy(rs.quid, tok->string);
+		strlcpy(rs.quid, tok->string, QUID_LENGTH);
 		struct objname {
 			char *name;
 			int length;
