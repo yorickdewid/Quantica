@@ -14,12 +14,12 @@ matrix:
 
 before_script:
   - git clone https://github.com/akheron/jansson
-  - cd jansson
+  - pushd jansson
   - autoreconf -i
   - ./configure
   - make
   - sudo make install
-  - cd ..
+  - popd
   - rm -fr jansson
 
 script:
