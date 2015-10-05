@@ -16,3 +16,4 @@ This is the list of things that could be implemented in the next beta release:
 - QUID to IPv6 withint range
 - Execute stored procedures
 - Realtime communication (websockets)
+- Multiple indexes
