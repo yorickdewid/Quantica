@@ -29,3 +29,16 @@ script:
   - make test
   - ./bin/quantica_test
   - ./test/dupquid.sh
+
+env:
+  global:
+    - secure: "uId7T0M2IM+bBmsqfU3sSEMtoIwffO+ftoVpjGrP3bN9dkrtmnNWBSCpI/2ZutCNcQ3HZIxGEjeG/zLyHZ4HqSn92uSWixOdvhw3wWvC+9pU8ln8txZet9+y8Mt4KJXvy/i+D72qq4LqgQ5EfDXq+cLyMj1Gsj/qkwOjSHcPZok="
+
+addons:
+  coverity_scan:
+    project:
+      name: "yorickdewid/Quantica"
+      description: "Quantica"
+      notification_email: yorick17@outlook.com
+      build_command: "make -j 4"
+      branch_pattern: coverity_scan
