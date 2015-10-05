@@ -38,3 +38,6 @@ bin/*
 *.vs/
 *.opensdf
 *.sdf
+
+# Tests
+/cov-int
