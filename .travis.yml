@@ -25,8 +25,10 @@ before_script:
 script:
   - make fixeof
   - make genquid
+  - make genlookup3
   - make debug
   - make test
+  - make qcli
   - ./bin/quantica_test
   - ./test/dupquid.sh
 
@@ -35,6 +37,9 @@ env:
     - secure: "uId7T0M2IM+bBmsqfU3sSEMtoIwffO+ftoVpjGrP3bN9dkrtmnNWBSCpI/2ZutCNcQ3HZIxGEjeG/zLyHZ4HqSn92uSWixOdvhw3wWvC+9pU8ln8txZet9+y8Mt4KJXvy/i+D72qq4LqgQ5EfDXq+cLyMj1Gsj/qkwOjSHcPZok="
 
 addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
   coverity_scan:
     project:
       name: "yorickdewid/Quantica"

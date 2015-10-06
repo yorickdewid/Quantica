@@ -25,15 +25,15 @@ static enum {
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i, len = INSTANCE_RANDOM;
-	char rand[INSTANCE_RANDOM];
+	char strrand[INSTANCE_RANDOM];
 	for (i = 0; i < len; ++i)
-		rand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
-	rand[len - 1] = 0;
+		strrand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
+	strrand[len - 1] = 0;
 
 	static char buf[INSTANCE_LENGTH];
 	strlcpy(buf, INSTANCE_PREFIX, INSTANCE_LENGTH);
 	strlcat(buf, "_", INSTANCE_LENGTH);
-	strlcat(buf, rand, INSTANCE_LENGTH);
+	strlcat(buf, strrand, INSTANCE_LENGTH);
 
 	return buf;
 }
@@ -41,9 +41,9 @@ static char *generate_instance_name() {
 char *generate_bindata_name(struct base *base) {
 	static char buf[BINDATA_LENGTH];
 	char *pdot = strchr(buf, '.');
-	if (!pdot)
+	if (!pdot) {
 		sprintf(buf, "%s.%d", base->bindata, ++base->bincnt);
-	else {
+	} else {
 		char *k = buf;
 		char *token = strsep(&k , ".");
 		sprintf(buf, "%s.%d", token, ++base->bincnt);
