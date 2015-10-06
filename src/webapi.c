@@ -84,8 +84,8 @@ void *get_in_addr(struct sockaddr *sa) {
 		return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void handle_shutdown(int signal) {
-	lprintf("[info] Received SIG:%d\n", signal);
+void handle_shutdown(int intsig) {
+	lprintf("[info] Received SIG:%d\n", intsig);
 	lprint("[info] Shutting down\n");
 
 	shutdown(serversock4, SHUT_RDWR);
@@ -1081,8 +1081,8 @@ unsupported:
 		while ((total_read < c_length) && (!feof(socket_stream))) {
 			size_t diff = c_length - total_read;
 			if (diff > 1024) diff = 1024;
-			size_t read = fread(c_buf, 1, diff, socket_stream);
-			total_read += read;
+			size_t chunk_read = fread(c_buf, 1, diff, socket_stream);
+			total_read += chunk_read;
 		}
 		c_buf[total_read] = '\0';
 
