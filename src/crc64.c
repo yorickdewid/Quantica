@@ -27,17 +27,17 @@ static void crc64_init(uint64_t table[][256]) {
 	uint64_t crc;
 
 	/* generate CRC-64's for all single byte sequences */
-	for (n=0; n<256; ++n) {
+	for (n = 0; n < 256; ++n) {
 		crc = n;
-		for (k=0; k<8; ++k)
+		for (k = 0; k < 8; ++k)
 			crc = crc & 1 ? POLY ^ (crc >> 1) : crc >> 1;
 		table[0][n] = crc;
 	}
 
 	/* generate CRC-64's for those followed by 1 to 7 zeros */
-	for (n=0; n<256; ++n) {
+	for (n = 0; n < 256; ++n) {
 		crc = table[0][n];
-		for (k=1; k<8; ++k) {
+		for (k = 1; k < 8; ++k) {
 			crc = table[0][crc & 0xff] ^ (crc >> 8);
 			table[k][n] = crc;
 		}
@@ -67,8 +67,8 @@ static void crc64_big_init() {
 	unsigned k, n;
 
 	crc64_init(crc64_big_table);
-	for (k=0; k<8; ++k)
-		for (n=0; n<256; ++n)
+	for (k = 0; k < 8; ++k)
+		for (n = 0; n < 256; ++n)
 			crc64_big_table[k][n] = rev8(crc64_big_table[k][n]);
 }
 
@@ -110,13 +110,13 @@ static inline uint64_t crc64_little(uint64_t crc, void *buf, size_t len) {
 	while (len >= 8) {
 		crc ^= *(uint64_t *)next;
 		crc = crc64_little_table[7][crc & 0xff] ^
-			  crc64_little_table[6][(crc >> 8) & 0xff] ^
-			  crc64_little_table[5][(crc >> 16) & 0xff] ^
-			  crc64_little_table[4][(crc >> 24) & 0xff] ^
-			  crc64_little_table[3][(crc >> 32) & 0xff] ^
-			  crc64_little_table[2][(crc >> 40) & 0xff] ^
-			  crc64_little_table[1][(crc >> 48) & 0xff] ^
-			  crc64_little_table[0][crc >> 56];
+		      crc64_little_table[6][(crc >> 8) & 0xff] ^
+		      crc64_little_table[5][(crc >> 16) & 0xff] ^
+		      crc64_little_table[4][(crc >> 24) & 0xff] ^
+		      crc64_little_table[3][(crc >> 32) & 0xff] ^
+		      crc64_little_table[2][(crc >> 40) & 0xff] ^
+		      crc64_little_table[1][(crc >> 48) & 0xff] ^
+		      crc64_little_table[0][crc >> 56];
 		next += 8;
 		len -= 8;
 	}
@@ -140,13 +140,13 @@ static inline uint64_t crc64_big(uint64_t crc, void *buf, size_t len) {
 	while (len >= 8) {
 		crc ^= *(uint64_t *)next;
 		crc = crc64_big_table[0][crc & 0xff] ^
-			  crc64_big_table[1][(crc >> 8) & 0xff] ^
-			  crc64_big_table[2][(crc >> 16) & 0xff] ^
-			  crc64_big_table[3][(crc >> 24) & 0xff] ^
-			  crc64_big_table[4][(crc >> 32) & 0xff] ^
-			  crc64_big_table[5][(crc >> 40) & 0xff] ^
-			  crc64_big_table[6][(crc >> 48) & 0xff] ^
-			  crc64_big_table[7][crc >> 56];
+		      crc64_big_table[1][(crc >> 8) & 0xff] ^
+		      crc64_big_table[2][(crc >> 16) & 0xff] ^
+		      crc64_big_table[3][(crc >> 24) & 0xff] ^
+		      crc64_big_table[4][(crc >> 32) & 0xff] ^
+		      crc64_big_table[5][(crc >> 40) & 0xff] ^
+		      crc64_big_table[6][(crc >> 48) & 0xff] ^
+		      crc64_big_table[7][crc >> 56];
 		next += 8;
 		len -= 8;
 	}
@@ -185,7 +185,7 @@ static uint64_t gf2_matrix_times(uint64_t *mat, uint64_t vec) {
 static void gf2_matrix_square(uint64_t *square, uint64_t *mat) {
 	unsigned n;
 
-	for (n=0; n<GF2_DIM; ++n)
+	for (n = 0; n < GF2_DIM; ++n)
 		square[n] = gf2_matrix_times(mat, mat[n]);
 }
 
@@ -205,7 +205,7 @@ uint64_t crc64_combine(uint64_t crc1, uint64_t crc2, uintmax_t len2) {
 	/* put operator for one zero bit in odd */
 	odd[0] = POLY;              /* CRC-64 polynomial */
 	row = 1;
-	for (n=1; n<GF2_DIM; ++n) {
+	for (n = 1; n < GF2_DIM; ++n) {
 		odd[n] = row;
 		row <<= 1;
 	}
@@ -248,11 +248,12 @@ bool crc_file(int fd, uint64_t *rscrc64) {
 	uint64_t curpos = lseek(fd, 0, SEEK_CUR);
 
 	*rscrc64 = 0;
-	while(read(fd, buf, CRC_BUFFER_SIZE) > 0) {
+	while (read(fd, buf, CRC_BUFFER_SIZE) > 0) {
 		*rscrc64 = crc64(*rscrc64, buf, CRC_BUFFER_SIZE);
 	}
 
-	lseek(fd, curpos, SEEK_SET);
+	if (lseek(fd, curpos, SEEK_SET) < 0)
+		return FALSE;
 	if (!*rscrc64)
 		return FALSE;
 	return TRUE;

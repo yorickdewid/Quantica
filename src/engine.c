@@ -72,7 +72,12 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 		return NULL;
 	}
 
-	lseek(e->fd, offset, SEEK_SET);
+	if (lseek(e->fd, offset, SEEK_SET)<0) {
+		zfree(table);
+		lprint("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return NULL;
+	}
 	if (read(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
 		zfree(table);
 		lprint("[erro] Failed to read disk\n");
@@ -92,7 +97,11 @@ static struct engine_tablelist *get_tablelist(struct engine *e, uint64_t offset)
 		return NULL;
 	}
 
-	lseek(e->fd, offset, SEEK_SET);
+	if (lseek(e->fd, offset, SEEK_SET)<0) {
+		lprint("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return NULL;
+	}
 	if (read(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
@@ -118,7 +127,11 @@ static void put_table(struct engine *e, struct engine_table *table, uint64_t off
 static void flush_table(struct engine *e, struct engine_table *table, uint64_t offset) {
 	zassert(offset != 0);
 
-	lseek(e->fd, offset, SEEK_SET);
+	if (lseek(e->fd, offset, SEEK_SET) < 0) {
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -131,7 +144,11 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 static void flush_tablelist(struct engine *e, struct engine_tablelist *tablelist, uint64_t offset) {
 	zassert(offset != 0);
 
-	lseek(e->fd, offset, SEEK_SET);
+	if (lseek(e->fd, offset, SEEK_SET) < 0) {
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -178,8 +195,17 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	zassert(from_be64(dbsuper.version)==VERSION_RELESE);
 	last_blob = from_be64(dbsuper.last);
 
-	e->alloc = lseek(e->fd, 0, SEEK_END);
-	e->db_alloc = lseek(e->db_fd, 0, SEEK_END);
+	long _alloc = lseek(e->fd, 0, SEEK_END);
+	long _db_alloc = lseek(e->db_fd, 0, SEEK_END);
+
+	if (_alloc < 0 || _db_alloc < 0) {
+		lprint("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return -1;
+	}
+
+	e->alloc = _alloc;
+	e->db_alloc = _db_alloc;
 	return 0;
 }
 
@@ -315,8 +341,13 @@ static void free_index_chunk(struct engine *e, uint64_t offset) {
 }
 
 static void free_dbchunk(struct engine *e, uint64_t offset) {
-	lseek(e->db_fd, offset, SEEK_SET);
 	struct blob_info info;
+
+	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
+		lprint("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return;
+	}
 	if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
@@ -343,7 +374,11 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 		}
 	}
 
-	lseek(e->db_fd, offset, SEEK_SET);
+	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -364,7 +399,10 @@ static void flush_super(struct engine *e, bool fast_flush) {
 	if (fast_flush)
 		goto flush_disk;
 
-	lseek(e->fd, sizeof(struct engine_super), SEEK_SET);
+	if (lseek(e->fd, sizeof(struct engine_super), SEEK_SET)<0){
+		lprint("[erro] Failed to calculate CRC\n");
+		return;
+	}
 	if(!crc_file(e->fd, &crc64)) {
 		lprint("[erro] Failed to calculate CRC\n");
 		return;
@@ -372,7 +410,11 @@ static void flush_super(struct engine *e, bool fast_flush) {
 	super.crc_zero_key = to_be64(crc64);
 
 flush_disk:
-	lseek(e->fd, 0, SEEK_SET);
+	if (lseek(e->fd, 0, SEEK_SET)<0) {
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -386,7 +428,11 @@ static void flush_dbsuper(struct engine *e) {
 	dbsuper.version = to_be64(VERSION_RELESE);
 	dbsuper.last = to_be64(last_blob);
 
-	lseek(e->db_fd, 0, SEEK_SET);
+	if (lseek(e->db_fd, 0, SEEK_SET)<0){
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -409,7 +455,11 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	info.next = to_be64(last_blob);
 	last_blob = offset;
 
-	lseek(e->db_fd, offset, SEEK_SET);
+	if (lseek(e->db_fd, offset, SEEK_SET)<0) {
+		lprint("[erro] Failed to write disk\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return 0;
+	}
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 		lprint("[erro] Failed to write disk\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -742,8 +792,12 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	if(ISERROR())
 		return NULL;
 
-	lseek(e->db_fd, offset, SEEK_SET);
 	struct blob_info info;
+	if (lseek(e->db_fd, offset, SEEK_SET)<0) {
+		lprint("[erro] Failed to read disk\n");
+		ERROR(EIO_READ, EL_FATAL);
+		return NULL;
+	}
 	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
@@ -907,7 +961,10 @@ int engine_recover_storage(struct engine *e) {
 
 	while (TRUE) {
 		cnt++;
-		lseek(e->db_fd, offset, SEEK_SET);
+		if (lseek(e->db_fd, offset, SEEK_SET)<0){
+			lprint("[erro] Failed to read disk\n");
+			return -1;
+		}			
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
 			lprint("[erro] Failed to read disk\n");
 			return -1;
@@ -934,8 +991,13 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 		uint64_t right = from_be64(table->items[i+1].child);
 		uint64_t dboffset = from_be64(table->items[i].offset);
 
-		lseek(e->db_fd, dboffset, SEEK_SET);
 		struct blob_info info;
+		if (lseek(e->db_fd, dboffset, SEEK_SET)<0) {
+			lprint("[erro] Failed to read disk\n");
+			ERROR(EIO_READ, EL_FATAL);
+			put_table(e, table, table_offset);
+			return;
+		}
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
 			lprint("[erro] Failed to read disk\n");
 			ERROR(EIO_READ, EL_FATAL);

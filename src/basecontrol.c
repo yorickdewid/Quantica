@@ -26,9 +26,9 @@ static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i, len = INSTANCE_RANDOM;
 	char rand[INSTANCE_RANDOM];
-	for (i=0; i<len; ++i)
+	for (i = 0; i < len; ++i)
 		rand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
-	rand[len-1] = 0;
+	rand[len - 1] = 0;
 
 	static char buf[INSTANCE_LENGTH];
 	strlcpy(buf, INSTANCE_PREFIX, INSTANCE_LENGTH);
@@ -65,7 +65,11 @@ void base_sync(struct base *base) {
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
-	lseek(base->fd, 0, SEEK_SET);
+	if (lseek(base->fd, 0, SEEK_SET) < 0) {
+		lprint("[erro] Failed to read " BASECONTROL "\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
 		ERROR(EIO_WRITE, EL_FATAL);
@@ -75,7 +79,7 @@ void base_sync(struct base *base) {
 
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
-	if(file_exists(BASECONTROL)) {
+	if (file_exists(BASECONTROL)) {
 		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
@@ -92,14 +96,14 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
-		super.instance_name[INSTANCE_LENGTH-1] = '\0';
-		super.bindata[BINDATA_LENGTH-1] = '\0';
+		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
+		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
-		zassert(super.version==VERSION_RELESE);
+		zassert(super.version == VERSION_RELESE);
 		zassert(!strcmp(super.magic, BASE_MAGIC));
-		if (super.exitstatus!=EXSTAT_SUCCESS) {
+		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
 				exit_status = EXSTAT_CHECKPOINT;
 			} else {
