@@ -990,13 +990,13 @@ void handle_request(int sd, fd_set *set) {
 	memset(logreqline, 0, RLOGLINE_SIZE);
 	snprintf(logreqline, RLOGLINE_SIZE, "[info] %s - ", str_addr);
 	if (request_type == HTTP_GET) {
-		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "GET");
+		strlcat(logreqline, "GET", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_POST) {
-		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "POST");
+		strlcat(logreqline, "POST", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_HEAD) {
-		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "HEAD");
+		strlcat(logreqline, "HEAD", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_OPTIONS) {
-		snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, "OPTIONS");
+		strlcat(logreqline, "OPTIONS", RLOGLINE_SIZE);
 	}
 
 	snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " %s - ", http_version);

@@ -20,7 +20,7 @@ typedef struct {
 typedef struct {
 	int cnt;
 	item_t items[INDEX_SIZE];
-	long int ptr[INDEX_SIZE+1];
+	long int ptr[INDEX_SIZE + 1];
 } node_t;
 
 struct index {

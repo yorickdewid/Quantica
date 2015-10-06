@@ -150,17 +150,20 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strmd5[MD5_SIZE] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_md5(strmd5, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -172,17 +175,20 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strsha[SHA1_LENGTH] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha1(strsha, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				free(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -194,17 +200,20 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strsha256[(2*SHA256_DIGEST_SIZE)] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha256(strsha256, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -216,17 +225,20 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strsha512[(2*SHA512_DIGEST_SIZE)] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha512);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strsha512);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha512(strsha512, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strsha512);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -238,23 +250,27 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strmac[SHA256_BLOCK_SIZE] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			char *key = tok->string;
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_hmac_sha256(strmac, key, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -266,23 +282,27 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			strmac[SHA512_BLOCK_SIZE] = '\0';
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			char *key = tok->string;
 			STACK_EMPTY_POP();
 			if (tok->token != T_STRING) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_hmac_sha512(strmac, key, tok->string);
 			STACK_EMPTY_POP();
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmac);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -447,12 +467,16 @@ select_tablelist:
 		}
 		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 insert_arr:
 		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
@@ -552,12 +576,16 @@ insert_arr:
 		}
 		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 update_arr:
 		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}

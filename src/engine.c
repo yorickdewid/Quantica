@@ -33,6 +33,7 @@ static uint64_t table_join(struct engine *e, uint64_t table_offset);
 static struct engine_table *alloc_table() {
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
+		zfree(table);
 		lprint("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
@@ -44,6 +45,7 @@ static struct engine_table *alloc_table() {
 static struct engine_tablelist *alloc_tablelist() {
 	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
 	if (!tablelist) {
+		zfree(tablelist);
 		lprint("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
@@ -64,6 +66,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
+		zfree(table);
 		lprint("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
@@ -71,6 +74,7 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 
 	lseek(e->fd, offset, SEEK_SET);
 	if (read(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
+		zfree(table);
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;

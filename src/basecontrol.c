@@ -92,6 +92,8 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
+		super.instance_name[INSTANCE_LENGTH-1] = '\0';
+		super.bindata[BINDATA_LENGTH-1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
