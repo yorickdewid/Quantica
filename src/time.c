@@ -50,10 +50,10 @@ static void timename(int days, int secs, int nanosecs, char *str) {
 	ntime = (ntime * (36.0 * 36.0 * 36.0 * 36.0 * 36.0 * 36.0 * 36.0 * 36.0)) / 86400E9;
 	ntime = floor(ntime + 0.5);
 	for (i = 11; i >= 4; i--) {
-		double d = floor(ntime / 36.0);
-		int rem = (int)(floor(ntime - (d * 36.0)));
+		double _d = floor(ntime / 36.0);
+		int rem = (int)(floor(ntime - (_d * 36.0)));
 		str[i] = rem < 10 ? '0' + rem : 'a' + rem - 10;
-		ntime = d;
+		ntime = _d;
 	}
 
 	d.quot = days + DAYS45_70 + NTIMENAME;

@@ -45,6 +45,8 @@ static dict_err_t dict_parse_primitive(dict_parser *parser, const char *str, siz
 			case '\t' : case '\r' : case '\n' : case ' ' :
 			case ','  : case ']'  : case '}' :
 				goto found;
+			default:
+				break;
 		}
 		if (str[parser->pos] < 32 || str[parser->pos] >= 127) {
 			parser->pos = start;

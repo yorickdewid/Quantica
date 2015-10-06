@@ -80,7 +80,7 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 
 			rs->slay = create_row(SCHEMA_TABLE, objcnt, (objcnt * QUID_LENGTH), slay_len);
 			rs->table = TRUE;
-			void *next = movetodata_row(rs->slay);
+			void *_next = movetodata_row(rs->slay);
 			int rows = 0;
 			struct slay_result crs;
 			for (; rows<objcnt; ++rows) {
@@ -88,7 +88,7 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 				slay_parse_object(data+cobj[rows][0], cobj[rows][1], &clen, &crs);
 				char squid[QUID_LENGTH+1];
 				_db_put(squid, crs.slay, clen);
-				next = slay_wrap(next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
+				_next = slay_wrap(_next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
 			}
 		}
 	} else if (t[0].type == DICT_OBJECT) {
@@ -233,16 +233,19 @@ void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result 
 			rs->slay = slay_parse_text((char *)data, data_len, len);
 			rs->items = 1;
 			break;
+		default:
+			rs->slay = slay_null(len);
+			break;
 	}
 }
 
 dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t dt) {
 	switch (dt) {
 		case DT_QUID: {
-			dstype_t dt;
-			char *rbuf = _db_get(buf, &dt);
+			dstype_t _dt;
+			char *rbuf = _db_get(buf, &_dt);
 			size_t rbuflen = strlen(rbuf);
-			return resolv_quid(v, rbuf, rbuflen, name, dt);
+			return resolv_quid(v, rbuf, rbuflen, name, _dt);
 		}
 		case DT_NULL:
 			zfree(buf);
@@ -270,6 +273,10 @@ dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t 
 			zfree(buf);
 			return elm;
 		}
+		default:
+			zfree(buf);
+			return dict_element_cnew(v, FALSE, name, "null");
+
 	}
 	return dict_element_cnew(v, FALSE, name, "null");
 }
@@ -321,11 +328,14 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					buf = zstrdup(val_data);
 					break;
 				case DT_QUID: {
-					dstype_t dt;
+					dstype_t _dt;
 					val_data = (char *)zrealloc(val_data, val_len+1);
 					((char *)val_data)[val_len] = '\0';
-					buf = _db_get(val_data, &dt);
+					buf = _db_get(val_data, &_dt);
 				}
+				default:
+					buf = zstrdup(str_null());
+					break;
 			}
 
 			*dt = val_dt;
@@ -368,24 +378,30 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					}
 					case DT_INT:
 					case DT_FLOAT:
-					case DT_JSON:
+					case DT_JSON: {
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(arr, FALSE, NULL, val_data);
 						vector_append(arr, (void *)element);
 						break;
+					}
 					case DT_QUID: {
-						dstype_t dt;
+						dstype_t _dt;
 						dict_t *element = NULL;
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						void *qbuf = _db_get(val_data, &dt);
+						void *qbuf = _db_get(val_data, &_dt);
 						if (!qbuf)
 							element = dict_element_cnew(arr, FALSE, NULL, "null");
 						else {
 							size_t buflen = strlen(qbuf);
-							element = resolv_quid(arr, qbuf, buflen, NULL, dt);
+							element = resolv_quid(arr, qbuf, buflen, NULL, _dt);
 						}
+						vector_append(arr, (void *)element);
+						break;
+					}
+					default: {
+						dict_t *element = dict_element_cnew(arr, FALSE, NULL, "null");
 						vector_append(arr, (void *)element);
 						break;
 					}
@@ -441,24 +457,30 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					}
 					case DT_FLOAT:
 					case DT_INT:
-					case DT_JSON:
+					case DT_JSON: {
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(obj, FALSE, name, val_data);
 						vector_append(obj, (void *)element);
 						break;
+					}
 					case DT_QUID: {
-						dstype_t dt;
+						dstype_t _dt;
 						dict_t *element = NULL;
 						val_data = (char *)zrealloc(val_data, val_len+1);
 						((char *)val_data)[val_len] = '\0';
-						void *qbuf = _db_get(val_data, &dt);
+						void *qbuf = _db_get(val_data, &_dt);
 						if (!qbuf)
 							element = dict_element_cnew(obj, FALSE, name, "null");
 						else {
 							size_t buflen = strlen(qbuf);
-							element = resolv_quid(obj, qbuf, buflen, name, dt);
+							element = resolv_quid(obj, qbuf, buflen, name, _dt);
 						}
+						vector_append(obj, (void *)element);
+						break;
+					}
+					default: {
+						dict_t *element = dict_element_cnew(obj, FALSE, name, "null");
 						vector_append(obj, (void *)element);
 						break;
 					}
@@ -483,18 +505,18 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			vector_t *arr = alloc_vector(VECTOR_SIZE);
 			for (i=0; i<elements; ++i) {
 				size_t namelen;
-				dstype_t dt;
+				dstype_t _dt;
 				dict_t *element = NULL;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 				val_data = (char *)zrealloc(val_data, val_len+1);
 				((char *)val_data)[val_len] = '\0';
-				void *qbuf = _db_get(val_data, &dt);
+				void *qbuf = _db_get(val_data, &_dt);
 				if (!qbuf)
 					element = dict_element_cnew(arr, FALSE, NULL, "null");
 				else {
 					size_t buflen = strlen(qbuf);
-					element = resolv_quid(arr, qbuf, buflen, NULL, dt);
+					element = resolv_quid(arr, qbuf, buflen, NULL, _dt);
 				}
 				vector_append(arr, (void *)element);
 				zfree(val_data);
@@ -508,6 +530,9 @@ void *slay_get_data(void *data, dstype_t *dt) {
 
 			break;
 		}
+		default:
+			buf = zstrdup(str_null());
+			break;
 	}
 
 	return (void *)buf;

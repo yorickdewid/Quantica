@@ -736,6 +736,8 @@ char *explode_sql(char *sql) {
 				if (!isspace(*(sql-1)))
 					pad++;
 				break;
+			default:
+				break;
 		}
 	sql = osql;
 	char *_sql = zmalloc(strlen(sql)+pad+1);
@@ -768,6 +770,8 @@ char *explode_sql(char *sql) {
 					}
 				}
 				break;
+			default:
+				break;
 		}
 		_sql[i] = sql[i];
 		switch (sql[i]) {
@@ -795,6 +799,8 @@ char *explode_sql(char *sql) {
 						_sql++;
 					}
 				}
+				break;
+			default:
 				break;
 		}
 	}

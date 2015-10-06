@@ -155,6 +155,9 @@ char *get_http_status(http_status_t status) {
 		case HTTP_NOT_FOUND:
 			strlcpy(buf, "404 NOT FOUND", 16);
 			break;
+		default:
+			strlcpy(buf, "400 Bad Request", 16);
+			break;
 	}
 	return buf;
 }
@@ -1042,9 +1045,9 @@ unsupported:
 	_filename = calloc(_filename_sz, 1);
 	strlcpy(_filename, filename, _filename_sz);
 	if (strstr(_filename, "%")) {
-		char *buf = zmalloc(strlen(_filename) + 1);
+		char *_buf = zmalloc(strlen(_filename) + 1);
 		char *pstr = _filename;
-		char *pbuf = buf;
+		char *pbuf = _buf;
 		while (*pstr) {
 			if (*pstr == '%') {
 				if (pstr[1] && pstr[2]) {
@@ -1060,7 +1063,7 @@ unsupported:
 		}
 		*pbuf = '\0';
 		zfree(_filename);
-		_filename = buf;
+		_filename = _buf;
 	}
 	size_t fsz = strlen(_filename);
 	if (fsz>1 && _filename[fsz-1] == '/')

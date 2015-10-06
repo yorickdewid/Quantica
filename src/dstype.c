@@ -48,6 +48,8 @@ dstype_t autotype(const char *data, size_t len) {
 			case 't':
 			case 'T':
 				return DT_BOOL_T;
+			default:
+				return DT_NULL;
 		}
 		if(isalpha(fchar))
 			return DT_CHAR;

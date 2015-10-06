@@ -36,6 +36,9 @@
 #include <jansson.h>
 #include <curl/curl.h>
 
+#include <config.h>
+#include <common.h>
+
 #define ASZ(a) sizeof(a)/sizeof(a[0])
 
 #define BUFFER_SIZE		(256 * 1024)  /* 256 KB */
@@ -43,6 +46,8 @@
 #define URL_FORMAT		"%s://%s:%s/sql"
 #define DEF_HOST		"localhost"
 #define DEF_PORT		"4017"
+
+#define CLIENT_VERSION	"0.9.1"
 
 char url[URL_SIZE];
 static char line[1024];
@@ -64,8 +69,8 @@ char *skipwhite(char *s) {
 static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream) {
 	struct write_result *result = (struct write_result *)stream;
 
-	if(result->pos + size * nmemb >= BUFFER_SIZE - 1) {
-		fprintf(stderr, "error: too small buffer\n");
+	if (result->pos + size * nmemb >= BUFFER_SIZE - 1) {
+		fprintf(stderr, "error: buffer too small\n");
 		return 0;
 	}
 
@@ -78,7 +83,7 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream)
 void request_init() {
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
-	if(!curl) {
+	if (!curl) {
 		curl_easy_cleanup(curl);
 		curl_global_cleanup();
 	}
@@ -89,19 +94,18 @@ void request_cleanup() {
 	curl_global_cleanup();
 }
 
-
-static char *request(const char *url, const char *sql) {
+static char *request(const char *rurl, const char *sql) {
 	CURLcode status;
 	struct curl_slist *headers = NULL;
 	char *data = NULL;
 	long code;
 	char query[URL_SIZE];
 
-	if(!curl)
+	if (!curl)
 		request_init();
 
 	data = malloc(BUFFER_SIZE);
-	if(!data)
+	if (!data)
 		goto error;
 
 	struct write_result write_result = {
@@ -110,19 +114,19 @@ static char *request(const char *url, const char *sql) {
 	};
 
 	/* Build the query */
-	strcpy(query, "query=");
-	strcat(query, sql);
+	strlcpy(query, "query=", URL_SIZE);
+	strlcat(query, sql, URL_SIZE);
 
-	headers = curl_slist_append(headers, "User-Agent: Quantica CLI");
+	headers = curl_slist_append(headers, "User-Agent: Quantica CLI/" CLIENT_VERSION);
 	headers = curl_slist_append(headers, "Accept: application/json");
 	headers = curl_slist_append(headers, "Content-Type: application/json");
 
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&write_result);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, query);
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, debug);
-	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_URL, rurl);
 
 	status = curl_easy_perform(curl);
 	if (status != 0) {
@@ -144,11 +148,11 @@ static char *request(const char *url, const char *sql) {
 	return data;
 
 error:
-	if(data)
+	if (data)
 		free(data);
-	if(curl)
+	if (curl)
 		curl_easy_cleanup(curl);
-	if(headers)
+	if (headers)
 		curl_slist_free_all(headers);
 	curl_global_cleanup();
 	return NULL;
@@ -176,13 +180,13 @@ json_t *parse(char *text) {
 		goto err;
 	}
 
-	if(!json_is_object(root)) {
+	if (!json_is_object(root)) {
 		fprintf(stderr, "error: cannot parse result\n");
 		goto err;
 	}
 
 	json_t *desc = json_object_get(root, "description");
-	if(!json_is_string(desc)) {
+	if (!json_is_string(desc)) {
 		fprintf(stderr, "error: cannot parse result\n");
 		goto err;
 	}
@@ -217,7 +221,7 @@ static int localcommand(char *cmd) {
 
 	/* Show a list of available commands */
 	if (!strcmp("help", cmd)) {
-		for (i=0; i<ASZ(localfunclist); ++i) {
+		for (i = 0; i < ASZ(localfunclist); ++i) {
 			printf(" %s\t\t%s\n", localfunclist[i].name, localfunclist[i].description);
 		}
 		return 0;
@@ -227,7 +231,7 @@ static int localcommand(char *cmd) {
 		return 1;
 	}
 
-	for (i=0; i<ASZ(localfunclist); ++i) {
+	for (i = 0; i < ASZ(localfunclist); ++i) {
 		if (!strcmp(localfunclist[i].name, cmd)) {
 			vfunc = localfunclist[i].vf;
 			vfunc();
@@ -235,7 +239,7 @@ static int localcommand(char *cmd) {
 		}
 	}
 	char *text = request(url, cmd);
-	if(!text)
+	if (!text)
 		return 0;
 
 	json_t *json = parse(text);
@@ -257,29 +261,29 @@ int main(int argc, char *argv[]) {
 	extern int opterr;
 	char *text;
 	int c;
-	int sflag=0;
+	int sflag = 0;
 	char *host = DEF_HOST;
 	char *port = DEF_PORT;
 	static char usage[] = "Usage: %s [-ds] [-h host] [-p port] \n";
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "dh:p:s"))>0) {
+	while ((c = getopt(argc, argv, "dh:p:s")) > 0) {
 		switch (c) {
-			case 'd':
-				debug = 1;
-				break;
-			case 'h':
-				host = optarg;
-				break;
-			case 'p':
-				port = optarg;
-				break;
-			case 's':
-				sflag = 1;
-				break;
-			default:
-				fprintf(stderr, usage, argv[0]);
-				return 1;
+		case 'd':
+			debug = 1;
+			break;
+		case 'h':
+			host = optarg;
+			break;
+		case 'p':
+			port = optarg;
+			break;
+		case 's':
+			sflag = 1;
+			break;
+		default:
+			fprintf(stderr, usage, argv[0]);
+			return 1;
 		}
 	}
 
@@ -287,7 +291,7 @@ int main(int argc, char *argv[]) {
 
 	snprintf(url, URL_SIZE, URL_FORMAT, sflag ? "https" : "http", host, port);
 	text = request(url, "SELECT VERSION()");
-	if(!text)
+	if (!text)
 		return 1;
 
 	json_t *json = parse(text);
@@ -295,7 +299,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 
 	json_t *version = json_object_get(json, "version");
-	if(!json_is_string(version)) {
+	if (!json_is_string(version)) {
 		fprintf(stderr, "error: cannot parse result\n");
 		return 1;
 	}
@@ -313,7 +317,7 @@ int main(int argc, char *argv[]) {
 		if (!strlen(cmd))
 			continue;
 
-		cmd[strlen(cmd)-1] = '\0';
+		cmd[strlen(cmd) - 1] = '\0';
 		localcommand(cmd);
 	}
 
