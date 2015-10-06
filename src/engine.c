@@ -177,13 +177,13 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->list_top = from_be64(super.list_top);
 	zassert(from_be64(super.version)==VERSION_RELESE);
 
-	uint64_t crc64;
-	if(!crc_file(e->fd, &crc64)) {
+	uint64_t crc64sum;
+	if(!crc_file(e->fd, &crc64sum)) {
 		lprint("[erro] Failed to calculate CRC\n");
 		return -1;
 	}
 	/* TODO: run the diagnose process */
-	if (from_be64(super.crc_zero_key)!=crc64)
+	if (from_be64(super.crc_zero_key)!=crc64sum)
 		lprint("[erro] Index CRC doenst match\n");
 
 	struct engine_dbsuper dbsuper;
@@ -387,7 +387,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 }
 
 static void flush_super(struct engine *e, bool fast_flush) {
-	uint64_t crc64;
+	uint64_t crc64sum;
 	struct engine_super super;
 	memset(&super, 0, sizeof(struct engine_super));
 	super.version = to_be64(VERSION_RELESE);
@@ -403,11 +403,11 @@ static void flush_super(struct engine *e, bool fast_flush) {
 		lprint("[erro] Failed to calculate CRC\n");
 		return;
 	}
-	if(!crc_file(e->fd, &crc64)) {
+	if(!crc_file(e->fd, &crc64sum)) {
 		lprint("[erro] Failed to calculate CRC\n");
 		return;
 	}
-	super.crc_zero_key = to_be64(crc64);
+	super.crc_zero_key = to_be64(crc64sum);
 
 flush_disk:
 	if (lseek(e->fd, 0, SEEK_SET)<0) {
