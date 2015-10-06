@@ -29,7 +29,7 @@
 #define KEYSIZE		16
 #define VALSIZE		100
 
-static struct timespec start;
+static struct timespec timer_start;
 static struct engine e;
 static char val[VALSIZE+1] = {'\0'};
 quid_t quidr[NUM];
@@ -41,10 +41,10 @@ static void start_timer() {
 	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
 	clock_get_time(cclock, &mts);
 	mach_port_deallocate(mach_task_self(), cclock);
-	start.tv_sec = mts.tv_sec;
-	start.tv_nsec = mts.tv_nsec;
+	timer_start.tv_sec = mts.tv_sec;
+	timer_start.tv_nsec = mts.tv_nsec;
 #else
-	clock_gettime(CLOCK_MONOTONIC, &start);
+	clock_gettime(CLOCK_MONOTONIC, &timer_start);
 #endif
 }
 
@@ -61,8 +61,8 @@ static double get_timer() {
 #else
 	clock_gettime(CLOCK_MONOTONIC, &end);
 #endif
-	long seconds  = end.tv_sec - start.tv_sec;
-	long nseconds = end.tv_nsec - start.tv_nsec;
+	long seconds  = end.tv_sec - timer_start.tv_sec;
+	long nseconds = end.tv_nsec - timer_start.tv_nsec;
 	return seconds + (double)nseconds / 1.0e9;
 }
 
