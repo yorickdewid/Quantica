@@ -92,17 +92,20 @@ static struct engine_tablelist *get_tablelist(struct engine *e, uint64_t offset)
 
 	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
 	if (!tablelist) {
+		zfree(tablelist);
 		lprint("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
 	}
 
 	if (lseek(e->fd, offset, SEEK_SET)<0) {
+		zfree(tablelist);
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;
 	}
 	if (read(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
+		zfree(tablelist);
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;

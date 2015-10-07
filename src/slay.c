@@ -308,13 +308,13 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					break;
 				case DT_INT:
 				case DT_FLOAT:
-					val_data = (void *)realloc(val_data, val_len+1);
+					val_data = (void *)zrealloc(val_data, val_len+1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					buf = zstrdup(val_data);
 					break;
 				case DT_CHAR:
 				case DT_TEXT: {
-					val_data = (char *)realloc(val_data, val_len+1);
+					val_data = (char *)zrealloc(val_data, val_len+1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					char *escdata = stresc(val_data);
 					buf = zmalloc(strlen(escdata)+3);
@@ -323,7 +323,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					break;
 				}
 				case DT_JSON:
-					val_data = (void *)realloc(val_data, val_len+1);
+					val_data = (void *)zrealloc(val_data, val_len+1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					buf = zstrdup(val_data);
 					break;

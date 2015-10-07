@@ -398,6 +398,7 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	struct metadata meta;
 	strtoquid(quid, &key);
 
+	memset(&meta, 0, sizeof(struct metadata));
 	meta.syslock = status->syslock;
 	meta.exec = status->exec;
 	meta.freeze = status->freeze;

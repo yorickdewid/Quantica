@@ -164,3 +164,11 @@ void tree_steal(void *mem, void *parent) {
 	child(mem) = NULL;
 }
 
+inline void *zrealloc(void *ptr, size_t sz) {
+	void *_ptr = ptr;
+	if ((ptr = realloc(_ptr, sz)) == NULL) {
+		zfree(ptr);
+		return NULL;
+	}
+	return ptr;
+}
