@@ -573,7 +573,7 @@ uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t le
 		memcpy(namedest, name, namelen);
 	}
 
-	return dest+slay->size+namelen;
+	return (uint8_t *)dest+slay->size+namelen;
 }
 
 void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_t *dt) {
