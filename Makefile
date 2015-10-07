@@ -4,8 +4,11 @@ TESTDIR=test
 BINDIR=bin
 UTILDIR=util
 VALGRIND=valgrind
+CPPCHECK=cppcheck
+CPPCHECKFLAGS=--quiet --std=c99
 VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
-CFLAGS=-c -g -O0 -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -DDEBUG -DX64 -DTN12
+WFLAGS=-pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
+CFLAGS=-c -g -O0 $(WFLAGS) -DDEBUG -DX64 -DTN12
 LDFLAGS= -lm
 SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/time.c \
@@ -91,15 +94,18 @@ $(EXECUTABLETEST): $(TESTOBJECTS)
 memcheck: debug
 	cd $(BINDIR) && $(VALGRIND) $(VALFLAGS) ./$(EXECUTABLE) -f
 
+cov: debug
+	$(CPPCHECK) $(CPPCHECKFLAGS) $(SRCDIR) $(UTILDIR) $(TESTDIR)
+
 fixeof:
 	$(CC) $(UTILDIR)/lfeof.c -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -o $(BINDIR)/lfeof
 	find . -type f -name *.[c\|h] -print -exec $(BINDIR)/lfeof {} \;
 
 genquid:
-	$(CC) -O3 -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
+	$(CC) -O3 $(WFLAGS) -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
 genlookup3:
-	$(CC) -O3 -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
+	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
 qcli:
 	$(eval CFLAGS := $(filter-out -c,$(CFLAGS)))

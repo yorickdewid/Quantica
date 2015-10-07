@@ -772,7 +772,9 @@ const struct webroute route[] = {
 	{"/",				api_root,			FALSE},
 	{"/license",		api_license,		FALSE},
 	{"/help",			api_help,			FALSE},
+#if 0
 	{"/api",			api_help,			FALSE},
+#endif
 	{"/instance",		api_instance,		FALSE},
 	{"/session",		api_session,		FALSE},
 	{"/sha1",			api_sha1,			FALSE},
@@ -1169,11 +1171,12 @@ disconnect:
 int start_webapi() {
 	start_core();
 
-	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
-	lprintf("[info] Current time: %lld\n", get_timestamp());
-	lprintf("[info] Storage core [%s]\n", get_instance_key());
 	lprint("[info] Starting daemon\n");
 	lprint("[info] Start database core\n");
+	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
+	lprintf("[info] Current time: %lld\n", get_timestamp());
+	lprintf("[info] Storage core %s\n", get_zero_key());
+	lprintf("[info] Instance %s %s\n", get_instance_name(), get_instance_key());
 
 	struct addrinfo hints, *servinfo, *p;
 	memset(&hints, 0, sizeof(struct addrinfo));
