@@ -130,7 +130,7 @@ void json_response(FILE *socket_stream, vector_t *headers, const char *status, c
 		"HTTP/1.1 %s\r\n"
 		"Server: " PROGNAME "/%s " VERSION_STRING "\r\n"
 		"Content-Type: application/json\r\n"
-		"Content-Length: %zu\r\n", status, get_version_string(), strlen(message)+2);
+		"Content-Length: %zu\r\n", status, get_version_string(), (strlen(message)+2));
 
 	size_t i;
 	for (i=0; i<headers->size; ++i) {
@@ -666,7 +666,7 @@ http_status_t api_rec_meta(char **response, http_request_t *req) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 			}
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"error\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%u,\"type\":\"%s\",\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":true}", str_bool(status.error), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
+		snprintf(*response, RESPONSE_SIZE, "{\"error\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\",\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":true}", str_bool(status.error), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
 		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
@@ -819,10 +819,10 @@ void handle_request(int sd, fd_set *set) {
 		goto disconnect;
 	};
 
-    struct sockaddr_storage addr;
-    char str_addr[INET6_ADDRSTRLEN];
-    socklen_t len = sizeof(addr);
-    getpeername(sd, (struct sockaddr*)&addr, &len);
+	struct sockaddr_storage addr;
+	char str_addr[INET6_ADDRSTRLEN];
+	socklen_t len = sizeof(addr);
+	getpeername(sd, (struct sockaddr*)&addr, &len);
 	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
 
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
@@ -1133,10 +1133,10 @@ unsupported:
 				}
 			}
 		} else if (!strcmp(route[nsz].uri, _filename)) {
-            req.uri = _filename;
+			req.uri = _filename;
 			status = route[nsz].api_handler(&resp_message, &req);
 			goto respond;
-        }
+		}
 	}
 	if (!status)
 		status = api_not_found(&resp_message, &req);
@@ -1165,7 +1165,7 @@ disconnect:
 		fclose(socket_stream);
 	}
 	shutdown(sd, SHUT_RDWR);
-    FD_CLR(sd, set);
+	FD_CLR(sd, set);
 }
 
 int start_webapi() {

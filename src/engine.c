@@ -756,8 +756,9 @@ int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len) 
 static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size;
 		while (left < right) {
+			size_t i;
 			i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
@@ -847,9 +848,9 @@ int engine_purge(struct engine *e, quid_t *quid) {
 static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, struct metadata *meta) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size;
 		while (left < right) {
-			i = (right - left) / 2 + left;
+			size_t i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
@@ -890,9 +891,9 @@ int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
 static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, const struct metadata *md) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size;
 		while (left < right) {
-			i = (right - left) / 2 + left;
+			size_t i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
@@ -1075,9 +1076,9 @@ int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t
 	uint64_t table_offset = e->top;
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
-		size_t left = 0, right = table->size, i;
+		size_t left = 0, right = table->size;
 		while (left < right) {
-			i = (right - left) / 2 + left;
+			size_t i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {

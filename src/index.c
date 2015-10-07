@@ -158,7 +158,7 @@ status_t index_get(long long int key) {
 		if (i < n && key == kv[i].key) {
 
 #ifdef DEBUG
-			printf("valset %lld\n", kv[i].valset);
+			printf("valset %llu\n", kv[i].valset);
 			printf("Found in position %d\n", i);
 #endif // DEBUG
 
