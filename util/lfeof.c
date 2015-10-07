@@ -52,13 +52,16 @@ int main(int argc, const char *argv[]) {
 	char *buff = (char*)malloc(sizeof(char)*psz);
 	if (!buff) {
 		fputs("Memory error", stderr);
+		fclose(fd);
 		return 1;
 	}
 
 	// check LF and add one if needed
 	fread(buff, 1, psz, fd);
-	if (buff[psz-1] != '\n')
+	if (buff[psz-1] != '\n') {
+		fflush(fd);
 		fwrite("\n", 1, 1, fd);
+	}
 
 	free(buff);
 	fclose(fd);
