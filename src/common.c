@@ -76,6 +76,7 @@ bool strismatch(const char *str, const char *tok) {
 	return TRUE;
 }
 
+/* count charactes in strin */
 int strccnt(const char *str, char c) {
 	int cnt = 0;
 	while((str = strchr(str, c)) != NULL) {
