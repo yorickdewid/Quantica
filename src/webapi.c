@@ -56,8 +56,13 @@ unsigned int run = 1;
 typedef enum {
 	HTTP_GET = 1,
 	HTTP_POST,
+	HTTP_PUT,
 	HTTP_HEAD,
-	HTTP_OPTIONS
+	HTTP_TRACE,
+	HTTP_PATCH,
+	HTTP_DELETE,
+	HTTP_OPTIONS,
+	HTTP_CONNECT
 } http_method_t;
 
 typedef enum {
@@ -153,7 +158,7 @@ char *get_http_status(http_status_t status) {
 			strlcpy(buf, "200 OK", 16);
 			break;
 		case HTTP_NOT_FOUND:
-			strlcpy(buf, "404 NOT FOUND", 16);
+			strlcpy(buf, "404 Not Found", 16);
 			break;
 		default:
 			strlcpy(buf, "400 Bad Request", 16);
@@ -187,7 +192,7 @@ http_status_t api_help(char **response, http_request_t *req) {
 }
 
 http_status_t api_instance(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_name = (char *)hashtable_get(req->data, "name");
 		if (param_name) {
 			set_instance_name(param_name);
@@ -208,7 +213,7 @@ http_status_t api_session(char **response, http_request_t *req) {
 }
 
 http_status_t api_sha1(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char strsha[SHA1_LENGTH+1];
@@ -224,12 +229,12 @@ http_status_t api_sha1(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_md5(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char strmd5[MD5_SIZE+1];
@@ -241,12 +246,12 @@ http_status_t api_md5(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_sha256(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char strsha256[(2*SHA256_DIGEST_SIZE)+1];
@@ -258,12 +263,12 @@ http_status_t api_sha256(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_sha512(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char strsha512[(2*SHA512_DIGEST_SIZE)+1];
@@ -275,12 +280,12 @@ http_status_t api_sha512(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_hmac_sha256(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		char *param_key = (char *)hashtable_get(req->data, "key");
 		if (param_data && param_key) {
@@ -293,12 +298,12 @@ http_status_t api_hmac_sha256(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_hmac_sha512(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		char *param_key = (char *)hashtable_get(req->data, "key");
 		if (param_data && param_key) {
@@ -311,12 +316,12 @@ http_status_t api_hmac_sha512(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_sqlquery(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
 		if (param_data) {
 			size_t len = 0, resplen;
@@ -366,7 +371,7 @@ http_status_t api_sqlquery(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects query\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
@@ -435,7 +440,7 @@ http_status_t api_shutdown(char **response, http_request_t *req) {
 }
 
 http_status_t api_base64_enc(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char *enc = crypto_base64_enc(param_data);
@@ -446,12 +451,12 @@ http_status_t api_base64_enc(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_base64_dec(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char *enc = crypto_base64_dec(param_data);
@@ -462,12 +467,12 @@ http_status_t api_base64_dec(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_db_put(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		if (param_data) {
 			char squid[QUID_LENGTH+1];
@@ -482,7 +487,7 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
@@ -578,7 +583,7 @@ http_status_t api_db_purge(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_update(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "data");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_data && param_quid) {
@@ -601,7 +606,7 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
@@ -609,7 +614,7 @@ http_status_t api_rec_meta(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		struct record_status status;
-		if (req->method == HTTP_POST) {
+		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 			if (db_record_get_meta(param_quid, &status)<0) {
 				if(IFERROR(EREC_LOCKED)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
@@ -695,7 +700,7 @@ http_status_t api_db_listget(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_listupdate(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_name = (char *)hashtable_get(req->data, "name");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_name && param_quid) {
@@ -709,7 +714,7 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
@@ -890,6 +895,22 @@ void handle_request(int sd, fd_set *set) {
 					if (strstr(str, "POST ") == str) {
 						r_type_width = 5;
 						request_type = HTTP_POST;
+					} else if (strstr(str, "PUT ") == str) {
+						r_type_width = 4;
+						request_type = HTTP_PUT;
+					} else if (strstr(str, "PATCH ") == str) {
+						r_type_width = 6;
+						request_type = HTTP_PATCH;
+						goto unsupported;
+					} else {
+						goto unsupported;
+					}
+					break;
+				case 'T':
+					if (strstr(str, "TRACE ") == str) {
+						r_type_width = 6;
+						request_type = HTTP_TRACE;
+						goto unsupported;
 					} else {
 						goto unsupported;
 					}
@@ -902,10 +923,31 @@ void handle_request(int sd, fd_set *set) {
 						goto unsupported;
 					}
 					break;
+				case 'D':
+					if (strstr(str, "DELETE ") == str) {
+						r_type_width = 7;
+						request_type = HTTP_DELETE;
+					} else {
+						goto unsupported;
+					}
+					break;
 				case 'O':
 					if (strstr(str, "OPTIONS ") == str) {
 						r_type_width = 8;
 						request_type = HTTP_OPTIONS;
+					} else {
+						goto unsupported;
+					}
+					break;
+				case 'C':
+					if (strstr(str, "CONNECT ") == str) {
+						r_type_width = 8;
+						request_type = HTTP_CONNECT;
+						raw_response(socket_stream, headers, "400 Bad Request");
+						fflush(socket_stream);
+						vector_free(queue);
+						vector_free(headers);
+						goto disconnect;
 					} else {
 						goto unsupported;
 					}
@@ -990,10 +1032,20 @@ void handle_request(int sd, fd_set *set) {
 		strlcat(logreqline, "GET", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_POST) {
 		strlcat(logreqline, "POST", RLOGLINE_SIZE);
+	} else if (request_type == HTTP_PUT) {
+		strlcat(logreqline, "PUT", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_HEAD) {
 		strlcat(logreqline, "HEAD", RLOGLINE_SIZE);
+	} else if (request_type == HTTP_TRACE) {
+		strlcat(logreqline, "TRACE", RLOGLINE_SIZE);
+	} else if (request_type == HTTP_PATCH) {
+		strlcat(logreqline, "PATCH", RLOGLINE_SIZE);
+	} else if (request_type == HTTP_DELETE) {
+		strlcat(logreqline, "DELETE", RLOGLINE_SIZE);
 	} else if (request_type == HTTP_OPTIONS) {
 		strlcat(logreqline, "OPTIONS", RLOGLINE_SIZE);
+	} else if (request_type == HTTP_CONNECT) {
+		strlcat(logreqline, "CONNECT", RLOGLINE_SIZE);
 	}
 
 	snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " %s - ", http_version);
@@ -1092,7 +1144,7 @@ unsupported:
 			var = strtok(NULL, "&");
 		}
 	}
-	char *pch;
+	char *pch = NULL;
 	size_t nsz = RSIZE(route);
 	char *resp_message = (char *)zmalloc(RESPONSE_SIZE);
 	http_status_t status = 0;
