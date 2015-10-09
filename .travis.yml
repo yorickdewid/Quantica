@@ -12,15 +12,15 @@ matrix:
   allow_failures:
     - os: osx
 
-before_script:
-  - git clone https://github.com/akheron/jansson
-  - pushd jansson
-  - autoreconf -i
-  - ./configure
-  - make
-  - sudo make install
-  - popd
-  - rm -fr jansson
+#before_script:
+#  - git clone https://github.com/akheron/jansson
+#  - pushd jansson
+#  - autoreconf -i
+#  - ./configure
+#  - make
+#  - sudo make install
+#  - popd
+#  - rm -fr jansson
 
 script:
   - make fixeof
@@ -28,18 +28,21 @@ script:
   - make genlookup3
   - make debug
   - make test
-  - make qcli
+#  - make qcli
   - ./bin/quantica_test
   - ./test/dupquid.sh
+
+sudo:
+  false
 
 env:
   global:
     - secure: "uId7T0M2IM+bBmsqfU3sSEMtoIwffO+ftoVpjGrP3bN9dkrtmnNWBSCpI/2ZutCNcQ3HZIxGEjeG/zLyHZ4HqSn92uSWixOdvhw3wWvC+9pU8ln8txZet9+y8Mt4KJXvy/i+D72qq4LqgQ5EfDXq+cLyMj1Gsj/qkwOjSHcPZok="
 
 addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
+#  apt:
+#    packages:
+#      - libcurl4-openssl-dev
   coverity_scan:
     project:
       name: "yorickdewid/Quantica"
