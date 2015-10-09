@@ -294,6 +294,24 @@ char *db_get_type(char *quid) {
 	return str_type(dt);
 }
 
+char *db_get_schema(char *quid) {
+	if (!ready)
+		return NULL;
+	quid_t key;
+	strtoquid(quid, &key);
+
+	size_t len;
+	void *data = engine_get(&btx, &key, &len);
+	if (!data)
+		return NULL;
+
+	uint64_t elements;
+	schema_t schema;
+	get_row(data, &schema, &elements);
+	zfree(data);
+	return str_schema(schema);
+}
+
 int _db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;

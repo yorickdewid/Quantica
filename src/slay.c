@@ -37,7 +37,7 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 		int cobj[cnt][2];
 		rs->slay = create_row(SCHEMA_ARRAY, cnt, data_len, slay_len);
 		void *next = movetodata_row(rs->slay);
-		for (i=1; i<r; ++i) {
+		for (i = 1; i < r; ++i) {
 			if (t[i].type == DICT_PRIMITIVE) {
 				if (dict_cmp(data, &t[i], "null")) {
 					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
@@ -46,31 +46,31 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 				} else if (dict_cmp(data, &t[i], "false")) {
 					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
 				} else {
-					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_INT);
+					next = slay_wrap(next, NULL, 0, data + t[i].start, t[i].end - t[i].start, DT_INT);
 				}
 			} else if (t[i].type == DICT_STRING) {
-				char *squid = data+t[i].start;
-				squid[t[i].end-t[i].start] = '\0';
-				if (strquid_format(data+t[i].start)>0)
-					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_QUID);
+				char *squid = data + t[i].start;
+				squid[t[i].end - t[i].start] = '\0';
+				if (strquid_format(data + t[i].start) > 0)
+					next = slay_wrap(next, NULL, 0, data + t[i].start, t[i].end - t[i].start, DT_QUID);
 				else
-					next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+					next = slay_wrap(next, NULL, 0, data + t[i].start, t[i].end - t[i].start, DT_TEXT);
 			} else if (t[i].type == DICT_OBJECT) {
 				cobj[objcnt][0] = t[i].start;
 				cobj[objcnt][1] = (t[i].end - t[i].start);
-				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+				next = slay_wrap(next, NULL, 0, data + t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
-				for (x=0; x<t[i].size; x++) {
-					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
-					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+				for (x = 0; x < t[i].size; x++) {
+					j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+					j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 				}
 				i += j;
 				objcnt++;
 			} else if (t[i].type == DICT_ARRAY) {
-				next = slay_wrap(next, NULL, 0, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+				next = slay_wrap(next, NULL, 0, data + t[i].start, t[i].end - t[i].start, DT_JSON);
 				int x, j = 0;
-				for (x=0; x<t[i].size; x++) {
-					j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+				for (x = 0; x < t[i].size; x++) {
+					j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 				}
 				i += j;
 			}
@@ -83,10 +83,10 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 			void *_next = movetodata_row(rs->slay);
 			int rows = 0;
 			struct slay_result crs;
-			for (; rows<objcnt; ++rows) {
+			for (; rows < objcnt; ++rows) {
 				size_t clen = 0;
-				slay_parse_object(data+cobj[rows][0], cobj[rows][1], &clen, &crs);
-				char squid[QUID_LENGTH+1];
+				slay_parse_object(data + cobj[rows][0], cobj[rows][1], &clen, &crs);
+				char squid[QUID_LENGTH + 1];
 				_db_put(squid, crs.slay, clen);
 				_next = slay_wrap(_next, NULL, 0, squid, QUID_LENGTH, DT_QUID);
 			}
@@ -99,44 +99,43 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 
 		rs->slay = create_row(SCHEMA_OBJECT, cnt, data_len, slay_len);
 		void *next = movetodata_row(rs->slay);
-		for (i=1; i<r; ++i) {
-			if (i%2 == 0) {
+		for (i = 1; i < r; ++i) {
+			if (i % 2 == 0) {
 				if (t[i].type == DICT_PRIMITIVE) {
 					if (dict_cmp(data, &t[i], "null")) {
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_NULL);
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, NULL, 0, DT_NULL);
 					} else if (dict_cmp(data, &t[i], "true")) {
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_BOOL_T);
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, NULL, 0, DT_BOOL_T);
 					} else if (dict_cmp(data, &t[i], "false")) {
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, NULL, 0, DT_BOOL_F);
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, NULL, 0, DT_BOOL_F);
 					} else {
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_INT);
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, data + t[i].start, t[i].end - t[i].start, DT_INT);
 					}
 				} else if (t[i].type == DICT_STRING) {
-					char *squid = data+t[i].start;
-					squid[t[i].end-t[i].start] = '\0';
-					if (strquid_format(data+t[i].start)>0)
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_QUID);
+					char *squid = data + t[i].start;
+					squid[t[i].end - t[i].start] = '\0';
+					if (strquid_format(data + t[i].start) > 0)
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, data + t[i].start, t[i].end - t[i].start, DT_QUID);
 					else
-						next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_TEXT);
+						next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, data + t[i].start, t[i].end - t[i].start, DT_TEXT);
 				} else if (t[i].type == DICT_OBJECT) {
-					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+					next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, data + t[i].start, t[i].end - t[i].start, DT_JSON);
 					int x, j = 0;
-					for (x=0; x<t[i].size; x++) {
-						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
-						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+					for (x = 0; x < t[i].size; x++) {
+						j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+						j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 					}
 					i += j;
 				} else if (t[i].type == DICT_ARRAY) {
-					next = slay_wrap(next, data+t[i-1].start, t[i-1].end - t[i-1].start, data+t[i].start, t[i].end - t[i].start, DT_JSON);
+					next = slay_wrap(next, data + t[i - 1].start, t[i - 1].end - t[i - 1].start, data + t[i].start, t[i].end - t[i].start, DT_JSON);
 					int x, j = 0;
-					for (x=0; x<t[i].size; x++) {
-						j += dict_levelcount(&t[i+1+j], 0, 0, NULL);
+					for (x = 0; x < t[i].size; x++) {
+						j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 					}
 					i += j;
 				}
 			}
 		}
-
 	}
 }
 
@@ -539,10 +538,10 @@ void *slay_get_data(void *data, dstype_t *dt) {
 }
 
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
-	struct row_slay *row = zcalloc(1, sizeof(struct row_slay)+(el * sizeof(struct value_slay))+data_len);
+	struct row_slay *row = zcalloc(1, sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len);
 	row->elements = el;
 	row->schema = schema;
-	*len = sizeof(struct row_slay)+(el * sizeof(struct value_slay))+data_len;
+	*len = sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len;
 	return (void *)row;
 }
 
@@ -563,17 +562,17 @@ uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t le
 	slay->size = data_size;
 	slay->namesize = namelen;
 
-	uint8_t *dest = ((uint8_t *)slay)+sizeof(struct value_slay);
+	uint8_t *dest = ((uint8_t *)slay) + sizeof(struct value_slay);
 	if (slay->size) {
 		memcpy(dest, data, data_size);
 	}
 
 	if (slay->namesize) {
-		uint8_t *namedest = dest+slay->size;
+		uint8_t *namedest = dest + slay->size;
 		memcpy(namedest, name, namelen);
 	}
 
-	return (uint8_t *)dest+slay->size+namelen;
+	return (uint8_t *)dest + slay->size + namelen;
 }
 
 void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_t *dt) {
@@ -581,14 +580,14 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 	void *data = NULL;
 
 	if (slay->size) {
-		void *src = ((uint8_t *)arrp)+sizeof(struct value_slay);
+		void *src = ((uint8_t *)arrp) + sizeof(struct value_slay);
 		data = zmalloc(slay->size);
 		memcpy(data, src, slay->size);
 	}
 
 	if (slay->namesize) {
 		zassert(!*name);
-		void *src = ((uint8_t *)arrp)+sizeof(struct value_slay)+slay->size;
+		void *src = ((uint8_t *)arrp) + sizeof(struct value_slay) + slay->size;
 		*name = zmalloc(slay->namesize);
 		memcpy(*name, src, slay->namesize);
 	}
@@ -598,4 +597,19 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 	*namelen = slay->namesize;
 
 	return data;
+}
+
+char *str_schema(schema_t schema) {
+	switch(schema) {
+		case SCHEMA_FIELD:
+			return "FIELD";
+		case SCHEMA_ARRAY:
+			return "ARRAY";
+		case SCHEMA_OBJECT:
+			return "OBJECT";
+		case SCHEMA_TABLE:
+			return "TABLE";
+		default:
+			return "NULL";
+	}
 }

@@ -11,7 +11,7 @@
 #include "diagnose.h"
 #include "basecontrol.h"
 
-#define BASECONTROL		"base_control"
+#define BASECONTROL		"base"
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 

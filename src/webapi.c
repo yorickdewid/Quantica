@@ -538,6 +538,26 @@ http_status_t api_db_get_type(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_db_get_schema(char **response, http_request_t *req) {
+	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	if (param_quid) {
+		char *schema = db_get_schema(param_quid);
+		if (!schema) {
+			if(IFERROR(EREC_NOTFOUND)) {
+				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+				return HTTP_OK;
+			} else {
+				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+				return HTTP_OK;
+			}
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"dataschema\":\"%s\",\"description\":\"Datatype of record value\",\"status\":\"COMMAND_OK\",\"success\":true}", schema);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_db_delete(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
@@ -800,6 +820,7 @@ const struct webroute route[] = {
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
 	{"/type",			api_db_get_type,	TRUE},
+	{"/schema",			api_db_get_schema,	TRUE},
 	{"/delete",			api_db_delete,		TRUE},
 	{"/remove",			api_db_delete,		TRUE},
 	{"/purge",			api_db_purge,		TRUE},

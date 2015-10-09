@@ -97,7 +97,7 @@ char *str_type(dstype_t dt) {
 		case DT_QUID:
 			return "QUID";
 		case DT_JSON:
-			return "JSON";
+			return "OBJECT";
 		default:
 			return "NULL";
 	}
