@@ -74,7 +74,7 @@ typedef struct {
 struct webroute {
 	char uri[32];
 	http_status_t (*api_handler)(char **response, http_request_t *req);
-	int require_quid;
+	unsigned char require_quid;
 };
 
 void *get_in_addr(struct sockaddr *sa) {
@@ -714,36 +714,27 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 }
 
 http_status_t api_table(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST) {
-		char *param_name = (char *)hashtable_get(req->data, "name");
-		if (param_name) {
-			size_t len = 0, resplen;
-			char *data = db_table_get(param_name, &len);
-			if (!data) {
-				if(IFERROR(EREC_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ETBL_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
-			}
-			resplen = RESPONSE_SIZE;
-			if (len > (RESPONSE_SIZE/2)) {
-				resplen = RESPONSE_SIZE+len;
-				*response = zrealloc(*response, resplen);
-			}
-			snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
-			zfree(data);
+	size_t len = 0, resplen;
+	char *data = db_table_get(req->uri, &len);
+	if (!data) {
+		if(IFERROR(EREC_NOTFOUND)) {
+			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+			return HTTP_OK;
+		} else if (IFERROR(ETBL_NOTFOUND)) {
+			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
+			return HTTP_OK;
+		} else {
+			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 			return HTTP_OK;
 		}
-		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
-		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE/2)) {
+		resplen = RESPONSE_SIZE+len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
+	zfree(data);
 	return HTTP_OK;
 }
 
@@ -769,6 +760,7 @@ http_status_t api_listall(char **response, http_request_t *req) {
 }
 
 const struct webroute route[] = {
+	/* URL				callback			QUID*/
 	{"/",				api_root,			FALSE},
 	{"/license",		api_license,		FALSE},
 	{"/help",			api_help,			FALSE},
@@ -798,7 +790,7 @@ const struct webroute route[] = {
 	{"/put",			api_db_put,			FALSE},
 	{"/store",			api_db_put,			FALSE},
 	{"/insert",			api_db_put,			FALSE},
-	{"/table",			api_table,			FALSE},
+	{"/table/*",		api_table,			FALSE},
 	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
@@ -1100,6 +1092,7 @@ unsupported:
 			var = strtok(NULL, "&");
 		}
 	}
+	char *pch;
 	size_t nsz = RSIZE(route);
 	char *resp_message = (char *)zmalloc(RESPONSE_SIZE);
 	http_status_t status = 0;
@@ -1111,11 +1104,12 @@ unsupported:
 			char squid[QUID_LENGTH+1];
 			if (fsz < QUID_LENGTH+1)
 				continue;
-			char *_pfilename = _filename+QUID_LENGTH+1;
-			strlcpy(squid, _filename+1, QUID_LENGTH+1);
+
+			char *_pfilename = _filename + QUID_LENGTH + 1;
+			strlcpy(squid, _filename + 1, QUID_LENGTH + 1);
 			if (_pfilename[0] != '/') {
-				_pfilename = _filename+QUID_LENGTH-1;
-				squid[QUID_LENGTH-2] = '\0';
+				_pfilename = _filename + QUID_LENGTH - 1;
+				squid[QUID_LENGTH - 2] = '\0';
 			}
 			if (_pfilename[0] != '/')
 				continue;
@@ -1131,6 +1125,16 @@ unsupported:
 					status = route[nsz].api_handler(&resp_message, &req);
 					goto respond;
 				}
+			}
+		} else if ((pch = strchr(route[nsz].uri, '*')) != NULL) {
+			size_t posc = pch-route[nsz].uri;
+			if (!strncmp(route[nsz].uri, _filename, posc)) {
+				req.uri = _filename;
+				req.uri += posc;
+				status = route[nsz].api_handler(&resp_message, &req);
+				goto respond;
+			} else {
+				continue;
 			}
 		} else if (!strcmp(route[nsz].uri, _filename)) {
 			req.uri = _filename;

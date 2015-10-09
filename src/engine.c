@@ -1125,7 +1125,7 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 	/* does tablelist exist */
 	if (e->list_top != 0) {
 		struct engine_tablelist *tablelist = get_tablelist(e, e->list_top);
-		zassert(tablelist->size <= LIST_SIZE-1);
+		zassert(tablelist->size <= LIST_SIZE - 1);
 
 		memcpy(&tablelist->items[tablelist->size].quid, c_quid, sizeof(quid_t));
 		memcpy(&tablelist->items[tablelist->size].name, name, len);
