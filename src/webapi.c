@@ -892,7 +892,7 @@ void handle_request(int sd, fd_set *set) {
 	for (i=0; i<queue->size; ++i) {
 		char *str = (char*)(vector_at(queue, i));
 
-		char *colon = strstr(str, ": ");
+		char *colon = strstr(str, ":");
 		if (!colon) {
 			if (i > 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
@@ -1018,13 +1018,16 @@ void handle_request(int sd, fd_set *set) {
 			}
 
 			colon[0] = '\0';
-			colon += 2;
-			char *eol = strstr(colon, "\r");
+			if (colon[1] == ' ')
+				colon += 2;
+			else
+				colon++;
+			char *eol = strchr(colon, '\r');
 			if (eol) {
 				eol[0] = '\0';
 				eol[1] = '\0';
 			} else {
-				eol = strstr(colon, "\n");
+				eol = strchr(colon, '\n');
 				if (eol)
 					eol[0] = '\0';
 			}
