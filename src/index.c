@@ -120,13 +120,13 @@ static int get(long long int key, item_t *kv, int n) {
 
 	if (key <= kv[0].key)
 		return 0;
-	if (key > kv[n-1].key)
+	if (key > kv[n - 1].key)
 		return n;
 
 	left = 0;
-	right = n-1;
+	right = n - 1;
 	while (right - left > 1) {
-		i = (right + left)/2;
+		i = (right + left) / 2;
 		if (key <= kv[i].key)
 			right = i;
 		else
@@ -149,7 +149,7 @@ status_t index_get(long long int key) {
 		n = node.cnt;
 
 #ifdef DEBUG
-		for (j=0; j<n; ++j)
+		for (j = 0; j < n; ++j)
 			printf("  %lld", kv[j].key);
 		puts("");
 #endif // DEBUG
@@ -205,12 +205,12 @@ static status_t insert(long long int key, long long int valset, long int offset,
 	if (*count < INDEX_SIZE) {
 		i = get(keynew_r, kv, *count);
 		for (j = *count; j > i; j--) {
-			kv[j] = kv[j-1];
-			p[j+1] = p[j];
+			kv[j] = kv[j - 1];
+			p[j + 1] = p[j];
 		}
 		kv[i].key = keynew_r;
 		kv[i].valset = valsetnew_r;
-		p[i+1] = offsetnew_r;
+		p[i + 1] = offsetnew_r;
 		++*count;
 		flush_node(offset, &node);
 		return SUCCESS;
@@ -228,29 +228,29 @@ static status_t insert(long long int key, long long int valset, long int offset,
 		p_final = offsetnew_r;
 		v_final = valsetnew_r;
 	} else {
-		k_final = kv[INDEX_SIZE-1].key;
-		v_final = kv[INDEX_SIZE-1].valset;
+		k_final = kv[INDEX_SIZE - 1].key;
+		v_final = kv[INDEX_SIZE - 1].valset;
 		p_final = p[INDEX_SIZE];
-		for (j=INDEX_SIZE-1; j>i; j--) {
-			kv[j] = kv[j-1];
-			p[j+1] = p[j];
+		for (j = INDEX_SIZE - 1; j > i; j--) {
+			kv[j] = kv[j - 1];
+			p[j + 1] = p[j];
 		}
 		kv[i].key = keynew_r;
 		kv[i].valset = valsetnew_r;
-		p[i+1] = offsetnew_r;
+		p[i + 1] = offsetnew_r;
 	}
 	*keynew = kv[INDEX_MSIZE].key;
 	*valsetnew = kv[INDEX_MSIZE].valset;
 	*count = INDEX_MSIZE;
 	*offsetnew = alloc_node();
 	newnode.cnt = INDEX_MSIZE;
-	for (j=0; j<INDEX_MSIZE-1; j++) {
-		newnode.items[j] = kv[j+INDEX_MSIZE+1];
-		newnode.ptr[j] = p[j+INDEX_MSIZE+1];
+	for (j = 0; j < INDEX_MSIZE - 1; j++) {
+		newnode.items[j] = kv[j + INDEX_MSIZE + 1];
+		newnode.ptr[j] = p[j + INDEX_MSIZE + 1];
 	}
-	newnode.ptr[INDEX_MSIZE-1] = p[INDEX_SIZE];
-	newnode.items[INDEX_MSIZE-1].key = k_final;
-	newnode.items[INDEX_MSIZE-1].valset = v_final;
+	newnode.ptr[INDEX_MSIZE - 1] = p[INDEX_SIZE];
+	newnode.items[INDEX_MSIZE - 1].key = k_final;
+	newnode.items[INDEX_MSIZE - 1].valset = v_final;
 	newnode.ptr[INDEX_MSIZE] = p_final;
 	flush_node(offset, &node);
 	flush_node(*offsetnew, &newnode);
@@ -284,7 +284,7 @@ static status_t delete(long long int key, long int t) {
 	item_t *kv;
 	item_t *item;
 	item_t *addr;
-	item_t *lkey; 
+	item_t *lkey;
 	item_t *rkey;
 	long int *p, left, right, *lptr, *rptr, q, q1;
 	node_t nod, nod1, nod2, nodL, nodR;
@@ -302,17 +302,17 @@ static status_t delete(long long int key, long int t) {
 		if (i == *n || key < kv[i].key)
 			return NOTFOUND;
 		/* key is now equal to k[i], located in a leaf:  */
-		for (j=i+1; j < *n; j++) {
-			kv[j-1] = kv[j];
-			p[j] = p[j+1];
+		for (j = i + 1; j < *n; j++) {
+			kv[j - 1] = kv[j];
+			p[j] = p[j + 1];
 		}
 		--*n;
 		flush_node(t, &nod);
-		return *n >= (t==root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+		return *n >= (t == root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 	}
 
 	/*  t is an interior node (not a leaf): */
-	item = kv+i;
+	item = kv + i;
 	left = p[i];
 	get_node(left, &nod1);
 	nleft = & nod1.cnt;
@@ -323,14 +323,14 @@ static status_t delete(long long int key, long int t) {
 		q = p[i];
 		get_node(q, &nod1);
 		nq = nod1.cnt;
-		while (q1 = nod1.ptr[nq], q1!= -1){
+		while (q1 = nod1.ptr[nq], q1 != -1) {
 			q = q1;
 			get_node(q, &nod1);
 			nq = nod1.cnt;
 		}
 
 		/*  Exchange k[i] with the rightmost item in that leaf:   */
-		addr = nod1.items + nq -1;
+		addr = nod1.items + nq - 1;
 		*item = *addr;
 		addr->key = key;
 		flush_node(t, &nod);
@@ -344,10 +344,10 @@ static status_t delete(long long int key, long int t) {
 
 	/*  Underflow, borrow, and , if necessary, merge:  */
 	if (i < *n)
-		get_node(p[i+1], &nodR);
+		get_node(p[i + 1], &nodR);
 	if (i == *n || nodR.cnt == INDEX_MSIZE) {
 		if (i > 0) {
-			get_node(p[i-1], &nodL);
+			get_node(p[i - 1], &nodL);
 			if (i == *n || nodL.cnt > INDEX_MSIZE)
 				borrowleft = 1;
 		}
@@ -355,14 +355,14 @@ static status_t delete(long long int key, long int t) {
 
 	/* borrow from left sibling */
 	if (borrowleft) {
-		item = kv+i-1;
-		left = p[i-1];
+		item = kv + i - 1;
+		left = p[i - 1];
 		right = p[i];
 		nod1 = nodL;
 		get_node(right, &nod2);
 		nleft = & nod1.cnt;
 	} else {
-		right = p[i+1];        /*  borrow from right sibling   */
+		right = p[i + 1];      /*  borrow from right sibling   */
 		get_node(left, &nod1);
 		nod2 = nodR;
 	}
@@ -373,9 +373,9 @@ static status_t delete(long long int key, long int t) {
 	rptr = nod2.ptr;
 	if (borrowleft) {
 		rptr[*nright + 1] = rptr[*nright];
-		for (j=*nright; j>0; j--){
-			rkey[j] = rkey[j-1];
-			rptr[j] = rptr[j-1];
+		for (j = *nright; j > 0; j--) {
+			rkey[j] = rkey[j - 1];
+			rptr[j] = rptr[j - 1];
 		}
 		++*nright;
 		rkey[0] = *item;
@@ -389,15 +389,15 @@ static status_t delete(long long int key, long int t) {
 		}
 	} else {
 		/* borrow from right sibling */
-		if (*nright > INDEX_MSIZE){
-			lkey[INDEX_MSIZE-1] = *item;
+		if (*nright > INDEX_MSIZE) {
+			lkey[INDEX_MSIZE - 1] = *item;
 			lptr[INDEX_MSIZE] = rptr[0];
 			*item = rkey[0];
 			++*nleft;
 			--*nright;
-			for (j=0; j < *nright; j++) {
-				rptr[j] = rptr[j+1];
-				rkey[j] = rkey[j+1];
+			for (j = 0; j < *nright; j++) {
+				rptr[j] = rptr[j + 1];
+				rkey[j] = rkey[j + 1];
 			}
 			rptr[*nright] = rptr[*nright + 1];
 			flush_node(t, &nod);
@@ -408,23 +408,23 @@ static status_t delete(long long int key, long int t) {
 	}
 
 	/*  Merge   */
-	lkey[INDEX_MSIZE-1] = *item;
+	lkey[INDEX_MSIZE - 1] = *item;
 	lptr[INDEX_MSIZE] = rptr[0];
-	for (j=0; j<INDEX_MSIZE; j++){
-		lkey[INDEX_MSIZE+j] = rkey[j];
-		lptr[INDEX_MSIZE+j+1] = rptr[j+1];
+	for (j = 0; j < INDEX_MSIZE; j++) {
+		lkey[INDEX_MSIZE + j] = rkey[j];
+		lptr[INDEX_MSIZE + j + 1] = rptr[j + 1];
 	}
 	*nleft = INDEX_SIZE;
 	free_node(right);
-	for (j=i+1; j < *n; j++){
-		kv[j-1] = kv[j];
-		p[j] = p[j+1];
+	for (j = i + 1; j < *n; j++) {
+		kv[j - 1] = kv[j];
+		p[j] = p[j + 1];
 	}
 	--*n;
 	flush_node(t, &nod);
 	flush_node(left, &nod1);
 
-	return *n >= (t==root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+	return *n >= (t == root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
 status_t index_delete(long long int key) {
@@ -455,10 +455,10 @@ void index_print(long int offset) {
 		kv = nod.items;
 		n = nod.cnt;
 		printf("%*s", position, "");
-		for (i=0; i<n; i++)
+		for (i = 0; i < n; i++)
 			printf(" %lld", kv[i].key);
 		puts("");
-		for (i=0; i<=n; i++)
+		for (i = 0; i <= n; i++)
 			index_print(nod.ptr[i]);
 		position -= 6;
 	}

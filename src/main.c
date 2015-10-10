@@ -71,26 +71,26 @@ int main(int argc, char *argv[]) {
 	for (i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
-			case 'D':
-			case 'd':
-				daemonize();
-				break;
-			case 'F':
-			case 'f':
-				lprint("[info] Running in foreground\n");
-				start_webapi();
-				break;
-			case 'H':
-			case 'h':
-			case '?':
-				print_usage();
-				break;
-			case 'V':
-			case 'v':
-				print_version();
-				break;
-			default:
-				printf("Unknown option '-%c'\n", argv[i][1]);
+				case 'D':
+				case 'd':
+					daemonize();
+					break;
+				case 'F':
+				case 'f':
+					lprint("[info] Running in foreground\n");
+					start_webapi();
+					break;
+				case 'H':
+				case 'h':
+				case '?':
+					print_usage();
+					break;
+				case 'V':
+				case 'v':
+					print_version();
+					break;
+				default:
+					printf("Unknown option '-%c'\n", argv[i][1]);
 			}
 		}
 	}
