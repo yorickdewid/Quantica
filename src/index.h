@@ -13,7 +13,8 @@ typedef enum {
 } status_t;
 
 typedef struct {
-	long long int key;
+	char key[64];
+	unsigned char key_size;
 	unsigned long long int valset;
 } item_t;
 
@@ -28,12 +29,11 @@ struct index {
 	long int freelist;
 };
 
-status_t index_insert(long long int key, long long int offset);
-status_t index_get(long long int key);
-status_t index_delete(long long int key);
-void index_print(long int t);
+status_t index_insert(char *key, size_t key_size, long long int offset);
+status_t index_get(char *key);
+status_t index_delete(char *key);
 void index_print_root();
-void index_init(char *treefilnam);
+void index_init(char *treefilname);
 void index_close();
 
 #endif // INDEX_H_INCLUDED
