@@ -630,6 +630,36 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_db_index(char **response, http_request_t *req) {
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
+		char *param_key = (char *)hashtable_get(req->data, "key");
+		char *param_quid = (char *)hashtable_get(req->data, "quid");
+		if (param_key && param_quid) {
+			puts(param_quid);
+			db_create_index(param_quid, param_key);
+			/*int items = 0;
+			if (db_update(param_quid, &items, param_data, strlen(param_data))<0) {
+				if(IFERROR(EREC_LOCKED)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else if(IFERROR(EREC_NOTFOUND)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				}
+			}*/
+			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			return HTTP_OK;
+		}
+		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		return HTTP_OK;
+	}
+	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
+	return HTTP_OK;
+}
+
 http_status_t api_rec_meta(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
@@ -825,6 +855,7 @@ const struct webroute route[] = {
 	{"/remove",			api_db_delete,		TRUE},
 	{"/purge",			api_db_purge,		TRUE},
 	{"/update",			api_db_update,		TRUE},
+	{"/index",			api_db_index,		TRUE},
 	{"/meta",			api_rec_meta,		TRUE},
 	{"/name",			api_db_listget,		TRUE},
 	{"/rename",			api_db_listupdate,	TRUE},
