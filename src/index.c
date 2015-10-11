@@ -230,7 +230,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	 node back through u.  Return INSERTNOTCOMPLETE, to report that insertion
 	 was not completed:    */
 	long int p_final;
-	char *k_final;
+	char *k_final = NULL;
 	long long int v_final;
 	size_t s_final;
 	node_t newnode;
@@ -240,7 +240,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 		p_final = offsetnew_r;
 		v_final = valsetnew_r;
 	} else {
-		k_final = kv[INDEX_SIZE - 1].key;
+		k_final = zstrdup(kv[INDEX_SIZE - 1].key);
 		s_final = kv[INDEX_SIZE - 1].key_size;
 		v_final = kv[INDEX_SIZE - 1].valset;
 		p_final = p[INDEX_SIZE];
