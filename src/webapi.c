@@ -636,7 +636,10 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_key && param_quid) {
 			puts(param_quid);
-			db_create_index(param_quid, param_key);
+			if (db_create_index(param_quid, param_key)<0) {
+				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+				return HTTP_OK;
+			}
 			/*int items = 0;
 			if (db_update(param_quid, &items, param_data, strlen(param_data))<0) {
 				if(IFERROR(EREC_LOCKED)) {
@@ -653,7 +656,7 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}");
 			return HTTP_OK;
 		}
-		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+		strlcpy(*response, "{\"description\":\"Request expects key to be given\",\"status\":\"EMPTY_KEY\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
