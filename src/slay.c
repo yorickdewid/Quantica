@@ -258,7 +258,7 @@ dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t 
 		case DT_FLOAT:
 		case DT_INT:
 		case DT_JSON: {
-			buf = (char *)zrealloc(buf, buflen+1);
+			buf = (char *)zrealloc(buf, buflen + 1);
 			((char *)buf)[buflen] = '\0';
 			dict_t *elm = dict_element_new(v, FALSE, name, buf);
 			zfree(buf);
@@ -266,7 +266,7 @@ dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t 
 		}
 		case DT_CHAR:
 		case DT_TEXT: {
-			buf = (char *)zrealloc(buf, buflen+1);
+			buf = (char *)zrealloc(buf, buflen + 1);
 			((char *)buf)[buflen] = '\0';
 			dict_t *elm = dict_element_new(v, FALSE, name, buf);
 			zfree(buf);
@@ -284,7 +284,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 	uint64_t elements;
 	schema_t schema;
 	void *slay = get_row(data, &schema, &elements);
-	void *next = (void *)(((uint8_t *)slay)+sizeof(struct row_slay));
+	void *next = (void *)(((uint8_t *)slay) + sizeof(struct row_slay));
 
 	char *buf = NULL;
 	switch (schema) {
@@ -307,28 +307,28 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					break;
 				case DT_INT:
 				case DT_FLOAT:
-					val_data = (void *)zrealloc(val_data, val_len+1);
+					val_data = (void *)zrealloc(val_data, val_len + 1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					buf = zstrdup(val_data);
 					break;
 				case DT_CHAR:
 				case DT_TEXT: {
-					val_data = (char *)zrealloc(val_data, val_len+1);
+					val_data = (char *)zrealloc(val_data, val_len + 1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					char *escdata = stresc(val_data);
-					buf = zmalloc(strlen(escdata)+3);
-					snprintf(buf, strlen(escdata)+3, "\"%s\"", escdata);
+					buf = zmalloc(strlen(escdata) + 3);
+					snprintf(buf, strlen(escdata) + 3, "\"%s\"", escdata);
 					zfree(escdata);
 					break;
 				}
 				case DT_JSON:
-					val_data = (void *)zrealloc(val_data, val_len+1);
+					val_data = (void *)zrealloc(val_data, val_len + 1);
 					((uint8_t *)val_data)[val_len] = '\0';
 					buf = zstrdup(val_data);
 					break;
 				case DT_QUID: {
 					dstype_t _dt;
-					val_data = (char *)zrealloc(val_data, val_len+1);
+					val_data = (char *)zrealloc(val_data, val_len + 1);
 					((char *)val_data)[val_len] = '\0';
 					buf = _db_get(val_data, &_dt);
 				}
@@ -347,7 +347,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			unsigned int i;
 
 			vector_t *arr = alloc_vector(VECTOR_SIZE);
-			for (i=0; i<elements; ++i) {
+			for (i = 0; i < elements; ++i) {
 				size_t namelen;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
@@ -369,7 +369,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					}
 					case DT_CHAR:
 					case DT_TEXT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(arr, TRUE, NULL, val_data);
 						vector_append(arr, (void *)element);
@@ -378,7 +378,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_INT:
 					case DT_FLOAT:
 					case DT_JSON: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(arr, FALSE, NULL, val_data);
 						vector_append(arr, (void *)element);
@@ -387,7 +387,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_QUID: {
 						dstype_t _dt;
 						dict_t *element = NULL;
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						void *qbuf = _db_get(val_data, &_dt);
 						if (!qbuf)
@@ -422,12 +422,12 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			unsigned int i;
 
 			vector_t *obj = alloc_vector(VECTOR_SIZE);
-			for (i=0; i<elements; ++i) {
+			for (i = 0; i < elements; ++i) {
 				void *name = NULL;
 				size_t namelen;
 				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
 				next = next_row(next);
-				name = (char *)zrealloc(name, namelen+1);
+				name = (char *)zrealloc(name, namelen + 1);
 				((char *)name)[namelen] = '\0';
 
 				switch (val_dt) {
@@ -448,7 +448,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					}
 					case DT_CHAR:
 					case DT_TEXT: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(obj, TRUE, name, val_data);
 						vector_append(obj, (void *)element);
@@ -457,7 +457,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_FLOAT:
 					case DT_INT:
 					case DT_JSON: {
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						dict_t *element = dict_element_new(obj, FALSE, name, val_data);
 						vector_append(obj, (void *)element);
@@ -466,7 +466,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					case DT_QUID: {
 						dstype_t _dt;
 						dict_t *element = NULL;
-						val_data = (char *)zrealloc(val_data, val_len+1);
+						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
 						void *qbuf = _db_get(val_data, &_dt);
 						if (!qbuf)
@@ -502,13 +502,13 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			unsigned int i;
 
 			vector_t *arr = alloc_vector(VECTOR_SIZE);
-			for (i=0; i<elements; ++i) {
+			for (i = 0; i < elements; ++i) {
 				size_t namelen;
 				dstype_t _dt;
 				dict_t *element = NULL;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
-				val_data = (char *)zrealloc(val_data, val_len+1);
+				val_data = (char *)zrealloc(val_data, val_len + 1);
 				((char *)val_data)[val_len] = '\0';
 				void *qbuf = _db_get(val_data, &_dt);
 				if (!qbuf)
@@ -600,7 +600,7 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 }
 
 char *str_schema(schema_t schema) {
-	switch(schema) {
+	switch (schema) {
 		case SCHEMA_FIELD:
 			return "FIELD";
 		case SCHEMA_ARRAY:
