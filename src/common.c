@@ -55,6 +55,7 @@ bool strisualpha(char *str) {
 	return TRUE;
 }
 
+/* Remove quotes from string */
 char *strrmquote(char *str) {
 	char *p = str;
 	p++;
@@ -62,6 +63,7 @@ char *strrmquote(char *str) {
 	return p;
 }
 
+/* Match string agains tokens */
 bool strismatch(const char *str, const char *tok) {
 	for (; *str; ++str) {
 		bool flag = FALSE;
@@ -76,7 +78,7 @@ bool strismatch(const char *str, const char *tok) {
 	return TRUE;
 }
 
-/* count charactes in strin */
+/* Count charactes in string */
 int strccnt(const char *str, char c) {
 	int cnt = 0;
 	while((str = strchr(str, c)) != NULL) {

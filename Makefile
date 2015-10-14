@@ -48,6 +48,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/jenhash.c \
 		$(SRCDIR)/bootstrap.c \
 		$(SRCDIR)/webapi.c \
+		$(SRCDIR)/webclient.c \
 		$(SRCDIR)/sql.c
 TEST_SOURCES=$(TESTDIR)/benchmark-engine.c \
 		$(TESTDIR)/test-quid.c \
