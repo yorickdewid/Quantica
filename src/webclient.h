@@ -1,6 +1,8 @@
 #ifndef HTTP_PARSE_H_INCLUDED
 #define HTTP_PARSE_H_INCLUDED
 
+#define parsed_url_free(v) tree_zfree(v);
+
 typedef enum {
 	HTTP,
 	HTTPS,
@@ -12,7 +14,6 @@ typedef enum {
 
 /* Represents an url */
 struct parsed_url {
-	char *uri;				/* mandatory */
 	http_scheme_t scheme;	/* mandatory */
 	char *host;				/* mandatory */
 	char *ip; 				/* mandatory */
@@ -43,7 +44,6 @@ struct http_response *http_get(char *url, char *custom_headers);
 struct http_response *http_head(char *url, char *custom_headers);
 struct http_response *http_post(char *url, char *custom_headers, char *post_data);
 
-void parsed_url_free(struct parsed_url *purl);
 void http_response_free(struct http_response *hresp);
 
 #endif // HTTP_PARSE_H_INCLUDED

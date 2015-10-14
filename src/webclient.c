@@ -27,25 +27,6 @@
 #include "base64.h"
 #include "webclient.h"
 
-/* Free memory of parsed url */
-void parsed_url_free(struct parsed_url *purl) {
-	if (NULL != purl) {
-		if (NULL != purl->host)
-			free(purl->host);
-		if (NULL != purl->path)
-			free(purl->path);
-		if (NULL != purl->query)
-			free(purl->query);
-		if (NULL != purl->fragment)
-			free(purl->fragment);
-		if (NULL != purl->username)
-			free(purl->username);
-		if (NULL != purl->password)
-			free(purl->password);
-		free(purl);
-	}
-}
-
 /* Retrieves the IP adress of a hostname */
 //TODO IPv6
 char *resolve_host(char *hostname) {
@@ -88,7 +69,6 @@ int is_scheme_char(int c) {
 struct parsed_url *parse_url(const char *url) {
 
 	/* Define variable */
-	//const char *tmpstr;
 	const char *curstr;
 	int len;
 	int i;
@@ -96,7 +76,7 @@ struct parsed_url *parse_url(const char *url) {
 	int bracket_flag;
 
 	/* Allocate the parsed url storage */
-	struct parsed_url *purl = (struct parsed_url *)zcalloc(1, sizeof(struct parsed_url));
+	struct parsed_url *purl = (struct parsed_url *)tree_zmalloc(sizeof(struct parsed_url), NULL);
 	if (!purl) {
 		return NULL;
 	}
@@ -129,7 +109,7 @@ struct parsed_url *parse_url(const char *url) {
 	}
 
 	/* Copy the scheme to the storage */
-	char *_tscheme = (char *)zmalloc(sizeof(char) * (len + 1));
+	char *_tscheme = (char *)tree_zmalloc(len + 1, purl);
 	if (!_tscheme) {
 		parsed_url_free(purl);
 		lprint("[erro] Cannot parse URL\n");
@@ -149,7 +129,6 @@ struct parsed_url *parse_url(const char *url) {
 				purl->scheme = HTTPS;
 #endif
 			} else {
-				zfree(_tscheme);
 				parsed_url_free(purl);
 				lprint("[erro] Invalid scheme\n");
 				return NULL;
@@ -164,7 +143,6 @@ struct parsed_url *parse_url(const char *url) {
 				purl->scheme = WSS;
 #endif
 			} else {
-				zfree(_tscheme);
 				parsed_url_free(purl);
 				lprint("[erro] Invalid scheme\n");
 				return NULL;
@@ -179,20 +157,16 @@ struct parsed_url *parse_url(const char *url) {
 				purl->scheme = QDBS;
 #endif
 			} else {
-				zfree(_tscheme);
 				parsed_url_free(purl);
 				lprint("[erro] Invalid scheme\n");
 				return NULL;
 			}
 			break;
 		default:
-			zfree(_tscheme);
 			parsed_url_free(purl);
 			lprint("[erro] Invalid scheme\n");
 			return NULL;
 	}
-
-	zfree(_tscheme);
 
 	/* Stepover ':' */
 	tmpstr++;
@@ -233,7 +207,7 @@ struct parsed_url *parse_url(const char *url) {
 			tmpstr++;
 		}
 		len = tmpstr - curstr;
-		purl->username = (char *)zmalloc(sizeof(char) * (len + 1));
+		purl->username = (char *)tree_zmalloc(len + 1, purl);
 		if (!purl->username) {
 			parsed_url_free(purl);
 			lprint("[erro] Cannot parse URL\n");
@@ -253,7 +227,7 @@ struct parsed_url *parse_url(const char *url) {
 			}
 			len = tmpstr - curstr;
 
-			purl->password = (char *)zmalloc(sizeof(char) * (len + 1));
+			purl->password = (char *)tree_zmalloc(len + 1, purl);
 			if (!purl->password) {
 				parsed_url_free(purl);
 				lprint("[erro] Cannot parse URL\n");
@@ -290,7 +264,7 @@ struct parsed_url *parse_url(const char *url) {
 		tmpstr++;
 	}
 	len = tmpstr - curstr;
-	purl->host = (char *)zmalloc(sizeof(char) * (len + 1));
+	purl->host = (char *)tree_zmalloc(len + 1, purl);
 	if (!purl->host || len <= 0) {
 		parsed_url_free(purl);
 		lprint("[erro] Cannot parse URL\n");
@@ -317,9 +291,6 @@ struct parsed_url *parse_url(const char *url) {
 	/* Get ip */
 	purl->ip = resolve_host(purl->host);
 
-	/* Set uri */
-	purl->uri = (char *)url;
-
 	/* End of the string */
 	if (*curstr == '\0') {
 		return purl;
@@ -340,7 +311,7 @@ struct parsed_url *parse_url(const char *url) {
 	}
 	len = tmpstr - curstr;
 
-	purl->path = (char *)zmalloc(sizeof(char) * (len + 1));
+	purl->path = (char *)tree_zmalloc(len + 1, purl);
 	if (!purl->path) {
 		parsed_url_free(purl);
 		lprint("[erro] Cannot parse URL\n");
@@ -359,7 +330,7 @@ struct parsed_url *parse_url(const char *url) {
 		}
 		len = tmpstr - curstr;
 
-		purl->query = (char *)zmalloc(sizeof(char) * (len + 1));
+		purl->query = (char *)tree_zmalloc(len + 1, purl);
 		if (!purl->query) {
 			parsed_url_free(purl);
 			lprint("[erro] Cannot parse URL\n");
@@ -379,7 +350,7 @@ struct parsed_url *parse_url(const char *url) {
 		}
 		len = tmpstr - curstr;
 
-		purl->fragment = (char *)zmalloc(sizeof(char) * (len + 1));
+		purl->fragment = (char *)tree_zmalloc(len + 1, purl);
 		if (!purl->fragment) {
 			parsed_url_free(purl);
 			lprint("[erro] Cannot parse URL\n");
