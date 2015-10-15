@@ -28,34 +28,49 @@
 #include "webclient.h"
 
 /* Retrieves the IP adress of a hostname */
-//TODO IPv6
-char *resolve_host(char *hostname) {
-	struct addrinfo hints, *servinfo, *p;
-	struct sockaddr_in *sin;
-	static char ip[INET_ADDRSTRLEN];
+int resolve_host(char *hostname, char *ip) {
+	struct addrinfo hints, *servinfo = NULL;
+	int proto;
 	int rv;
 
+	char *_htmp = (char *)zstrdup(hostname);
+	char *host = _htmp;
+	if (host[0] == '[' && host[4] == ']')
+		host = strdtrim(host);
+
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if ((rv = getaddrinfo(hostname, NULL, &hints, &servinfo)) < 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	if ((rv = getaddrinfo(host, NULL, &hints, &servinfo)) < 0) {
 		lprint("[erro] Cannot resolve host\n");
-		return NULL;
+		return 0;
 	}
 
 	// Loop through all the results and connect to the first we can
-	for (p = servinfo; p != NULL; p = p->ai_next) {
-		sin = (struct sockaddr_in *)p->ai_addr;
-		if (sin->sin_family == AF_INET) {
-			strcpy(ip , inet_ntoa(sin->sin_addr));
-			break;
+	struct addrinfo *p = servinfo;
+	for (; p != NULL; p = p->ai_next) {
+		inet_ntop(p->ai_family, p->ai_addr->sa_data, ip, INET6_ADDRSTRLEN);
+
+		void *ptr = NULL;
+		switch (p->ai_family) {
+			case AF_INET:
+				ptr = &((struct sockaddr_in *)p->ai_addr)->sin_addr;
+				break;
+			case AF_INET6:
+				ptr = &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
+				break;
+			default:
+				break;
 		}
+		inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
+		proto = p->ai_family;
+		break;
 	}
 
+	zfree(_htmp);
 	freeaddrinfo(servinfo);
-	return ip;
+	return proto;
 }
 
 /*
@@ -66,7 +81,7 @@ int is_scheme_char(int c) {
 }
 
 /* Parses a specified URL and returns the struct */
-struct parsed_url *parse_url(const char *url) {
+struct http_url *parse_url(const char *url) {
 
 	/* Define variable */
 	const char *curstr;
@@ -76,10 +91,11 @@ struct parsed_url *parse_url(const char *url) {
 	int bracket_flag;
 
 	/* Allocate the parsed url storage */
-	struct parsed_url *purl = (struct parsed_url *)tree_zmalloc(sizeof(struct parsed_url), NULL);
+	struct http_url *purl = (struct http_url *)tree_zmalloc(sizeof(struct http_url), NULL);
 	if (!purl) {
 		return NULL;
 	}
+	memset(purl, 0, sizeof(struct http_url));
 	purl->port = API_PORT;
 	curstr = url;
 
@@ -254,7 +270,7 @@ struct parsed_url *parse_url(const char *url) {
 
 	/* Proceed on by delimiters with reading host */
 	tmpstr = curstr;
-	while ('\0' != *tmpstr) {
+	while (*tmpstr != '\0') {
 		if (bracket_flag && *tmpstr == ']') {
 			tmpstr++;
 			break;
@@ -264,6 +280,7 @@ struct parsed_url *parse_url(const char *url) {
 		tmpstr++;
 	}
 	len = tmpstr - curstr;
+
 	purl->host = (char *)tree_zmalloc(len + 1, purl);
 	if (!purl->host || len <= 0) {
 		parsed_url_free(purl);
@@ -272,9 +289,17 @@ struct parsed_url *parse_url(const char *url) {
 	}
 	strncpy(purl->host, curstr, len);
 	purl->host[len] = '\0';
-	curstr = tmpstr;
+
+	/* Get ip */
+	purl->ip_family = resolve_host(purl->host, purl->ip);
+	if (!purl->ip_family) {
+		parsed_url_free(purl);
+		lprint("[erro] Cannot parse URL\n");
+		return NULL;
+	}
 
 	/* Is port number specified? */
+	curstr = tmpstr;
 	if (*curstr == ':') {
 		curstr++;
 
@@ -287,9 +312,6 @@ struct parsed_url *parse_url(const char *url) {
 		purl->port = antoi(curstr, len);
 		curstr = tmpstr;
 	}
-
-	/* Get ip */
-	purl->ip = resolve_host(purl->host);
 
 	/* End of the string */
 	if (*curstr == '\0') {
@@ -436,9 +458,9 @@ struct http_response *handle_redirect_post(struct http_response* hresp, char *cu
 /*
 	Makes a HTTP request and returns the response
 */
-struct http_response *http_req(char *http_headers, struct parsed_url *purl) {
+struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Parse url */
-	if (purl == NULL) {
+	if (!NULL) {
 		printf("Unable to parse url");
 		return NULL;
 	}
@@ -470,8 +492,8 @@ struct http_response *http_req(char *http_headers, struct parsed_url *purl) {
 
 	/* Set remote->sin_addr.s_addr */
 	remote = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in *));
-	remote->sin_family = AF_INET;
-	tmpres = inet_pton(AF_INET, purl->ip, (void *)(& (remote->sin_addr.s_addr)));
+	remote->sin_family = purl->ip_family;
+	tmpres = inet_pton(AF_INET, purl->ip, (void *)(&(remote->sin_addr.s_addr)));
 	if (tmpres < 0) {
 		printf("Can't set remote->sin_addr.s_addr");
 		return NULL;
@@ -591,7 +613,7 @@ struct http_response *http_req(char *http_headers, struct parsed_url *purl) {
 */
 struct http_response *http_get(char *url, char *custom_headers) {
 	/* Parse url */
-	struct parsed_url *purl = parse_url(url);
+	struct http_url *purl = parse_url(url);
 	if (!purl) {
 		printf("Unable to parse url");
 		return NULL;
@@ -662,7 +684,7 @@ struct http_response *http_get(char *url, char *custom_headers) {
 */
 struct http_response* http_post(char *url, char *custom_headers, char *post_data) {
 	/* Parse url */
-	struct parsed_url *purl = parse_url(url);
+	struct http_url *purl = parse_url(url);
 	if (purl == NULL) {
 		printf("Unable to parse url");
 		return NULL;
@@ -731,7 +753,7 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 */
 struct http_response *http_head(char *url, char *custom_headers) {
 	/* Parse url */
-	struct parsed_url *purl = parse_url(url);
+	struct http_url *purl = parse_url(url);
 	if (purl == NULL) {
 		printf("Unable to parse url");
 		return NULL;
@@ -798,7 +820,7 @@ struct http_response *http_head(char *url, char *custom_headers) {
 */
 struct http_response* http_options(char *url) {
 	/* Parse url */
-	struct parsed_url *purl = parse_url(url);
+	struct http_url *purl = parse_url(url);
 	if (purl == NULL) {
 		printf("Unable to parse url");
 		return NULL;
