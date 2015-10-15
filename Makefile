@@ -18,6 +18,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/strlcpy.c \
 		$(SRCDIR)/strlcat.c \
 		$(SRCDIR)/itoa.c \
+		$(SRCDIR)/antoi.c \
 		$(SRCDIR)/strdup.c \
 		$(SRCDIR)/stresc.c \
 		$(SRCDIR)/strsep.c \
