@@ -23,7 +23,7 @@
 /* Retrieves the IP adress of a hostname */
 int resolve_host(char *hostname, char *ip) {
 	struct addrinfo hints, *servinfo = NULL;
-	int proto;
+	int proto = 0;
 	int rv;
 
 	char *_htmp = (char *)zstrdup(hostname);
