@@ -16,6 +16,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #include <errno.h>
 
@@ -43,7 +44,7 @@ struct http_url *parse_url(const char *url) {
 		return NULL;
 	}
 	memset(purl, 0, sizeof(struct http_url));
-	purl->port = API_PORT;
+	purl->port = 80;
 	curstr = url;
 
 	/*
@@ -366,15 +367,15 @@ struct http_response *handle_redirect_post(struct http_response* hresp, char *cu
 	return hresp;
 }
 
-/*
-	Makes a HTTP request and returns the response
-*/
+/* Create the actual HTTP request */
 struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Parse url */
 	if (!purl) {
 		printf("Unable to parse url");
 		return NULL;
 	}
+
+	signal(SIGPIPE, SIG_IGN);
 
 	/* Declare variable */
 	int sock = -1;
@@ -383,7 +384,7 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Allocate memeory for htmlcontent */
 	struct http_response *hresp = (struct http_response *)malloc(sizeof(struct http_response));
 	if (!hresp) {
-		printf("Unable to allocate memory for htmlcontent.");
+		lprint("[erro] Unable to allocate memory\n");
 		return NULL;
 	}
 	memset(hresp, 0, sizeof(struct http_response));
@@ -401,15 +402,23 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	}
 
 	// Loop through all the results and connect to the first we can
+	int rt;
 	struct addrinfo *p = servinfo;
 	for (; p != NULL; p = p->ai_next) {
 		sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-		if (!connect(sock, p->ai_addr, p->ai_addrlen))
+		if (p->ai_addr->sa_family == AF_INET) {
+			struct sockaddr_in *in = (struct sockaddr_in *)p->ai_addr;
+			in->sin_port = htons(purl->port);
+		} else {
+			struct sockaddr_in6 *in = (struct sockaddr_in6 *)p->ai_addr;
+			in->sin6_port = htons(purl->port);
+		}
+		if (!(rt = connect(sock, p->ai_addr, p->ai_addrlen)))
 			break;
 	}
 	freeaddrinfo(servinfo);
 
-	if (sock < 0) {
+	if (sock < 0 || rt < 0) {
 		http_response_free(hresp);
 		lprint("[erro] Cannot connect to host\n");
 		return NULL;
@@ -504,7 +513,7 @@ struct http_response *http_get(char *url, char *custom_headers) {
 			sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost: %s\r\n", purl->path, purl->host);
 		}
 	} else {
-		if (purl->query != NULL) {
+		if (purl->query) {
 			sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost: %s\r\n", purl->query, purl->host);
 		} else {
 			sprintf(http_headers, "GET / HTTP/1.1\r\nHost: %s\r\n", purl->host);
@@ -544,46 +553,48 @@ struct http_response *http_get(char *url, char *custom_headers) {
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl);
+	if (!hresp) {
+		parsed_url_free(purl);
+		zfree(http_headers);
+		return NULL;
+	}
 
 	/* Handle redirect */
 	return handle_redirect(hresp, custom_headers, &http_get);
 }
 
-/*
-	Makes a HTTP POST request to the given url
-*/
-struct http_response* http_post(char *url, char *custom_headers, char *post_data) {
-	/* Parse url */
+/* Perform HTTP POST request */
+struct http_response *http_post(char *url, char *custom_headers, char *post_data) {
 	struct http_url *purl = parse_url(url);
-	if (purl == NULL) {
+	if (!purl) {
 		printf("Unable to parse url");
 		return NULL;
 	}
 
 	/* Declare variable */
-	char *http_headers = (char*) malloc(1024);
+	char *http_headers = (char *)zmalloc(1024);
 
 	/* Build query/headers */
-	if (purl->path != NULL) {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(post_data));
+	if (purl->path) {
+		if (purl->query) {
+			sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->path, purl->query, purl->host, strlen(post_data));
 		} else {
-			sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(post_data));
+			sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->path, purl->host, strlen(post_data));
 		}
 	} else {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(post_data));
+		if (purl->query) {
+			sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->query, purl->host, strlen(post_data));
 		} else {
-			sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\nContent-Length:%zu\r\nContent-Type:application/x-www-form-urlencoded\r\n", purl->host, strlen(post_data));
+			sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->host, strlen(post_data));
 		}
 	}
 
 	/* Handle authorisation if needed */
-	if (purl->username != NULL) {
+	if (purl->username) {
 		/* Format username:password pair */
-		char *upwd = (char*) malloc(1024);
+		char *upwd = (char *)zmalloc(1024);
 		sprintf(upwd, "%s:%s", purl->username, purl->password);
-		upwd = (char*) realloc(upwd, strlen(upwd) + 1);
+		upwd = (char *)zrealloc(upwd, strlen(upwd) + 1);
 
 		/* Base64 encode */
 		size_t encsz = base64_encode_len(strlen(upwd));
@@ -591,25 +602,23 @@ struct http_response* http_post(char *url, char *custom_headers, char *post_data
 		base64_encode(base64, upwd, strlen(upwd));
 		base64[encsz] = '\0';
 
-		//char *base64 = base64_encode(upwd);
-
 		/* Form header */
-		char *auth_header = (char*) malloc(1024);
+		char *auth_header = (char *)zmalloc(1024);
 		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
-		auth_header = (char*) realloc(auth_header, strlen(auth_header) + 1);
+		auth_header = (char *)zrealloc(auth_header, strlen(auth_header) + 1);
 
 		/* Add to header */
-		http_headers = (char*) realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
+		http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
 	}
 
-	if (custom_headers != NULL) {
+	if (custom_headers) {
 		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
 		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
 	} else {
 		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
 	}
-	http_headers = (char*) realloc(http_headers, strlen(http_headers) + 1);
+	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl);
@@ -635,15 +644,15 @@ struct http_response *http_head(char *url, char *custom_headers) {
 	/* Build query/headers */
 	if (purl->path != NULL) {
 		if (purl->query != NULL) {
-			sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->host);
 		}
 	} else {
 		if (purl->query != NULL) {
-			sprintf(http_headers, "HEAD/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			sprintf(http_headers, "HEAD/?%s HTTP/1.1\r\nHost:%s\r\n", purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\n", purl->host);
 		}
 	}
 
@@ -702,15 +711,15 @@ struct http_response* http_options(char *url) {
 	/* Build query/headers */
 	if (purl->path != NULL) {
 		if (purl->query != NULL) {
-			sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->query, purl->host);
+			sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->path, purl->host);
+			sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->host);
 		}
 	} else {
 		if (purl->query != NULL) {
-			sprintf(http_headers, "OPTIONS/?%s HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->query, purl->host);
+			sprintf(http_headers, "OPTIONS/?%s HTTP/1.1\r\nHost:%s\r\n", purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\nConnection:close\r\n", purl->host);
+			sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\n", purl->host);
 		}
 	}
 
