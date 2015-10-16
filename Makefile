@@ -8,7 +8,7 @@ CPPCHECK=cppcheck
 CPPCHECKFLAGS=--quiet --std=c99
 VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
 WFLAGS=-pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
-CFLAGS=-c -g -O0 $(WFLAGS) -DDEBUG -DX64 -DTN12
+CFLAGS=-c -g -O0 $(WFLAGS) -DDEBUG -DX64 -DTN12 -DRESOLV
 LDFLAGS= -lm
 SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/time.c \
@@ -35,6 +35,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/vector.c \
 		$(SRCDIR)/dict.c \
 		$(SRCDIR)/stack.c \
+		$(SRCDIR)/resolv.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/json_parse.c \
 		$(SRCDIR)/json_encode.c \

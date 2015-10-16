@@ -317,7 +317,7 @@ struct http_url *parse_url(const char *url) {
 }
 
 /* Handle redirects */
-struct http_response *handle_redirect(struct http_response *hresp, char *custom_headers, struct http_response * (*callbk)(char *, char *)) {
+struct http_response *handle_redirect(struct http_response *hresp, char *custom_headers, char *data, int head, struct http_response * (*callbk)(char *, char *, char *, int)) {
 	if (hresp->status_code > 300 && hresp->status_code < 400) {
 		char *token = strtok(hresp->response_headers, "\r\n");
 		while (token) {
@@ -335,35 +335,11 @@ struct http_response *handle_redirect(struct http_response *hresp, char *custom_
 				char _loc[strlen(loc) + 1];
 				strncpy(_loc, loc, i);
 				http_response_free(hresp);
-				return callbk(_loc, custom_headers);
+				return callbk(_loc, custom_headers, data, head);
 			}
 			token = strtok(NULL, "\r\n");
 		}
 	}
-	return hresp;
-}
-
-/*
-	Handles redirect if needed for post requests
-*/
-struct http_response *handle_redirect_post(struct http_response* hresp, char *custom_headers, char *post_data) {
-	unused(custom_headers);
-	unused(post_data);
-	if (hresp->status_code > 300 && hresp->status_code < 399) {
-		char *token = strtok(hresp->response_headers, "\r\n");
-		while (token != NULL) {
-			//if (str_contains(token, "Location:")) {
-			if (strstr(token, "Location:")) {
-				/* Extract url */
-				//char *location = str_replace("Location: ", "", token);
-				char *loc = strchr(token, ':');
-				puts(loc);
-				//return http_post(location, custom_headers, post_data);
-			}
-			token = strtok(NULL, "\r\n");
-		}
-	}
-	/* We're not dealing with a redirect, just return the same structure */
 	return hresp;
 }
 
@@ -464,6 +440,12 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Close socket */
 	close(sock);
 
+	if (!strlen(hresp->rawresp)) {
+		http_response_free(hresp);
+		lprint("[erro] Invalid response\n");
+		return NULL;
+	}
+
 	/* Parse body */
 	char *body = strstr(hresp->rawresp, "\r\n\r\n");
 	body[0] = '\0';
@@ -494,8 +476,8 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	return hresp;
 }
 
-/* Perform HTTP GET request */
-struct http_response *http_get(char *url, char *custom_headers) {
+/* Perform HTTP GET/POST/HEAD request */
+struct http_response *http_get(char *url, char *custom_headers, char *data, int head) {
 	struct http_url *purl = parse_url(url);
 	if (!purl) {
 		printf("Unable to parse url");
@@ -506,17 +488,47 @@ struct http_response *http_get(char *url, char *custom_headers) {
 	char *http_headers = (char *)zmalloc(1024);
 
 	/* Build query/headers */
-	if (purl->path) {
-		if (purl->query) {
-			sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost: %s\r\n", purl->path, purl->query, purl->host);
+	if (head) {
+		if (purl->path) {
+			if (purl->query) {
+				sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nConnection: close\r\n", purl->path, purl->query, purl->host);
+			} else {
+				sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nConnection: close\r\n", purl->path, purl->host);
+			}
 		} else {
-			sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost: %s\r\n", purl->path, purl->host);
+			if (purl->query) {
+				sprintf(http_headers, "HEAD /?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nConnection: close\r\n", purl->query, purl->host);
+			} else {
+				sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nConnection: close\r\n", purl->host);
+			}
+		}
+	} else if (data) {
+		if (purl->path) {
+			if (purl->query) {
+				sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->path, purl->query, purl->host, strlen(data));
+			} else {
+				sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->path, purl->host, strlen(data));
+			}
+		} else {
+			if (purl->query) {
+				sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->query, purl->host, strlen(data));
+			} else {
+				sprintf(http_headers, "POST / HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\nContent-Length: %zu\r\nContent-Type: application/x-www-form-urlencoded\r\n", purl->host, strlen(data));
+			}
 		}
 	} else {
-		if (purl->query) {
-			sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost: %s\r\n", purl->query, purl->host);
+		if (purl->path) {
+			if (purl->query) {
+				sprintf(http_headers, "GET /%s?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->path, purl->query, purl->host);
+			} else {
+				sprintf(http_headers, "GET /%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->path, purl->host);
+			}
 		} else {
-			sprintf(http_headers, "GET / HTTP/1.1\r\nHost: %s\r\n", purl->host);
+			if (purl->query) {
+				sprintf(http_headers, "GET /?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->query, purl->host);
+			} else {
+				sprintf(http_headers, "GET / HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->host);
+			}
 		}
 	}
 
@@ -544,10 +556,19 @@ struct http_response *http_get(char *url, char *custom_headers) {
 	}
 
 	/* Add custom headers, and close */
-	if (custom_headers) {
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+	if (!head && data) {
+		if (custom_headers) {
+			sprintf(http_headers, "%s%s", http_headers, custom_headers);
+			sprintf(http_headers, "%s\r\n%s", http_headers, data);
+		} else {
+			sprintf(http_headers, "%s\r\n", http_headers);
+		}
 	} else {
-		sprintf(http_headers, "%s\r\n", http_headers);
+		if (custom_headers) {
+			sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+		} else {
+			sprintf(http_headers, "%s\r\n", http_headers);
+		}
 	}
 	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
 
@@ -560,11 +581,11 @@ struct http_response *http_get(char *url, char *custom_headers) {
 	}
 
 	/* Handle redirect */
-	return handle_redirect(hresp, custom_headers, &http_get);
+	return handle_redirect(hresp, custom_headers, data, head, &http_get);
 }
 
-/* Perform HTTP POST request */
-struct http_response *http_post(char *url, char *custom_headers, char *post_data) {
+/* Perform HTTP OPTIONS request */
+struct http_response *http_options(char *url) {
 	struct http_url *purl = parse_url(url);
 	if (!purl) {
 		printf("Unable to parse url");
@@ -575,17 +596,17 @@ struct http_response *http_post(char *url, char *custom_headers, char *post_data
 	char *http_headers = (char *)zmalloc(1024);
 
 	/* Build query/headers */
-	if (purl->path) {
-		if (purl->query) {
-			sprintf(http_headers, "POST /%s?%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->path, purl->query, purl->host, strlen(post_data));
+	if (purl->path != NULL) {
+		if (purl->query != NULL) {
+			sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->path, purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "POST /%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->path, purl->host, strlen(post_data));
+			sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->path, purl->host);
 		}
 	} else {
-		if (purl->query) {
-			sprintf(http_headers, "POST /?%s HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->query, purl->host, strlen(post_data));
+		if (purl->query != NULL) {
+			sprintf(http_headers, "OPTIONS/?%s HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->query, purl->host);
 		} else {
-			sprintf(http_headers, "POST / HTTP/1.1\r\nHost:%s\r\nContent-Length:%zu\r\n", purl->host, strlen(post_data));
+			sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n", purl->host);
 		}
 	}
 
@@ -612,144 +633,9 @@ struct http_response *http_post(char *url, char *custom_headers, char *post_data
 		sprintf(http_headers, "%s%s", http_headers, auth_header);
 	}
 
-	if (custom_headers) {
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
-		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
-	} else {
-		sprintf(http_headers, "%s\r\n%s", http_headers, post_data);
-	}
-	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
-
-	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
-
-	/* Handle redirect */
-	return handle_redirect_post(hresp, custom_headers, post_data);
-}
-
-/*
-	Makes a HTTP HEAD request to the given url
-*/
-struct http_response *http_head(char *url, char *custom_headers) {
-	/* Parse url */
-	struct http_url *purl = parse_url(url);
-	if (purl == NULL) {
-		printf("Unable to parse url");
-		return NULL;
-	}
-
-	/* Declare variable */
-	char *http_headers = (char*) malloc(1024);
-
-	/* Build query/headers */
-	if (purl->path != NULL) {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "HEAD /%s?%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->query, purl->host);
-		} else {
-			sprintf(http_headers, "HEAD /%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->host);
-		}
-	} else {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "HEAD/?%s HTTP/1.1\r\nHost:%s\r\n", purl->query, purl->host);
-		} else {
-			sprintf(http_headers, "HEAD / HTTP/1.1\r\nHost:%s\r\n", purl->host);
-		}
-	}
-
-	/* Handle authorisation if needed */
-	if (purl->username != NULL) {
-		/* Format username:password pair */
-		char *upwd = (char*) malloc(1024);
-		sprintf(upwd, "%s:%s", purl->username, purl->password);
-		upwd = (char*) realloc(upwd, strlen(upwd) + 1);
-
-		/* Base64 encode */
-		size_t encsz = base64_encode_len(strlen(upwd));
-		char *base64 = (char *)zmalloc(encsz + 1);
-		base64_encode(base64, upwd, strlen(upwd));
-		base64[encsz] = '\0';
-		//char *base64 = base64_encode(upwd);
-
-		/* Form header */
-		char *auth_header = (char*) malloc(1024);
-		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
-		auth_header = (char*) realloc(auth_header, strlen(auth_header) + 1);
-
-		/* Add to header */
-		http_headers = (char*) realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
-	}
-
-	if (custom_headers != NULL) {
-		sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
-	} else {
-		sprintf(http_headers, "%s\r\n", http_headers);
-	}
-	http_headers = (char*) realloc(http_headers, strlen(http_headers) + 1);
-
-	/* Make request and return response */
-	struct http_response *hresp = http_req(http_headers, purl);
-
-	/* Handle redirect */
-	return handle_redirect(hresp, custom_headers, &http_head);
-}
-
-/*
-	Do HTTP OPTIONs requests
-*/
-struct http_response* http_options(char *url) {
-	/* Parse url */
-	struct http_url *purl = parse_url(url);
-	if (purl == NULL) {
-		printf("Unable to parse url");
-		return NULL;
-	}
-
-	/* Declare variable */
-	char *http_headers = (char*) malloc(1024);
-
-	/* Build query/headers */
-	if (purl->path != NULL) {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "OPTIONS /%s?%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->query, purl->host);
-		} else {
-			sprintf(http_headers, "OPTIONS /%s HTTP/1.1\r\nHost:%s\r\n", purl->path, purl->host);
-		}
-	} else {
-		if (purl->query != NULL) {
-			sprintf(http_headers, "OPTIONS/?%s HTTP/1.1\r\nHost:%s\r\n", purl->query, purl->host);
-		} else {
-			sprintf(http_headers, "OPTIONS / HTTP/1.1\r\nHost:%s\r\n", purl->host);
-		}
-	}
-
-	/* Handle authorisation if needed */
-	if (purl->username != NULL) {
-		/* Format username:password pair */
-		char *upwd = (char*) malloc(1024);
-		sprintf(upwd, "%s:%s", purl->username, purl->password);
-		upwd = (char*) realloc(upwd, strlen(upwd) + 1);
-
-		/* Base64 encode */
-		size_t encsz = base64_encode_len(strlen(upwd));
-		char *base64 = (char *)zmalloc(encsz + 1);
-		base64_encode(base64, upwd, strlen(upwd));
-		base64[encsz] = '\0';
-		//char *base64 = base64_encode(upwd);
-
-		/* Form header */
-		char *auth_header = (char*) malloc(1024);
-		sprintf(auth_header, "Authorization: Basic %s\r\n", base64);
-		auth_header = (char*) realloc(auth_header, strlen(auth_header) + 1);
-
-		/* Add to header */
-		http_headers = (char*) realloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
-	}
-
 	/* Build headers */
 	sprintf(http_headers, "%s\r\n", http_headers);
-	http_headers = (char*) realloc(http_headers, strlen(http_headers) + 1);
+	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */
 	struct http_response *hresp = http_req(http_headers, purl);

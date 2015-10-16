@@ -3,7 +3,7 @@
 
 #include <netinet/in.h>
 
-#define parsed_url_free(v) tree_zfree(v);
+#define parsed_url_free(v) tree_zfree(v)
 
 typedef enum {
 	HTTP,
@@ -39,9 +39,11 @@ struct http_response {
 struct http_url *parse_url(const char *url);
 
 struct http_response *http_req(char *http_headers, struct http_url *purl);
-struct http_response *http_get(char *url, char *custom_headers);
-struct http_response *http_head(char *url, char *custom_headers);
-struct http_response *http_post(char *url, char *custom_headers, char *post_data);
+struct http_response *http_get(char *url, char *custom_headers, char *data, int head);
+struct http_response *http_options(char *url);
+
+#define http_head(url,head) http_get(url, head, NULL, 1)
+#define http_post(url,head,data) http_get(url, head, data, 0)
 
 void http_response_free(struct http_response *hresp);
 
