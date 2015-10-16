@@ -30,9 +30,7 @@ struct http_url {
 struct http_response {
 	struct http_url *request_uri;
 	char *body;
-	char *status_code;
-	int status_code_int;
-	char *status_text;
+	unsigned int status_code;
 	char *request_headers;
 	char *response_headers;
 	char *rawresp;

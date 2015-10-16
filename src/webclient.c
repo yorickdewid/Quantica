@@ -27,53 +27,7 @@
 #include "base64.h"
 #include "webclient.h"
 
-/* Retrieves the IP adress of a hostname */
-/*int resolve_host(char *hostname, char *ip) {
-	struct addrinfo hints, *servinfo = NULL;
-	int proto;
-	int rv;
-
-	char *_htmp = (char *)zstrdup(hostname);
-	char *host = _htmp;
-	if (host[0] == '[' && host[4] == ']')
-		host = strdtrim(host);
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if ((rv = getaddrinfo(host, NULL, &hints, &servinfo)) < 0) {
-		lprint("[erro] Cannot resolve host\n");
-		return 0;
-	}
-
-	// Loop through all the results and connect to the first we can
-	struct addrinfo *p = servinfo;
-	for (; p != NULL; p = p->ai_next) {
-		void *ptr = NULL;
-		switch (p->ai_family) {
-			case AF_INET:
-				ptr = &((struct sockaddr_in *)p->ai_addr)->sin_addr;
-				break;
-			case AF_INET6:
-				ptr = &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
-				break;
-			default:
-				break;
-		}
-		inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
-		proto = p->ai_family;
-		break;
-	}
-
-	zfree(_htmp);
-	freeaddrinfo(servinfo);
-	return proto;
-}*/
-
-/*
-	Check whether the character is permitted in scheme string
-*/
+/* Check whether the character is permitted in scheme string */
 int is_scheme_char(int c) {
 	return (!isalpha(c) && '+' != c && '-' != c && '.' != c) ? 0 : 1;
 }
@@ -288,14 +242,6 @@ struct http_url *parse_url(const char *url) {
 	strncpy(purl->host, curstr, len);
 	purl->host[len] = '\0';
 
-	/* Get ip */
-	/*purl->ip_family = resolve_host(purl->host, purl->ip);
-	if (!purl->ip_family) {
-		parsed_url_free(purl);
-		lprint("[erro] Cannot parse URL\n");
-		return NULL;
-	}*/
-
 	/* Is port number specified? */
 	curstr = tmpstr;
 	if (*curstr == ':') {
@@ -388,7 +334,7 @@ struct http_url *parse_url(const char *url) {
 */
 struct http_response *handle_redirect_get(struct http_response* hresp, char *custom_headers) {
 	unused(custom_headers);
-	if (hresp->status_code_int > 300 && hresp->status_code_int < 399) {
+	if (hresp->status_code > 300 && hresp->status_code < 399) {
 		char *token = strtok(hresp->response_headers, "\r\n");
 		while (token != NULL) {
 			//if (str_contains(token, "Location:")) {
@@ -411,7 +357,7 @@ struct http_response *handle_redirect_get(struct http_response* hresp, char *cus
 */
 struct http_response *handle_redirect_head(struct http_response* hresp, char *custom_headers) {
 	unused(custom_headers);
-	if (hresp->status_code_int > 300 && hresp->status_code_int < 399) {
+	if (hresp->status_code > 300 && hresp->status_code < 399) {
 		char *token = strtok(hresp->response_headers, "\r\n");
 		while (token != NULL) {
 			//if (str_contains(token, "Location:")) {
@@ -435,7 +381,7 @@ struct http_response *handle_redirect_head(struct http_response* hresp, char *cu
 struct http_response *handle_redirect_post(struct http_response* hresp, char *custom_headers, char *post_data) {
 	unused(custom_headers);
 	unused(post_data);
-	if (hresp->status_code_int > 300 && hresp->status_code_int < 399) {
+	if (hresp->status_code > 300 && hresp->status_code < 399) {
 		char *token = strtok(hresp->response_headers, "\r\n");
 		while (token != NULL) {
 			//if (str_contains(token, "Location:")) {
@@ -466,7 +412,7 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Declare variable */
 	int sock = -1;
 	int tmpres;
-	
+
 	/* Allocate memeory for htmlcontent */
 	struct http_response *hresp = (struct http_response *)malloc(sizeof(struct http_response));
 	if (!hresp) {
@@ -482,8 +428,9 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 
 	struct addrinfo *servinfo;
 	if (getaddrinfo(purl->host, "http", &hints, &servinfo) < 0) {
+		http_response_free(hresp);
 		lprint("[erro] Cannot resolve host\n");
-		return 0;
+		return NULL;
 	}
 
 	// Loop through all the results and connect to the first we can
@@ -495,11 +442,18 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	}
 	freeaddrinfo(servinfo);
 
+	if (sock < 0) {
+		http_response_free(hresp);
+		lprint("[erro] Cannot connect to host\n");
+		return NULL;
+	}
+
 	/* Send headers to server */
 	unsigned int sent = 0;
 	while (sent < strlen(http_headers)) {
 		tmpres = send(sock, http_headers + sent, strlen(http_headers) - sent, 0);
-		if (tmpres == -1) {
+		if (tmpres < 0) {
+			http_response_free(hresp);
 			lprint("[erro] Cannot write to host\n");
 			return NULL;
 		}
@@ -508,18 +462,19 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 
 	// receive response
 	int i = 0;
-	int amntRecvd = 0;
-	int currentSize = 4096;
-	int oldSize = currentSize;
-	hresp->rawresp = (char*) malloc(currentSize);
-	while ((amntRecvd = recv(sock, hresp->rawresp + i, 4096, 0)) > 0) {
-		i += amntRecvd;
-		oldSize = currentSize;
-		currentSize += 4096;
-		char *newBuffer = malloc(currentSize);
-		memcpy(newBuffer, hresp->rawresp, oldSize);
+	int amnt_recvd = 0;
+	int curr_sz = 4096;
+	int old_sz = curr_sz;
+	hresp->rawresp = (char *)zmalloc(curr_sz);
+	while ((amnt_recvd = recv(sock, hresp->rawresp + i, 4096, 0)) > 0) {
+		i += amnt_recvd;
+		old_sz = curr_sz;
+		curr_sz += 4096;
+
+		char *new_buf = zmalloc(curr_sz);
+		memcpy(new_buf, hresp->rawresp, old_sz);
 		free(hresp->rawresp);
-		hresp->rawresp = newBuffer;
+		hresp->rawresp = new_buf;
 	}
 
 	/* Close socket */
@@ -536,27 +491,14 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	headers[0] = '\0';
 	headers += 2;
 	hresp->response_headers = headers;
-	hresp->status_text = hresp->rawresp;
-	//printf("<%s>\n", hresp->status_code);
-	//printf("[%s]\n", hresp->response_headers);
-	//char *status_line = zstrdup(hresp->rawresp);
-	//status_line[strlen(status_line)-2] = '\0';
-	//printf("!!%s!!\n", status_line);
-	//if (!strcmp())
-	//status_line = str_replace("HTTP/1.1 ", "", status_line);
-	//char *status_code = str_ndup(status_line, 4);
-	//status_code = str_replace(" ", "", status_code);
-	//char *status_text = str_replace(status_code, "", status_line);
-	//status_text = str_replace(" ", "", status_text);
-	//hresp->status_code = status_line;
-	//hresp->status_code_int = atoi(status_code);
-	//hresp->status_text = status_line;
 
-	/* Parse response headers */
-	//char *headers = get_until(hresp->rawresp, "\r\n\r\n");
-	/*char *headers = zstrdup(hresp->rawresp);
-	headers[strlen(headers)-4] = '\0';
-	hresp->response_headers = headers;*/
+	/* Parse status code */
+	char *pch = strchr(hresp->rawresp, ' ');
+	if (pch) {
+		if (pch[0] == ' ')
+			pch++;
+		hresp->status_code = antoi(pch, 3);
+	}
 
 	/* Assign request headers */
 	hresp->request_headers = http_headers;
@@ -839,24 +781,11 @@ struct http_response* http_options(char *url) {
 	return hresp;
 }
 
-/*
-	Free memory of http_response
-*/
+/* Free memory of http_response */
 void http_response_free(struct http_response *hresp) {
-	if (hresp != NULL) {
-		if (hresp->request_uri != NULL)
-			parsed_url_free(hresp->request_uri);
-		//if(hresp->body != NULL) free(hresp->body);
-		if (hresp->status_code != NULL)
-			free(hresp->status_code);
-		if (hresp->status_text != NULL)
-			free(hresp->status_text);
-		//if (hresp->request_headers != NULL)
-		//	free(hresp->request_headers);
-		//if (hresp->response_headers != NULL)
-		//		free(hresp->response_headers);
-		//if (hresp->rawresp)
-		//	free(hresp->rawresp);
+	if (hresp) {
+		parsed_url_free(hresp->request_uri);
+		free(hresp->rawresp);
 		free(hresp);
 	}
 }
