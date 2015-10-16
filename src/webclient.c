@@ -28,7 +28,7 @@
 #include "webclient.h"
 
 /* Retrieves the IP adress of a hostname */
-int resolve_host(char *hostname, char *ip) {
+/*int resolve_host(char *hostname, char *ip) {
 	struct addrinfo hints, *servinfo = NULL;
 	int proto;
 	int rv;
@@ -50,8 +50,6 @@ int resolve_host(char *hostname, char *ip) {
 	// Loop through all the results and connect to the first we can
 	struct addrinfo *p = servinfo;
 	for (; p != NULL; p = p->ai_next) {
-		inet_ntop(p->ai_family, p->ai_addr->sa_data, ip, INET6_ADDRSTRLEN);
-
 		void *ptr = NULL;
 		switch (p->ai_family) {
 			case AF_INET:
@@ -71,7 +69,7 @@ int resolve_host(char *hostname, char *ip) {
 	zfree(_htmp);
 	freeaddrinfo(servinfo);
 	return proto;
-}
+}*/
 
 /*
 	Check whether the character is permitted in scheme string
@@ -291,12 +289,12 @@ struct http_url *parse_url(const char *url) {
 	purl->host[len] = '\0';
 
 	/* Get ip */
-	purl->ip_family = resolve_host(purl->host, purl->ip);
+	/*purl->ip_family = resolve_host(purl->host, purl->ip);
 	if (!purl->ip_family) {
 		parsed_url_free(purl);
 		lprint("[erro] Cannot parse URL\n");
 		return NULL;
-	}
+	}*/
 
 	/* Is port number specified? */
 	curstr = tmpstr;
@@ -460,63 +458,49 @@ struct http_response *handle_redirect_post(struct http_response* hresp, char *cu
 */
 struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Parse url */
-	if (!NULL) {
+	if (!purl) {
 		printf("Unable to parse url");
 		return NULL;
 	}
 
 	/* Declare variable */
-	int sock;
+	int sock = -1;
 	int tmpres;
-	//char buf[BUFSIZ + 1];
-	struct sockaddr_in *remote;
-
+	
 	/* Allocate memeory for htmlcontent */
-	struct http_response *hresp = (struct http_response*) malloc(sizeof(struct http_response));
-	if (hresp == NULL) {
+	struct http_response *hresp = (struct http_response *)malloc(sizeof(struct http_response));
+	if (!hresp) {
 		printf("Unable to allocate memory for htmlcontent.");
 		return NULL;
 	}
 	memset(hresp, 0, sizeof(struct http_response));
-	/*hresp->body = NULL;
-	hresp->request_headers = NULL;
-	hresp->response_headers = NULL;
-	hresp->status_code = NULL;
-	hresp->status_text = NULL;*/
 
-	/* Create TCP socket */
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		printf("Can't create TCP socket");
-		return NULL;
+	struct addrinfo hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = SOCK_STREAM
+	};
+
+	struct addrinfo *servinfo;
+	if (getaddrinfo(purl->host, "http", &hints, &servinfo) < 0) {
+		lprint("[erro] Cannot resolve host\n");
+		return 0;
 	}
 
-	/* Set remote->sin_addr.s_addr */
-	remote = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in *));
-	remote->sin_family = purl->ip_family;
-	tmpres = inet_pton(AF_INET, purl->ip, (void *)(&(remote->sin_addr.s_addr)));
-	if (tmpres < 0) {
-		printf("Can't set remote->sin_addr.s_addr");
-		return NULL;
-	} else if (tmpres == 0) {
-		printf("Not a valid IP");
-		return NULL;
+	// Loop through all the results and connect to the first we can
+	struct addrinfo *p = servinfo;
+	for (; p != NULL; p = p->ai_next) {
+		sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+		if (!connect(sock, p->ai_addr, p->ai_addrlen))
+			break;
 	}
-	remote->sin_port = htons(80);
-	//remote->sin_port = htons(purl->port);
-
-	/* Connect */
-	if (connect(sock, (struct sockaddr *) remote, sizeof(struct sockaddr)) < 0) {
-		printf("Could not connect");
-		return NULL;
-	}
-	free(remote);
+	freeaddrinfo(servinfo);
 
 	/* Send headers to server */
 	unsigned int sent = 0;
 	while (sent < strlen(http_headers)) {
 		tmpres = send(sock, http_headers + sent, strlen(http_headers) - sent, 0);
 		if (tmpres == -1) {
-			printf("Can't send headers");
+			lprint("[erro] Cannot write to host\n");
 			return NULL;
 		}
 		sent += tmpres;
@@ -538,32 +522,8 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 		hresp->rawresp = newBuffer;
 	}
 
-	/* Recieve into response*/
-	/*	char *response = (char*)malloc(BUFSIZ);
-		char BUF[BUFSIZ];
-		size_t recived_len = 0;
-		while ((recived_len = recv(sock, response, BUFSIZ-1, 0)) > 0) {
-			response[recived_len] = '\0';
-			response = (char*)realloc(response, recived_len + strlen(BUF) + 1);
-			sprintf(response, "%s%s", response, BUF);
-		}
-		if (recived_len < 0) {
-			free(http_headers);
-			free(response);
-			close(sock);
-			printf("Unabel to recieve");
-			return NULL;
-		}*/
-
-	/* Reallocate response */
-	//response = (char*)realloc(response, strlen(response) + 1);
-
 	/* Close socket */
 	close(sock);
-
-	/* Parse status code and text */
-	//char *status_line = get_until(hresp->rawresp, "\r\n");
-	//printf("!!%s!!\n", hresp->rawresp);
 
 	/* Parse body */
 	char *body = strstr(hresp->rawresp, "\r\n\r\n");

@@ -13,8 +13,36 @@
 void print_version() {
 	printf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 }
-
+#include "webclient.h"
+#include "zmalloc.h"
 void print_usage() {
+	char *hd = "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nUser-Agent: httpreq\r\n\r\n";
+	struct http_url *purl = parse_url("http://localhost:80/");
+	//struct parsed_url *purl = parse_url("http://user:passwd@127.0.0.1:33/kaas/index.php?arie=1#top");
+	if (!purl)
+		return;
+
+	printf("scheme %d\n", purl->scheme);
+	printf("host %s\n", purl->host);
+	printf("ip %s\n", purl->ip);
+	printf("port %u\n", purl->port);
+	printf("path %s\n", purl->path);
+	printf("query %s\n", purl->query);
+	printf("fragment %s\n", purl->fragment);
+	printf("username %s\n", purl->username);
+	printf("password %s\n", purl->password);
+	struct http_response *hrep = http_req(hd, purl);
+	if (!hrep)
+		return;
+
+	printf("[CODE: %s]\n", hrep->status_text);
+	printf("[HEAD: %s]\n", hrep->response_headers);
+	printf("[BODY: %s]\n", hrep->body);
+
+	http_response_free(hrep);
+	//parsed_url_free(purl);
+
+return;
 	printf(
 	    PROGNAME " %s ("__DATE__", "__TIME__")\n"
 	    "Usage: "PROGNAME" [-?hvfd]\n"

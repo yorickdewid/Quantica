@@ -18,8 +18,6 @@ typedef enum {
 struct http_url {
 	http_scheme_t scheme;		/* mandatory */
 	char *host;					/* mandatory */
-	char ip[INET6_ADDRSTRLEN]; 	/* mandatory */
-	int ip_family;				/* mandatory */
 	unsigned short port;		/* optional */
 	char *path;					/* optional */
 	char *query;				/* optional */
