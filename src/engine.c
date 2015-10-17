@@ -802,7 +802,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;
 	}
-	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
+	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t)sizeof(struct blob_info)) {
 		lprint("[erro] Failed to read disk\n");
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;

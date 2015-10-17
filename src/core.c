@@ -468,115 +468,13 @@ void *db_table_get(char *name, size_t *len) {
 	zfree(data);
 	return buf;
 }
-#include "dict.h"
+
 int db_create_index(char *quid, const char *idxkey) {
 	if (!ready)
 		return -1;
-	quid_t key;
-	strtoquid(quid, &key);
 
-	size_t len;
-	void *data = engine_get(&btx, &key, &len);
-	if (!data)
-		return -1;
+	unused(quid);
+	unused(idxkey);
 
-	uint64_t elements;
-	schema_t schema;
-	get_row(data, &schema, &elements);
-
-	if (schema != SCHEMA_TABLE)
-		return -1;
-
-	dstype_t dt;
-	char *buf = slay_get_data(data, &dt);
-	zfree(data);
-
-	printf("Index on %s\n", idxkey);
-	puts(buf);
-
-
-	int i;
-	int r;
-	size_t data_len = strlen(buf);
-	dict_parser p;
-	dict_token_t t[data_len];
-
-	zfree(buf);
-	buf = zstrdup("{\"name\":\"kaas\"}");
-
-	dict_init(&p);
-	r = dict_parse(&p, buf, data_len, t, data_len);
-	if (r < 1) {
-		lprint("[erro] Failed to parse dict\n");
-		return -1 ;
-	}
-
-	/*if (t[0].type != DICT_ARRAY) {
-		return -1;
-	}*/
-
-	int cnt = 0;
-	int objcnt = 0;
-	dict_levelcount(t, 0, 2, &cnt);
-
-	//int cobj[cnt][2];
-	for (i = 1; i < r; ++i) {
-		if (t[i].type == DICT_PRIMITIVE) {
-			if (dict_cmp(buf, &t[i], "null")) {
-				//next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
-				puts("null");
-			} else if (dict_cmp(buf, &t[i], "true")) {
-				//next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
-				puts("true");
-			} else if (dict_cmp(buf, &t[i], "false")) {
-				//next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
-				puts("false");
-			} else {
-				//next = slay_wrap(next, NULL, 0, buf + t[i].start, t[i].end - t[i].start, DT_INT);
-			}
-		} else if (t[i].type == DICT_STRING) {
-			char *squid = buf + t[i].start;
-			squid[t[i].end - t[i].start] = '\0';
-			if (strquid_format(buf + t[i].start) > 0)
-				//next = slay_wrap(next, NULL, 0, buf + t[i].start, t[i].end - t[i].start, DT_QUID);
-				puts("QUID");
-			else
-				//next = slay_wrap(next, NULL, 0, buf + t[i].start, t[i].end - t[i].start, DT_TEXT);
-				puts(buf + t[i].start);
-		} else if (t[i].type == DICT_OBJECT) {
-	//		cobj[objcnt][0] = t[i].start;
-	//		cobj[objcnt][1] = (t[i].end - t[i].start);
-			//next = slay_wrap(next, NULL, 0, buf + t[i].start, t[i].end - t[i].start, DT_JSON);
-			printf("%.*s\n", t[i].end - t[i].start, buf + t[i].start);
-			int x, j = 0;
-			for (x = 0; x < t[i].size; x++) {
-				j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
-				j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
-			}
-			i += j;
-			objcnt++;
-		} else if (t[i].type == DICT_ARRAY) {
-			//next = slay_wrap(next, NULL, 0, buf + t[i].start, t[i].end - t[i].start, DT_JSON);
-			printf("%.*s\n", t[i].end - t[i].start, buf + t[i].start);
-			int x, j = 0;
-			for (x = 0; x < t[i].size; x++) {
-				j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
-			}
-			i += j;
-		}
-		//puts(buf + cobj[rows][0]);
-	}
-
-	//index_init(quid);
-	//status_t index_insert(long long int key, long long int valset);
-	//index_close();
-	/*memset(&rs, 0, sizeof(struct slay_result));
-	slay_put_data((char *)data, data_len, &len, &rs);
-	*items = rs.items;
-	if (engine_update(&btx, &key, rs.slay, len)<0) {
-		zfree(rs.slay);
-		return -1;
-	}
-	zfree(rs.slay);*/
 	return 0;
 }
