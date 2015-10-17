@@ -34,10 +34,17 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <jansson.h>
+#ifdef LIBCURL
 #include <curl/curl.h>
+#endif
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
+#include "../src/zmalloc.h"
+#ifndef LIBCURL
+#include "../src/webclient.h"
+#endif
 
 #define ASZ(a) sizeof(a)/sizeof(a[0])
 
@@ -53,7 +60,9 @@ char url[URL_SIZE];
 static char line[1024];
 static int debug = 0;
 static int run = 1;
+#ifdef LIBCURL
 static CURL *curl = NULL;
+#endif
 
 struct write_result {
 	char *data;
@@ -66,6 +75,7 @@ char *skipwhite(char *s) {
 	return s;
 }
 
+#ifdef LIBCURL
 static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream) {
 	struct write_result *result = (struct write_result *)stream;
 
@@ -80,7 +90,8 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream)
 	return size * nmemb;
 }
 
-void request_init() {
+
+static void request_init() {
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
 	if (!curl) {
@@ -89,7 +100,7 @@ void request_init() {
 	}
 }
 
-void request_cleanup() {
+static void request_cleanup() {
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
 }
@@ -104,7 +115,7 @@ static char *request(const char *rurl, const char *sql) {
 	if (!curl)
 		request_init();
 
-	data = malloc(BUFFER_SIZE);
+	data = zmalloc(BUFFER_SIZE);
 	if (!data)
 		goto error;
 
@@ -149,7 +160,7 @@ static char *request(const char *rurl, const char *sql) {
 
 error:
 	if (data)
-		free(data);
+		zfree(data);
 	if (curl)
 		curl_easy_cleanup(curl);
 	if (headers)
@@ -157,8 +168,37 @@ error:
 	curl_global_cleanup();
 	return NULL;
 }
+#else
+static char *request(const char *rurl, const char *sql) {
+	char query[URL_SIZE];
+	char *headers =
+		"User-Agent: Quantica CLI/" CLIENT_VERSION "\r\n"
+		"Accept: application/json\r\n"
+		"Content-Type: application/json\r\n";
 
-void local_exit() {
+	strlcpy(query, "query=", URL_SIZE);
+	strlcat(query, sql, URL_SIZE);
+
+	struct http_response *resp = http_post((char *)rurl, headers, query);
+	if (!resp)
+		goto error;
+
+	if (resp->status_code != 200) {
+		fprintf(stderr, "error: server responded with code %u\n", resp->status_code);
+		goto error;
+	}
+
+	char *data = zstrdup(resp->body);
+	http_response_free(resp);
+	return data;
+
+error:
+	http_response_free(resp);
+	return NULL;
+}
+#endif
+
+static void local_exit() {
 	run = 0;
 }
 
@@ -170,10 +210,10 @@ struct localfunction {
 	{"quit", "Exit shell", &local_exit},
 };
 
-json_t *parse(char *text) {
+static json_t *parse_response(char *text) {
 	json_error_t error;
 	json_t *root = json_loads(text, 0, &error);
-	free(text);
+	zfree(text);
 
 	if (!root) {
 		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
@@ -242,7 +282,7 @@ static int localcommand(char *cmd) {
 	if (!text)
 		return 0;
 
-	json_t *json = parse(text);
+	json_t *json = parse_response(text);
 	if (!json)
 		return 1;
 
@@ -250,7 +290,7 @@ static int localcommand(char *cmd) {
 	puts(rs);
 
 	json_decref(json);
-	free(rs);
+	zfree(rs);
 
 	return 0;
 }
@@ -287,14 +327,16 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+#ifdef LIBCURL
 	request_init();
+#endif
 
 	snprintf(url, URL_SIZE, URL_FORMAT, sflag ? "https" : "http", host, port);
 	text = request(url, "SELECT VERSION()");
 	if (!text)
 		return 1;
 
-	json_t *json = parse(text);
+	json_t *json = parse_response(text);
 	if (!json)
 		return 1;
 
@@ -321,6 +363,9 @@ int main(int argc, char *argv[]) {
 		localcommand(cmd);
 	}
 
+#ifdef LIBCURL
 	request_cleanup();
+#endif
+
 	return 0;
 }
