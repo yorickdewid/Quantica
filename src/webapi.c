@@ -865,7 +865,7 @@ const struct webroute route[] = {
 };
 
 void handle_request(int sd, fd_set *set) {
-	FILE *socket_stream = fdopen(sd, "r+");
+	FILE *socket_stream  = fdopen(sd, "r+");
 	if (!socket_stream) {
 		lprint("[erro] Failed to get file descriptor\n");
 		goto disconnect;
@@ -1121,11 +1121,13 @@ void handle_request(int sd, fd_set *set) {
 	}
 	lprint(logreqline);
 
+	unsigned int keepalive = 0;
 	if (c_connection) {
 		if(!strcmp(c_connection, "close")) {
 			vector_append_str(headers, "Connection: close\r\n");
 		} else if(!strcmp(c_connection, "keep-alive")){
 			vector_append_str(headers, "Connection: keep-alive\r\n");
+			keepalive = 1;
 		}
 	}
 
@@ -1275,9 +1277,13 @@ done:
 		free_hashtable(postdata);
 	}
 
+	if (keepalive)
+		return;
+
 disconnect:
 	if (socket_stream) {
 		fclose(socket_stream);
+		socket_stream = NULL;
 	}
 	shutdown(sd, SHUT_RDWR);
 	FD_CLR(sd, set);
