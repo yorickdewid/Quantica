@@ -347,7 +347,7 @@ struct http_response *handle_redirect(struct http_response *hresp, char *custom_
 struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Parse url */
 	if (!purl) {
-		printf("Unable to parse url");
+		lprint("[erro] Cannot parse URL\n");
 		return NULL;
 	}
 
@@ -369,6 +369,12 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 		.ai_family = AF_UNSPEC,
 		.ai_socktype = SOCK_STREAM
 	};
+
+	/* Take care of IPv6 adresses */
+	if (purl->host[0] == '[' && purl->host[strlen(purl->host)-1] == ']') {
+		purl->host++;
+		purl->host[strlen(purl->host)-1] = '\0';
+	}
 
 	struct addrinfo *servinfo;
 	if (getaddrinfo(purl->host, "http", &hints, &servinfo) < 0) {
@@ -420,7 +426,7 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 		sent += tmpres;
 	}
 
-	// receive response
+	/* Receive response */
 	int i = 0;
 	int amnt_recvd = 0;
 	int curr_sz = 4096;
