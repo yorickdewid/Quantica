@@ -53,6 +53,7 @@ unsigned int jen_hash(unsigned char *k, size_t length) {
 		case 3: a += ((unsigned int)k[2] << 16);
 		case 2: a += ((unsigned int)k[1] << 8);
 		case 1: a += k[0];
+		default: break;
 	}
 
 	mix(a, b, c);

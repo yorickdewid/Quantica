@@ -15,7 +15,7 @@ bool diag_exerr(struct base *base) {
 	quid_t key;
 	struct engine engine;
 
-	lprintf("[info] Failure on exit, run diagnostics\n");
+	lprint("[info] Failure on exit, run diagnostics\n");
 	engine_init(&engine, get_zero_key(), base->bindata);
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
@@ -23,7 +23,7 @@ bool diag_exerr(struct base *base) {
 
 	engine_recover_storage(&engine);
 	if (engine_vacuum(&engine, tmp_key, bindata)<0) {
-		lprintf("[erro] Failed to vacuum\n");
+		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
 	}
 	memcpy(&base->zero_key, &key, sizeof(quid_t));

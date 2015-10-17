@@ -36,6 +36,14 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
 #endif // LINUX
 
+#if defined(__mc68000__) || defined (__sparc__) || defined (__PPC__) \
+    || (defined(__mips__) && (defined(MIPSEB) || defined (__MIPSEB__)) ) \
+    || defined(__hpux__)  /* should be replaced by the macro for the PA */
+  #define BIG_ENDIAN_HOST 1
+#else
+  #define LITTLE_ENDIAN_HOST 1
+#endif
+
 typedef uint8_t bool;
 
 char from_hex(char ch);
@@ -45,10 +53,11 @@ char *strtoupper(char *str);
 bool strisdigit(char *str);
 bool strisalpha(char *str);
 bool strisualpha(char *str);
-char *strrmquote(char *str);
+char *strdtrim(char *str);
 char *strtoken(char *s, const char *delim);
 bool strismatch(const char *str, const char *tok);
 int strccnt(const char *str, char c);
+int antoi(const char *str, size_t num);
 char *itoa(long i);
 char *strdup(const char *str);
 char *stresc(char *src);

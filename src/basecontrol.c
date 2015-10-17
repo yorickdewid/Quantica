@@ -11,7 +11,7 @@
 #include "diagnose.h"
 #include "basecontrol.h"
 
-#define BASECONTROL		"base_control"
+#define BASECONTROL		"base"
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 
@@ -25,15 +25,15 @@ static enum {
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i, len = INSTANCE_RANDOM;
-	char rand[INSTANCE_RANDOM];
-	for (i=0; i<len; ++i)
-		rand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
-	rand[len-1] = 0;
+	char strrand[INSTANCE_RANDOM];
+	for (i = 0; i < len; ++i)
+		strrand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
+	strrand[len - 1] = 0;
 
 	static char buf[INSTANCE_LENGTH];
 	strlcpy(buf, INSTANCE_PREFIX, INSTANCE_LENGTH);
 	strlcat(buf, "_", INSTANCE_LENGTH);
-	strlcat(buf, rand, INSTANCE_LENGTH);
+	strlcat(buf, strrand, INSTANCE_LENGTH);
 
 	return buf;
 }
@@ -41,9 +41,9 @@ static char *generate_instance_name() {
 char *generate_bindata_name(struct base *base) {
 	static char buf[BINDATA_LENGTH];
 	char *pdot = strchr(buf, '.');
-	if (!pdot)
+	if (!pdot) {
 		sprintf(buf, "%s.%d", base->bindata, ++base->bincnt);
-	else {
+	} else {
 		char *k = buf;
 		char *token = strsep(&k , ".");
 		sprintf(buf, "%s.%d", token, ++base->bincnt);
@@ -65,9 +65,13 @@ void base_sync(struct base *base) {
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
-	lseek(base->fd, 0, SEEK_SET);
+	if (lseek(base->fd, 0, SEEK_SET) < 0) {
+		lprint("[erro] Failed to read " BASECONTROL "\n");
+		ERROR(EIO_WRITE, EL_FATAL);
+		return;
+	}
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
-		lprintf("[erro] Failed to read " BASECONTROL "\n");
+		lprint("[erro] Failed to read " BASECONTROL "\n");
 		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
@@ -75,15 +79,16 @@ void base_sync(struct base *base) {
 
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
-	if(file_exists(BASECONTROL)) {
+	if (file_exists(BASECONTROL)) {
 		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
 			return;
 
 		struct base_super super;
+		memset(&super, 0, sizeof(struct base_super));
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
-			lprintf("[erro] Failed to read " BASECONTROL "\n");
+			lprint("[erro] Failed to read " BASECONTROL "\n");
 			ERROR(EIO_READ, EL_FATAL);
 			return;
 		}
@@ -91,12 +96,14 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = super.bincnt;
+		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
+		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
-		zassert(super.version==VERSION_RELESE);
+		zassert(super.version == VERSION_RELESE);
 		zassert(!strcmp(super.magic, BASE_MAGIC));
-		if (super.exitstatus!=EXSTAT_SUCCESS) {
+		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
 				exit_status = EXSTAT_CHECKPOINT;
 			} else {
@@ -123,5 +130,5 @@ void base_close(struct base *base) {
 	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
-	lprintf("[info] Exist with EXSTAT_SUCCESS\n");
+	lprint("[info] Exist with EXSTAT_SUCCESS\n");
 }

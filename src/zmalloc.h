@@ -5,7 +5,6 @@
 
 #define zmalloc(sz) malloc(sz)
 #define zcalloc(n, sz) calloc(n, sz)
-#define zrealloc(ptr, sz) realloc(ptr, sz)
 #define zstrdup(str) strdup(str)
 #define zfree(sz) free(sz)
 
@@ -17,6 +16,6 @@ void *tree_zfree(void *mem);
 void *tree_get_parent(void *mem);
 void tree_set_parent(void *mem, void *parent);
 void tree_steal(void *mem, void *parent);
+void *zrealloc(void *ptr, size_t sz);
 
 #endif /* ZMALLOC_H_INCLUDED */
-

@@ -47,5 +47,6 @@ void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
 void *get_row(void *arrp, schema_t *schema, uint64_t *el);
 uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t len, dstype_t dt);
 void *slay_unwrap(void *value_slay, void **name, size_t *namelen, size_t *len, dstype_t *dt);
+char *str_schema(schema_t schema);
 
 #endif // SLAY_H_INCLUDED

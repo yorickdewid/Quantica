@@ -1,8 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <fcntl.h>
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
+
 #include "arc4random.h"
 
 typedef struct {
@@ -55,8 +59,12 @@ static void arc4_stir(arc4_stream_t *as) {
 	rdat.pid = getpid();
 	fd = open(RANDOMDEV, O_RDONLY, 0);
 	if (fd >= 0) {
-		read(fd, rdat.rnd, sizeof(rdat.rnd));
-		close(fd);
+		if (read(fd, rdat.rnd, sizeof(rdat.rnd))>0) {
+			close(fd);
+		} else {
+			fputs("Cannot read " RANDOMDEV, stderr);
+			exit(1);
+		}
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));
 

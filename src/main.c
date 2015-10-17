@@ -16,14 +16,14 @@ void print_version() {
 
 void print_usage() {
 	printf(
-		PROGNAME " %s ("__DATE__", "__TIME__")\n"
-		"Usage: "PROGNAME" [-?hvfd]\n"
-		"\nOptions:\n"
-		"  -?,-h         : this help\n"
-		"  -v            : show version and exit\n"
-		"  -d            : run as daemon (default)\n"
-		"  -f            : run in foreground\n"
-	, get_version_string());
+	    PROGNAME " %s ("__DATE__", "__TIME__")\n"
+	    "Usage: "PROGNAME" [-?hvfd]\n"
+	    "\nOptions:\n"
+	    "  -?,-h    this help\n"
+	    "  -v       show version and exit\n"
+	    "  -d       run as daemon (default)\n"
+	    "  -f       run in foreground\n"
+	    , get_version_string());
 }
 
 int daemonize() {
@@ -31,7 +31,7 @@ int daemonize() {
 
 	pid = fork();
 	if (pid < 0) {
-		lprintf("[erro] Failed to fork into background\n");
+		lprint("[erro] Failed to fork into background\n");
 		return 1;
 	}
 
@@ -42,14 +42,14 @@ int daemonize() {
 
 	sid = setsid();
 	if (sid < 0) {
-		lprintf("[erro] Failed to promote to session leader\n");
+		lprint("[erro] Failed to promote to session leader\n");
 		return 1;
 	}
 
-#if 0
+#if SECURE_CHROOT
 	if ((chdir("/")) < 0) {
-			lprintf("[erro] Failed to change directory\n");
-			return 1;
+		lprint("[erro] Failed to change directory\n");
+		return 1;
 	}
 #endif
 
@@ -64,20 +64,20 @@ int daemonize() {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2)
-        return daemonize();
+	if (argc < 2)
+		return daemonize();
 
 	int i;
-	for (i=1; i<argc; ++i) {
+	for (i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
-			switch(argv[i][1]) {
+			switch (argv[i][1]) {
 				case 'D':
 				case 'd':
 					daemonize();
 					break;
 				case 'F':
 				case 'f':
-					lprintf("[info] Running in foreground\n");
+					lprint("[info] Running in foreground\n");
 					start_webapi();
 					break;
 				case 'H':
@@ -87,13 +87,13 @@ int main(int argc, char *argv[]) {
 					break;
 				case 'V':
 				case 'v':
-                    print_version();
-                    break;
+					print_version();
+					break;
 				default:
 					printf("Unknown option '-%c'\n", argv[i][1]);
 			}
 		}
 	}
 
-    return 0;
+	return 0;
 }

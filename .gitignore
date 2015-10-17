@@ -34,3 +34,10 @@ bin/*
 *.depend
 *.cfg
 *.sublime-workspace
+*.suo
+*.vs/
+*.opensdf
+*.sdf
+
+# Tests
+/cov-int

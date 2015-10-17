@@ -11,33 +11,58 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 #include "test.h"
 #include "../src/zmalloc.h"
 #include "../src/arc4random.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-#define NUM		200000
+#define NUM			200000
 #define R_NUM		(NUM/200)
 #define IDXNAME		"bmark_engine.idx"
 #define DBNAME		"bmark_engine.db"
 #define KEYSIZE		16
 #define VALSIZE		100
 
-static struct timespec start;
+static struct timespec timer_start;
 static struct engine e;
 static char val[VALSIZE+1] = {'\0'};
 quid_t quidr[NUM];
 
 static void start_timer() {
-	clock_gettime(CLOCK_MONOTONIC, &start);
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	timer_start.tv_sec = mts.tv_sec;
+	timer_start.tv_nsec = mts.tv_nsec;
+#else
+	clock_gettime(CLOCK_MONOTONIC, &timer_start);
+#endif
 }
 
 static double get_timer() {
 	struct timespec end;
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+	end.tv_sec = mts.tv_sec;
+	end.tv_nsec = mts.tv_nsec;
+#else
 	clock_gettime(CLOCK_MONOTONIC, &end);
-	long seconds  = end.tv_sec - start.tv_sec;
-	long nseconds = end.tv_nsec - start.tv_nsec;
+#endif
+	long seconds  = end.tv_sec - timer_start.tv_sec;
+	long nseconds = end.tv_nsec - timer_start.tv_nsec;
 	return seconds + (double)nseconds / 1.0e9;
 }
 
@@ -58,14 +83,17 @@ static void print_header() {
 static void db_write_test() {
 	quid_t key;
 	int v_len = strlen(val);
+	char squid[35] = {'\0'};
 	start_timer();
 	int i;
 	for(i=0; i<NUM; ++i) {
 		memset(&key, 0, sizeof(quid_t));
 		quid_create(&key);
+		quidtostr(squid, &key);
+		memcpy(&quidr[i], &key, sizeof(quid_t));
 		if (engine_insert(&e, &key, val, v_len)<0)
 			FATAL("engine_insert");
-		memcpy(&quidr[i], &key, sizeof(quid_t));
+
 		if(!(i%10000))
 			LOGF("finished %d ops%30s\r", i, "");
 	}
@@ -176,6 +204,45 @@ static void db_read_bounds_test() {
 	       ,cost);
 }
 
+#if 0
+static void db_delete_test() {
+	quid_t key;
+	int all=0, i;
+	char squid[35] = {'\0'};
+	start_timer();
+	for(i=0; i<NUM; ++i) {
+		memset(&key, 0, sizeof(quid_t));
+		memcpy(&key, &quidr[i], sizeof(quid_t));
+		quidtostr(squid, &key);
+
+		size_t len;
+		if(engine_delete(&e, &key)<0) {
+			quidtostr(squid, &key);
+			LOGF("Cannot delete key %s[%d]\n", squid, i);
+			FATAL("engine_delete");
+		}
+		void *data = engine_get(&e, &key, &len);
+		if(data==NULL) {
+			all++;
+		} else {
+			FATAL("Key found");
+		}
+
+		zfree(data);
+
+		if((i%10000)==0)
+			LOGF("finished %d ops%30s\r",i,"");
+	}
+	LINE();
+	double cost = get_timer();
+	LOGF("|deleterandom	(delete:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.6f(sec)\n"
+	       ,all
+	       ,(double)(cost/R_NUM)
+	       ,(double)(R_NUM/cost)
+	       ,cost);
+}
+#endif
+
 static void db_delete_random_test() {
 	quid_t key;
 	int all=0,i;
@@ -188,13 +255,14 @@ static void db_delete_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		if(engine_delete(&e, &key)<0)
+		if(engine_delete(&e, &key)<0) {
+			quidtostr(squid, &key);
 			FATAL("engine_delete");
+		}
 		void *data = engine_get(&e, &key, &len);
 		if(data==NULL) {
 			all++;
 		} else {
-			quidtostr(squid, &key);
 			FATAL("Key found");
 		}
 
@@ -251,6 +319,9 @@ BENCHMARK_IMPL(engine) {
 	db_read_seq_test();
 	db_read_random_test();
 	db_read_bounds_test();
+#if 0
+	db_delete_test();
+#endif
 	db_delete_random_test();
 	db_read_test();
 

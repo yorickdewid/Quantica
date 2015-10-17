@@ -35,6 +35,9 @@ char *get_uptime();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
 int crypto_sha256(char *s, const char *data);
+int crypto_sha512(char *s, const char *data);
+int crypto_hmac_sha256(char *s, const char *key, const char *data);
+int crypto_hmac_sha512(char *s, const char *key, const char *data);
 sqlresult_t *exec_sqlquery(const char *query, size_t *len);
 char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
@@ -51,6 +54,7 @@ int db_put(char *quid, int *items, const void *data, size_t len);
 void *_db_get(char *quid, dstype_t *dt);
 void *db_get(char *quid, size_t *len);
 char *db_get_type(char *quid);
+char *db_get_schema(char *quid);
 int _db_update(char *quid, void *slay, size_t len);
 int db_update(char *quid, int *items, const void *data, size_t data_len);
 int db_delete(char *quid);
@@ -64,5 +68,7 @@ char *db_list_get(char *quid);
 int db_list_update(char *quid, const char *name);
 char *db_list_all();
 void *db_table_get(char *name, size_t *len);
+
+int db_create_index(char *quid, const char *idxkey);
 
 #endif // CORE_H_INCLUDED

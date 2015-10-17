@@ -1,7 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "~/projects/quantica",
+			"path": "../",
 			"folder_exclude_patterns": [
 				"bin"
 			]
@@ -17,7 +17,7 @@
 	},
 	"build_systems": [
 		{
-			"name": "CC",
+			"name": "qCC",
 			"cmd": [
 				"make"
 			],

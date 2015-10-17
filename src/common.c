@@ -18,21 +18,21 @@ int8_t strisbool(char *str) {
 	return -1;
 }
 
-char *strtolower(char *str){
-    for (; *str; ++str)
-        *str = tolower(*str);
-    return str;
+char *strtolower(char *str) {
+	for (; *str; ++str)
+		*str = tolower(*str);
+	return str;
 }
 
-char *strtoupper(char *str){
-    for (; *str; ++str)
-        *str = toupper(*str);
-    return str;
+char *strtoupper(char *str) {
+	for (; *str; ++str)
+		*str = toupper(*str);
+	return str;
 }
 
 bool strisdigit(char *str) {
 	for (; *str; ++str)
-		if(!isdigit(*str))
+		if (!isdigit(*str))
 			return FALSE;
 	return TRUE;
 }
@@ -55,13 +55,15 @@ bool strisualpha(char *str) {
 	return TRUE;
 }
 
-char *strrmquote(char *str) {
+/* Remove first and last character from string */
+char *strdtrim(char *str) {
 	char *p = str;
 	p++;
-	p[strlen(p)-1] = 0;
+	p[strlen(p) - 1] = 0;
 	return p;
 }
 
+/* Match string agains tokens */
 bool strismatch(const char *str, const char *tok) {
 	for (; *str; ++str) {
 		bool flag = FALSE;
@@ -76,9 +78,10 @@ bool strismatch(const char *str, const char *tok) {
 	return TRUE;
 }
 
+/* Count charactes in string */
 int strccnt(const char *str, char c) {
 	int cnt = 0;
-	while((str = strchr(str, c)) != NULL) {
+	while ((str = strchr(str, c)) != NULL) {
 		cnt++;
 		str++;
 	}
@@ -131,7 +134,7 @@ __be16 to_be16(uint16_t x) {
 
 __be64 to_be64(uint64_t x) {
 #if (BYTE_ORDER == LITTLE_ENDIAN)
-	return (FORCE __be64) (((uint64_t) _htonl((uint32_t) x) << 32) | _htonl((uint32_t) (x >> 32)));
+	return (FORCE __be64)(((uint64_t) _htonl((uint32_t) x) << 32) | _htonl((uint32_t)(x >> 32)));
 #else
 	return (FORCE __be64) x;
 #endif
@@ -147,7 +150,7 @@ uint16_t from_be16(__be16 x) {
 
 uint64_t from_be64(__be64 x) {
 #if (BYTE_ORDER == LITTLE_ENDIAN)
-	return ((uint64_t) _ntohl((uint32_t) (FORCE uint64_t) x) << 32) | _ntohl((uint32_t) ((FORCE uint64_t) x >> 32));
+	return ((uint64_t) _ntohl((uint32_t)(FORCE uint64_t) x) << 32) | _ntohl((uint32_t)((FORCE uint64_t) x >> 32));
 #else
 	return (FORCE uint64_t) x;
 #endif
@@ -155,7 +158,7 @@ uint64_t from_be64(__be64 x) {
 
 int file_exists(const char *path) {
 	int fd = open(path, O_RDWR);
-	if(fd>-1) {
+	if (fd > -1) {
 		close(fd);
 		return 1;
 	}
@@ -169,5 +172,5 @@ char *get_version_string() {
 }
 
 long get_version() {
-	return sizeof(int)*VERSION_RELESE + sizeof(int)*VERSION_MAJOR + sizeof(int)*VERSION_MINOR;
+	return sizeof(int) * VERSION_RELESE + sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR;
 }

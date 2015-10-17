@@ -13,7 +13,7 @@
 #include "quid.h"
 #include "md5.h"
 #include "sha1.h"
-#include "sha256.h"
+#include "sha2.h"
 #include "core.h"
 #include "core.h"
 #include "sql.h"
@@ -21,6 +21,14 @@
 #define STACK_SZ	15
 #define STACK_EMPTY_POP()				\
 	if (stack->size<=0) {				\
+		ERROR(ESQL_PARSE_END, EL_WARN);	\
+		return &rs;						\
+	}									\
+	tok = stack_rpop(stack);
+
+#define STACK_EMPTY_POP_FREE(ptr)		\
+	if (stack->size<=0) {				\
+		zfree(ptr);						\
 		ERROR(ESQL_PARSE_END, EL_WARN);	\
 		return &rs;						\
 	}									\
@@ -77,6 +85,9 @@ enum token {
 	T_FUNC_MD5,
 	T_FUNC_SHA1,
 	T_FUNC_SHA256,
+	T_FUNC_SHA512,
+	T_FUNC_HMAC_SHA256,
+	T_FUNC_HMAC_SHA512,
 	T_FUNC_VACUUM,
 	T_FUNC_SYNC,
 	T_FUNC_SHUTDOWN,
@@ -105,7 +116,7 @@ struct stoken {
 	int length;
 };
 
-sqlresult_t *parse(stack_t *stack, size_t *len) {
+sqlresult_t *parse(qstack_t *stack, size_t *len) {
 	static sqlresult_t rs;
 	memset(&rs, '\0', sizeof(sqlresult_t));
 	if (stack->size<=0) {
@@ -145,19 +156,22 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		} else if (tok->token == T_FUNC_MD5) {
 			char *strmd5 = zmalloc(MD5_SIZE+1);
 			strmd5[MD5_SIZE] = '\0';
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strmd5);
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strmd5);
 			if (tok->token != T_STRING) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_md5(strmd5, tok->string);
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strmd5);
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmd5);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -167,19 +181,22 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 		} else if (tok->token == T_FUNC_SHA1) {
 			char *strsha = zmalloc(SHA1_LENGTH+1);
 			strsha[SHA1_LENGTH] = '\0';
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strsha);
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strsha);
 			if (tok->token != T_STRING) {
+				zfree(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha1(strsha, tok->string);
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strsha);
 			if (tok->token != T_BRACK_CLOSE) {
+				free(strsha);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
@@ -187,26 +204,118 @@ sqlresult_t *parse(stack_t *stack, size_t *len) {
 			rs.data = strsha;
 			return &rs;
 		} else if (tok->token == T_FUNC_SHA256) {
-			char *strsha256 = zmalloc(SHA256_SIZE+1);
-			strsha256[SHA256_SIZE] = '\0';
-			STACK_EMPTY_POP();
+			char *strsha256 = zmalloc((2*SHA256_DIGEST_SIZE)+1);
+			strsha256[(2*SHA256_DIGEST_SIZE)] = '\0';
+			STACK_EMPTY_POP_FREE(strsha256);
 			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strsha256);
 			if (tok->token != T_STRING) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			crypto_sha256(strsha256, tok->string);
-			STACK_EMPTY_POP();
+			STACK_EMPTY_POP_FREE(strsha256);
 			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strsha256);
 				ERROR(ESQL_PARSE_TOK, EL_WARN);
 				return &rs;
 			}
 			rs.name = zstrdup("hash");
 			rs.data = strsha256;
+			return &rs;
+		} else if (tok->token == T_FUNC_SHA512) {
+			char *strsha512 = zmalloc((2*SHA512_DIGEST_SIZE)+1);
+			strsha512[(2*SHA512_DIGEST_SIZE)] = '\0';
+			STACK_EMPTY_POP_FREE(strsha512);
+			if (tok->token != T_BRACK_OPEN) {
+				zfree(strsha512);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP_FREE(strsha512);
+			if (tok->token != T_STRING) {
+				zfree(strsha512);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_sha512(strsha512, tok->string);
+			STACK_EMPTY_POP_FREE(strsha512);
+			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strsha512);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hash");
+			rs.data = strsha512;
+			return &rs;
+		} else if (tok->token == T_FUNC_HMAC_SHA256) {
+			char *strmac = zmalloc(SHA256_BLOCK_SIZE+1);
+			strmac[SHA256_BLOCK_SIZE] = '\0';
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_STRING) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			char *key = tok->string;
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_STRING) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_hmac_sha256(strmac, key, tok->string);
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hmac");
+			rs.data = strmac;
+			return &rs;
+		} else if (tok->token == T_FUNC_HMAC_SHA512) {
+			char *strmac = zmalloc(SHA512_BLOCK_SIZE+1);
+			strmac[SHA512_BLOCK_SIZE] = '\0';
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_BRACK_OPEN) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_STRING) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			char *key = tok->string;
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_STRING) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			crypto_hmac_sha512(strmac, key, tok->string);
+			STACK_EMPTY_POP_FREE(strmac);
+			if (tok->token != T_BRACK_CLOSE) {
+				zfree(strmac);
+				ERROR(ESQL_PARSE_TOK, EL_WARN);
+				return &rs;
+			}
+			rs.name = zstrdup("hmac");
+			rs.data = strmac;
 			return &rs;
 		} else if (tok->token == T_FUNC_INSTANCE_NAME) {
 			STACK_EMPTY_POP();
@@ -366,12 +475,16 @@ select_tablelist:
 		}
 		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 insert_arr:
 		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
@@ -432,7 +545,7 @@ insert_arr:
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
-		strcpy(rs.quid, tok->string);
+		strlcpy(rs.quid, tok->string, QUID_LENGTH);
 		struct objname {
 			char *name;
 			int length;
@@ -471,12 +584,16 @@ insert_arr:
 		}
 		STACK_EMPTY_POP();
 		if (tok->token != T_SEPARATE) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
 update_arr:
 		STACK_EMPTY_POP();
 		if (tok->token != T_BRACK_OPEN) {
+			if (name)
+				zfree(name);
 			ERROR(ESQL_PARSE_TOK, EL_WARN);
 			return &rs;
 		}
@@ -627,6 +744,8 @@ char *explode_sql(char *sql) {
 				if (!isspace(*(sql-1)))
 					pad++;
 				break;
+			default:
+				break;
 		}
 	sql = osql;
 	char *_sql = zmalloc(strlen(sql)+pad+1);
@@ -659,6 +778,8 @@ char *explode_sql(char *sql) {
 					}
 				}
 				break;
+			default:
+				break;
 		}
 		_sql[i] = sql[i];
 		switch (sql[i]) {
@@ -687,13 +808,15 @@ char *explode_sql(char *sql) {
 					}
 				}
 				break;
+			default:
+				break;
 		}
 	}
 	_sql[i] = '\0';
 	return _osql;
 }
 
-int tokenize(stack_t *stack, char sql[]) {
+int tokenize(qstack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
 	char *pch = strtoken(_ustr," ,");
 	while(pch != NULL) {
@@ -780,6 +903,12 @@ int tokenize(stack_t *stack, char sql[]) {
 			tok->token =  T_FUNC_SHA1;
 		} else if (!strcmp(pch, "SHA256") || !strcmp(pch, "sha256")) {
 			tok->token =  T_FUNC_SHA256;
+		} else if (!strcmp(pch, "SHA512") || !strcmp(pch, "sha512")) {
+			tok->token =  T_FUNC_SHA512;
+		} else if (!strcmp(pch, "HMAC_SHA256") || !strcmp(pch, "hmac_sha256")) {
+			tok->token =  T_FUNC_HMAC_SHA256;
+		} else if (!strcmp(pch, "HMAC_SHA512") || !strcmp(pch, "hmac_sha512")) {
+			tok->token =  T_FUNC_HMAC_SHA512;
 		} else if (!strcmp(pch, "VACUUM") || !strcmp(pch, "vacuum")) {
 			tok->token =  T_FUNC_VACUUM;
 		} else if (!strcmp(pch, "SYNC") || !strcmp(pch, "sync")) {
@@ -864,7 +993,7 @@ sqlresult_t *sql_exec(const char *sql, size_t *len) {
 	ERRORZEOR();
 	charcnt = 0;
 	cnt = 0;
-	stack_t tokenstream;
+	qstack_t tokenstream;
 	stack_init(&tokenstream, STACK_SZ);
 	if (tokenize(&tokenstream, (char *)sql))
 		rs = parse(&tokenstream, len);
