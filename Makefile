@@ -124,7 +124,7 @@ genlookup3:
 #								$(UTILDIR)/qcli.c -lm -ljansson -o $(BINDIR)/qcli
 
 qcli: $(CLIENTOBJECTS)
-	$(CC) $(CLIENTOBJECTS) $(LDFLAGS) -ljansson -o $(BINDIR)/$@
+	$(CC) $(CLIENTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 
 cleanall: clean cleandb cleanutil
 

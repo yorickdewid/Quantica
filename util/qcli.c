@@ -28,12 +28,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <jansson.h>
 #ifdef LIBCURL
 #include <curl/curl.h>
 #endif
@@ -42,6 +42,7 @@
 #include <common.h>
 #include <log.h>
 #include "../src/zmalloc.h"
+#include "../src/dict.h"
 #ifndef LIBCURL
 #include "../src/webclient.h"
 #endif
@@ -172,9 +173,9 @@ error:
 static char *request(const char *rurl, const char *sql) {
 	char query[URL_SIZE];
 	char *headers =
-		"User-Agent: Quantica CLI/" CLIENT_VERSION "\r\n"
-		"Accept: application/json\r\n"
-		"Content-Type: application/json\r\n";
+	    "User-Agent: Quantica CLI/" CLIENT_VERSION "\r\n"
+	    "Accept: application/json\r\n"
+	    "Content-Type: application/json\r\n";
 
 	strlcpy(query, "query=", URL_SIZE);
 	strlcat(query, sql, URL_SIZE);
@@ -210,7 +211,296 @@ struct localfunction {
 	{"quit", "Exit shell", &local_exit},
 };
 
-static json_t *parse_response(char *text) {
+enum dict_type {
+	DICT_NULL,
+	DICT_TRUE,
+	DICT_FALSE,
+	DICT_INT,
+	DICT_STR,
+	DICT_ARR,
+	DICT_OBJ
+};
+
+typedef struct dict_object {
+	char *name;
+	void *data;
+	struct dict_object **child;
+	unsigned int sz;
+	enum dict_type type;
+} dict_object_t;
+
+static dict_object_t *parse_object(char *data, size_t data_len, char *name, void *parent) {
+	dict_parser p;
+	dict_token_t t[data_len];
+
+	dict_init(&p);
+	int o = dict_parse(&p, data, data_len, t, data_len);
+	if (o < 1)
+		return NULL;
+
+	dict_object_t *rtobj = (dict_object_t *)tree_zmalloc(sizeof(dict_object_t), parent);
+	memset(rtobj, 0, sizeof(dict_object_t));
+	rtobj->child = (struct dict_object **)tree_zmalloc(o * sizeof(struct dict_object *), rtobj);
+	memset(rtobj->child, 0, o * sizeof(struct dict_object *));
+	if (name)
+		rtobj->name = name;
+
+	switch (t[0].type) {
+		case DICT_ARRAY: {
+			int i;
+			rtobj->type = DICT_ARR;
+			for (i = 1; i < o; ++i) {
+				switch (t[i].type) {
+					case DICT_PRIMITIVE:
+						if (dict_cmp(data, &t[i], "null")) {
+							puts("NULL");
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz]->type = DICT_NULL;
+							rtobj->child[rtobj->sz]->child = NULL;
+							rtobj->child[rtobj->sz]->sz = 0;
+							rtobj->child[rtobj->sz]->name = NULL;
+							rtobj->child[rtobj->sz]->data = NULL;
+							rtobj->sz++;
+						} else if (dict_cmp(data, &t[i], "true")) {
+							puts("TRUE");
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz]->type = DICT_TRUE;
+							rtobj->child[rtobj->sz]->child = NULL;
+							rtobj->child[rtobj->sz]->sz = 0;
+							rtobj->child[rtobj->sz]->name = NULL;
+							rtobj->child[rtobj->sz]->data = NULL;
+							rtobj->sz++;
+						} else if (dict_cmp(data, &t[i], "false")) {
+							puts("FALSE");
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz]->type = DICT_FALSE;
+							rtobj->child[rtobj->sz]->child = NULL;
+							rtobj->child[rtobj->sz]->sz = 0;
+							rtobj->child[rtobj->sz]->name = NULL;
+							rtobj->child[rtobj->sz]->data = NULL;
+							rtobj->sz++;
+						} else {
+							printf("INT %.*s\n", t[i].end - t[i].start, data + t[i].start);
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz]->type = DICT_INT;
+							rtobj->child[rtobj->sz]->child = NULL;
+							rtobj->child[rtobj->sz]->sz = 0;
+							rtobj->child[rtobj->sz]->name = NULL;
+							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
+							rtobj->sz++;
+						}
+						break;
+					case DICT_STRING:
+						printf("STR %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+						memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+						rtobj->child[rtobj->sz]->type = DICT_STR;
+						rtobj->child[rtobj->sz]->child = NULL;
+						rtobj->child[rtobj->sz]->sz = 0;
+						rtobj->child[rtobj->sz]->name = NULL;
+						rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
+						rtobj->sz++;
+						break;
+					case DICT_OBJECT: {
+						printf("OBJ %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						rtobj->child[rtobj->sz] = parse_object(data + t[i].start, t[i].end - t[i].start, NULL, rtobj);
+						int x, j = 0;
+						for (x = 0; x < t[i].size; x++) {
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+						}
+						i += j;
+						rtobj->sz++;
+						break;
+					}
+					case DICT_ARRAY: {
+						printf("ARR %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						rtobj->child[rtobj->sz] = parse_object(data + t[i].start, t[i].end - t[i].start, NULL, rtobj);
+						int x, j = 0;
+						for (x = 0; x < t[i].size; x++) {
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+						}
+						i += j;
+						rtobj->sz++;
+						break;
+					}
+					default:
+						break;
+				}
+			}
+			break;
+		}
+		case DICT_OBJECT: {
+			int i;
+			rtobj->type = DICT_OBJ;
+			unsigned char setname = 0;
+			for (i = 1; i < o; ++i) {
+				switch (t[i].type) {
+					case DICT_PRIMITIVE:
+						if (dict_cmp(data, &t[i], "null")) {
+							puts("NULL");
+							rtobj->child[rtobj->sz]->type = DICT_NULL;
+							rtobj->sz++;
+							setname = 0;
+						} else if (dict_cmp(data, &t[i], "true")) {
+							puts("TRUE");
+							rtobj->child[rtobj->sz]->type = DICT_TRUE;
+							rtobj->sz++;
+							setname = 0;
+						} else if (dict_cmp(data, &t[i], "false")) {
+							puts("FALSE");
+							rtobj->child[rtobj->sz]->type = DICT_FALSE;
+							rtobj->sz++;
+							setname = 0;
+						} else {
+							printf("INT %.*s\n", t[i].end - t[i].start, data + t[i].start);
+							rtobj->child[rtobj->sz]->type = DICT_INT;
+							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
+							rtobj->sz++;
+							setname = 0;
+						}
+						break;
+					case DICT_STRING:
+						printf("STR %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						if (!setname) {
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz]->type = DICT_STR;
+							rtobj->child[rtobj->sz]->child = NULL;
+							rtobj->child[rtobj->sz]->sz = 0;
+							rtobj->child[rtobj->sz]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
+							rtobj->child[rtobj->sz]->data = NULL;
+							setname = 1;
+						} else {
+							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
+							rtobj->sz++;
+							setname = 0;
+						}
+						break;
+					case DICT_OBJECT: {
+						printf("OBJ %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						rtobj->child[rtobj->sz] = parse_object(data + t[i].start, t[i].end - t[i].start, rtobj->child[rtobj->sz]->name, rtobj);
+						int x, j = 0;
+						for (x = 0; x < t[i].size; x++) {
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+						}
+						i += j;
+						rtobj->sz++;
+						break;
+					}
+					case DICT_ARRAY: {
+						printf("ARR %.*s\n", t[i].end - t[i].start, data + t[i].start);
+						rtobj->child[rtobj->sz] = parse_object(data + t[i].start, t[i].end - t[i].start, rtobj->child[rtobj->sz]->name, rtobj);
+						int x, j = 0;
+						for (x = 0; x < t[i].size; x++) {
+							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
+						}
+						i += j;
+						rtobj->sz++;
+						break;
+					}
+					default:
+						break;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	return rtobj;
+}
+
+static char *parse_object_get(dict_object_t *obj, const char *key) {
+	if (obj->type != DICT_OBJ)
+		return NULL;
+
+	unsigned int i;
+	for (i = 0; i < obj->sz; ++i) {
+		if (!strcmp(obj->child[i]->name, key)) {
+			switch (obj->child[i]->type) {
+				case DICT_STR:
+				case DICT_INT:
+					printf(">%s -> %s\n", obj->child[i]->name, (char *)obj->child[i]->data);
+					return (char *)obj->child[i]->data;
+				case DICT_TRUE:
+					//printf(">%s -> TRUE\n", rt->child[i]->name);
+					//break;
+					return "true";
+				case DICT_FALSE:
+					//printf(">%s -> FALSE\n", rt->child[i]->name);
+					return "false";
+				case DICT_NULL:
+					//printf(">%s -> NULL\n", rt->child[i]->name);
+					return "null";
+				/*case DICT_OBJ: {
+					printf(">%s ->>>\n", rt->child[i]->name);
+					unsigned int j;
+					for (j = 0; j < rt->child[i]->sz; ++j) {
+						switch (rt->child[i]->child[j]->type) {
+							case DICT_STR:
+							case DICT_INT:
+								printf(">%s -> %s\n", rt->child[i]->child[j]->name, (char *)rt->child[i]->child[j]->data);
+								break;
+							case DICT_TRUE:
+								puts(">TRUE");
+								break;
+							case DICT_FALSE:
+								puts(">FALSE");
+								break;
+							case DICT_NULL:
+								puts(">NULL");
+								break;
+							case DICT_OBJ:
+								puts(">NESTED OBJ");
+								break;
+							default:
+								break;
+						}
+					}
+					break;
+				}
+				case DICT_ARR: {
+					printf(">%s ->>>\n", rt->child[i]->name);
+					unsigned int j;
+					for (j = 0; j < rt->child[i]->sz; ++j) {
+						switch (rt->child[i]->child[j]->type) {
+							case DICT_STR:
+							case DICT_INT:
+								printf(">%s\n", (char *)rt->child[i]->child[j]->data);
+								break;
+							case DICT_TRUE:
+								puts(">TRUE");
+								break;
+							case DICT_FALSE:
+								puts(">FALSE");
+								break;
+							case DICT_NULL:
+								puts(">NULL");
+								break;
+							case DICT_OBJ:
+								puts(">NESTED OBJ");
+								break;
+							default:
+								break;
+						}
+					}
+					break;
+				}*/
+				default:
+					break;
+			}
+		}
+	}
+	return NULL;
+}
+
+/*static json_t *parse_response(char *text) {
 	json_error_t error;
 	json_t *root = json_loads(text, 0, &error);
 	zfree(text);
@@ -251,7 +541,7 @@ err:
 	json_decref(root);
 
 	return NULL;
-}
+}*/
 
 /* Check if local command exist and execute it
  */
@@ -282,15 +572,12 @@ static int localcommand(char *cmd) {
 	if (!text)
 		return 0;
 
-	json_t *json = parse_response(text);
-	if (!json)
+	dict_object_t *rt = parse_object(text, strlen(text), NULL, NULL);
+	if (!rt)
 		return 1;
 
-	char *rs = json_dumps(json, JSON_ENSURE_ASCII);
-	puts(rs);
-
-	json_decref(json);
-	zfree(rs);
+	tree_zfree(rt);
+	zfree(text);
 
 	return 0;
 }
@@ -309,21 +596,21 @@ int main(int argc, char *argv[]) {
 	opterr = 0;
 	while ((c = getopt(argc, argv, "dh:p:s")) > 0) {
 		switch (c) {
-		case 'd':
-			debug = 1;
-			break;
-		case 'h':
-			host = optarg;
-			break;
-		case 'p':
-			port = optarg;
-			break;
-		case 's':
-			sflag = 1;
-			break;
-		default:
-			fprintf(stderr, usage, argv[0]);
-			return 1;
+			case 'd':
+				debug = 1;
+				break;
+			case 'h':
+				host = optarg;
+				break;
+			case 'p':
+				port = optarg;
+				break;
+			case 's':
+				sflag = 1;
+				break;
+			default:
+				fprintf(stderr, usage, argv[0]);
+				return 1;
 		}
 	}
 
@@ -336,16 +623,16 @@ int main(int argc, char *argv[]) {
 	if (!text)
 		return 1;
 
-	json_t *json = parse_response(text);
-	if (!json)
+	dict_object_t *rt = parse_object(text, strlen(text), NULL, NULL);
+	if (!rt)
 		return 1;
 
-	json_t *version = json_object_get(json, "version");
-	if (!json_is_string(version)) {
+	char *version = parse_object_get(rt, "version");
+	if (!version) {
 		fprintf(stderr, "error: cannot parse result\n");
 		return 1;
 	}
-	printf("Quantica: %s\n", json_string_value(version));
+	printf("Quantica: %s\n", version);
 
 	while (run) {
 		printf(">>> ");
@@ -366,6 +653,9 @@ int main(int argc, char *argv[]) {
 #ifdef LIBCURL
 	request_cleanup();
 #endif
+
+	tree_zfree(rt);
+	zfree(text);
 
 	return 0;
 }
