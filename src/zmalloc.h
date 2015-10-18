@@ -12,6 +12,7 @@ void *tree_zmalloc(size_t size, void *parent);
 void *tree_zcalloc(size_t num, size_t size, void *parent);
 void *tree_zrealloc(void *mem, size_t size);
 char *tree_zstrdup(const char *str, void *parent);
+char *tree_zstrndup(const char *str, size_t n, void *parent);
 void *tree_zfree(void *mem);
 void *tree_get_parent(void *mem);
 void tree_set_parent(void *mem, void *parent);

@@ -75,6 +75,18 @@ char *tree_zstrdup(const char *str, void *parent) {
 	return copy;
 }
 
+char *tree_zstrndup(const char *str, size_t n, void *parent) {
+	char *copy;
+
+	if ((copy = tree_zmalloc(n+1, parent)) == NULL) {
+		return NULL;
+	}
+	memcpy(copy, str, n);
+	copy[n] = '\0';
+
+	return copy;
+}
+
 static void __zfree(void *mem) {
     if (!mem)
         return;
