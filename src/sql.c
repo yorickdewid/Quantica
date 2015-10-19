@@ -698,6 +698,8 @@ update_arr:
 		}
 		run = 0;
 		return &rs;
+	} else if (tok->token == T_COMMIT) {
+		return &rs;
 	} else {
 		ERROR(ESQL_PARSE_TOK, EL_WARN);
 	}
