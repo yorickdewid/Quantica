@@ -358,7 +358,7 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	int tmpres;
 
 	/* Allocate memeory for htmlcontent */
-	struct http_response *hresp = (struct http_response *)malloc(sizeof(struct http_response));
+	struct http_response *hresp = (struct http_response *)zmalloc(sizeof(struct http_response));
 	if (!hresp) {
 		lprint("[erro] Unable to allocate memory\n");
 		return NULL;
@@ -432,12 +432,14 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	int curr_sz = 4096;
 	int old_sz = curr_sz;
 	hresp->rawresp = (char *)zmalloc(curr_sz);
+	memset(hresp->rawresp, 0, curr_sz);
 	while ((amnt_recvd = recv(sock, hresp->rawresp + i, 4096, 0)) > 0) {
 		i += amnt_recvd;
 		old_sz = curr_sz;
 		curr_sz += 4096;
 
 		char *new_buf = zmalloc(curr_sz);
+		memset(new_buf, 0, curr_sz);
 		memcpy(new_buf, hresp->rawresp, old_sz);
 		free(hresp->rawresp);
 		hresp->rawresp = new_buf;

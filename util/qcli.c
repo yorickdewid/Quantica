@@ -545,8 +545,10 @@ static int localcommand(char *cmd) {
 		return 0;
 
 	dict_object_t *rt = parse_object(text, strlen(text), NULL, NULL);
-	if (!rt)
+	if (!rt) {
+		lprint("[errno] Failed to parse\n");
 		return 1;
+	}
 
 	print_result(rt, 0);
 
