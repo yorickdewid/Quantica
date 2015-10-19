@@ -119,7 +119,7 @@ struct stoken {
 sqlresult_t *parse(qstack_t *stack, size_t *len) {
 	static sqlresult_t rs;
 	memset(&rs, '\0', sizeof(sqlresult_t));
-	if (stack->size<=0) {
+	if (stack->size <= 0) {
 		ERROR(ESQL_PARSE_END, EL_WARN);
 		return &rs;
 	}
@@ -154,7 +154,7 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = tstostrf(zmalloc(20), 20, get_timestamp(), ISO_8601_FORMAT);
 			return &rs;
 		} else if (tok->token == T_FUNC_MD5) {
-			char *strmd5 = zmalloc(MD5_SIZE+1);
+			char *strmd5 = zmalloc(MD5_SIZE + 1);
 			strmd5[MD5_SIZE] = '\0';
 			STACK_EMPTY_POP_FREE(strmd5);
 			if (tok->token != T_BRACK_OPEN) {
@@ -179,7 +179,7 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = strmd5;
 			return &rs;
 		} else if (tok->token == T_FUNC_SHA1) {
-			char *strsha = zmalloc(SHA1_LENGTH+1);
+			char *strsha = zmalloc(SHA1_LENGTH + 1);
 			strsha[SHA1_LENGTH] = '\0';
 			STACK_EMPTY_POP_FREE(strsha);
 			if (tok->token != T_BRACK_OPEN) {
@@ -204,8 +204,8 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = strsha;
 			return &rs;
 		} else if (tok->token == T_FUNC_SHA256) {
-			char *strsha256 = zmalloc((2*SHA256_DIGEST_SIZE)+1);
-			strsha256[(2*SHA256_DIGEST_SIZE)] = '\0';
+			char *strsha256 = zmalloc((2 * SHA256_DIGEST_SIZE) + 1);
+			strsha256[(2 * SHA256_DIGEST_SIZE)] = '\0';
 			STACK_EMPTY_POP_FREE(strsha256);
 			if (tok->token != T_BRACK_OPEN) {
 				zfree(strsha256);
@@ -229,8 +229,8 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = strsha256;
 			return &rs;
 		} else if (tok->token == T_FUNC_SHA512) {
-			char *strsha512 = zmalloc((2*SHA512_DIGEST_SIZE)+1);
-			strsha512[(2*SHA512_DIGEST_SIZE)] = '\0';
+			char *strsha512 = zmalloc((2 * SHA512_DIGEST_SIZE) + 1);
+			strsha512[(2 * SHA512_DIGEST_SIZE)] = '\0';
 			STACK_EMPTY_POP_FREE(strsha512);
 			if (tok->token != T_BRACK_OPEN) {
 				zfree(strsha512);
@@ -254,7 +254,7 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = strsha512;
 			return &rs;
 		} else if (tok->token == T_FUNC_HMAC_SHA256) {
-			char *strmac = zmalloc(SHA256_BLOCK_SIZE+1);
+			char *strmac = zmalloc(SHA256_BLOCK_SIZE + 1);
 			strmac[SHA256_BLOCK_SIZE] = '\0';
 			STACK_EMPTY_POP_FREE(strmac);
 			if (tok->token != T_BRACK_OPEN) {
@@ -286,7 +286,7 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			rs.data = strmac;
 			return &rs;
 		} else if (tok->token == T_FUNC_HMAC_SHA512) {
-			char *strmac = zmalloc(SHA512_BLOCK_SIZE+1);
+			char *strmac = zmalloc(SHA512_BLOCK_SIZE + 1);
 			strmac[SHA512_BLOCK_SIZE] = '\0';
 			STACK_EMPTY_POP_FREE(strmac);
 			if (tok->token != T_BRACK_OPEN) {
@@ -457,13 +457,13 @@ select_tablelist:
 			return &rs;
 		}
 		schema = SCHEMA_OBJECT;
-		int name_cnt = cnt/2;
+		int name_cnt = cnt / 2;
 		name = zmalloc(sizeof(struct objname) * name_cnt);
-		while (stack->size>0) {
+		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
 				break;
-			if (i+1 > name_cnt) {
+			if (i + 1 > name_cnt) {
 				name = zrealloc(name, sizeof(struct objname) * ++name_cnt);
 			}
 			if (tok->token == T_STRING) {
@@ -494,11 +494,11 @@ insert_arr:
 			cnt = i;
 		void *slay = create_row(schema, cnt, charcnt, &slay_len);
 		void *next = movetodata_row(slay);
-		while (stack->size>0) {
+		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
 				break;
-			if (name && j>=i)
+			if (name && j >= i)
 				break;
 			if (tok->token == T_STRING) {
 				if (name)
@@ -566,13 +566,13 @@ insert_arr:
 			return &rs;
 		}
 		schema = SCHEMA_OBJECT;
-		int name_cnt = cnt/2;
+		int name_cnt = cnt / 2;
 		name = zmalloc(sizeof(struct objname) * name_cnt);
-		while (stack->size>0) {
+		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
 				break;
-			if (i+1 > name_cnt) {
+			if (i + 1 > name_cnt) {
 				name = zrealloc(name, sizeof(struct objname) * ++name_cnt);
 			}
 			if (tok->token == T_STRING) {
@@ -603,11 +603,11 @@ update_arr:
 			cnt = i;
 		void *slay = create_row(schema, cnt, charcnt, &slay_len);
 		void *next = movetodata_row(slay);
-		while (stack->size>0) {
+		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
 				break;
-			if (name && j>=i)
+			if (name && j >= i)
 				break;
 			if (tok->token == T_STRING) {
 				if (name)
@@ -706,31 +706,35 @@ update_arr:
 
 char *explode_sql(char *sql) {
 	int pad = 0;
+
+	if (strlen(sql) == 1)
+		return zstrdup(sql);
+
 	char *osql = sql;
-	for (; *sql; ++sql)
+	for (++sql; *sql; ++sql) {
 		switch (*sql) {
 			case '>':
-				if (*(sql+1) == '=') {
-					if (!isspace(*(sql+2)))
+				if (*(sql + 1) == '=') {
+					if (!isspace(*(sql + 2)))
 						pad++;
-					if (!isspace(*(sql-1)))
+					if (!isspace(*(sql - 1)))
 						pad++;
 					++sql;
 					break;
 				}
 			case '<':
-				if (*(sql+1) == '>') {
-					if (!isspace(*(sql+2)))
+				if (*(sql + 1) == '>') {
+					if (!isspace(*(sql + 2)))
 						pad++;
-					if (!isspace(*(sql-1)))
+					if (!isspace(*(sql - 1)))
 						pad++;
 					++sql;
 					break;
 				}
-				if (*(sql+1) == '=') {
-					if (!isspace(*(sql+2)))
+				if (*(sql + 1) == '=') {
+					if (!isspace(*(sql + 2)))
 						pad++;
-					if (!isspace(*(sql-1)))
+					if (!isspace(*(sql - 1)))
 						pad++;
 					++sql;
 					break;
@@ -739,40 +743,42 @@ char *explode_sql(char *sql) {
 			case ')':
 			case '=':
 			case ';':
-				if (!isspace(*(sql+1)))
+				if (!isspace(*(sql + 1)))
 					pad++;
-				if (!isspace(*(sql-1)))
+				if (!isspace(*(sql - 1)))
 					pad++;
 				break;
 			default:
 				break;
 		}
+	}
 	sql = osql;
-	char *_sql = zmalloc(strlen(sql)+pad+1);
+	char *_sql = zmalloc(strlen(sql) + pad + 1);
 	char *_osql = _sql;
 	unsigned int i;
-	for (i=0; i<strlen(sql); ++i) {
+	_sql[0] = sql[0];
+	for (i = 1; i < strlen(sql); ++i) {
 		switch (sql[i]) {
 			case '(':
 			case ')':
 			case '<':
 			case ';':
-				if (!isspace(sql[i-1])) {
+				if (!isspace(sql[i - 1])) {
 					_sql[i] = ' ';
 					_sql++;
 				}
 				break;
 			case '=':
-				if (sql[i-1] != '>' && sql[i-1] != '<') {
-					if (!isspace(sql[i-1])) {
+				if (sql[i - 1] != '>' && sql[i - 1] != '<') {
+					if (!isspace(sql[i - 1])) {
 						_sql[i] = ' ';
 						_sql++;
 					}
 				}
 				break;
 			case '>':
-				if (sql[i-1] != '<') {
-					if (!isspace(sql[i-1])) {
+				if (sql[i - 1] != '<') {
+					if (!isspace(sql[i - 1])) {
 						_sql[i] = ' ';
 						_sql++;
 					}
@@ -787,23 +793,23 @@ char *explode_sql(char *sql) {
 			case ')':
 			case '=':
 			case ';':
-				if (!isspace(sql[i+1])) {
-					_sql[i+1] = ' ';
+				if (!isspace(sql[i + 1])) {
+					_sql[i + 1] = ' ';
 					_sql++;
 				}
 				break;
 			case '>':
-				if (sql[i+1] != '=') {
-					if (!isspace(sql[i+1])) {
-						_sql[i+1] = ' ';
+				if (sql[i + 1] != '=') {
+					if (!isspace(sql[i + 1])) {
+						_sql[i + 1] = ' ';
 						_sql++;
 					}
 				}
 				break;
 			case '<':
-				if (sql[i+1] != '>' && sql[i+1] != '=') {
-					if (!isspace(sql[i+1])) {
-						_sql[i+1] = ' ';
+				if (sql[i + 1] != '>' && sql[i + 1] != '=') {
+					if (!isspace(sql[i + 1])) {
+						_sql[i + 1] = ' ';
 						_sql++;
 					}
 				}
@@ -818,8 +824,8 @@ char *explode_sql(char *sql) {
 
 int tokenize(qstack_t *stack, char sql[]) {
 	char *_ustr = explode_sql(sql);
-	char *pch = strtoken(_ustr," ,");
-	while(pch != NULL) {
+	char *pch = strtoken(_ustr, " ,");
+	while (pch != NULL) {
 		struct stoken *tok = (struct stoken *)tree_zmalloc(sizeof(struct stoken), NULL);
 		if (!strcmp(pch, "SELECT") || !strcmp(pch, "select")) {
 			tok->token = T_SELECT;
@@ -948,7 +954,7 @@ int tokenize(qstack_t *stack, char sql[]) {
 		} else if (strismatch(pch, "1234567890.")) {
 			if (strccnt(pch, '.') != 1)
 				goto tok_err;
-			if (pch[0] == '.' || pch[strlen(pch)-1] == '.')
+			if (pch[0] == '.' || pch[strlen(pch) - 1] == '.')
 				goto tok_err;
 			charcnt += strlen(pch);
 			cnt++;
@@ -963,14 +969,14 @@ int tokenize(qstack_t *stack, char sql[]) {
 			char *_s = tree_zstrdup(pch, tok);
 			tok->string = _s;
 			tok->length = strlen(_s);
-		} else if ((pch[0] == '"' && pch[strlen(pch)-1] == '"') || (pch[0] == '\'' && pch[strlen(pch)-1] == '\'')) {
+		} else if ((pch[0] == '"' && pch[strlen(pch) - 1] == '"') || (pch[0] == '\'' && pch[strlen(pch) - 1] == '\'')) {
 			charcnt += strlen(pch);
 			cnt++;
 			tok->token = T_STRING;
 			char *_s = tree_zstrdup(pch, tok);
-			_s[strlen(pch)-1] = '\0';
+			_s[strlen(pch) - 1] = '\0';
 			_s++;
-			if (strquid_format(_s)>0)
+			if (strquid_format(_s) > 0)
 				tok->token = T_QUID;
 			tok->string = _s;
 			tok->length = strlen(_s);
