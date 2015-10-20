@@ -3,6 +3,9 @@
 
 #include <stddef.h>
 
+#include <config.h>
+#include <common.h>
+
 #include "vector.h"
 
 /* Dictionary type identifier. */
