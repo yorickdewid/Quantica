@@ -41,6 +41,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/json_encode.c \
 		$(SRCDIR)/diagnose.c \
 		$(SRCDIR)/dstype.c \
+		$(SRCDIR)/marshall.c \
 		$(SRCDIR)/slay.c \
 		$(SRCDIR)/basecontrol.c \
 		$(SRCDIR)/index.c \
