@@ -9,16 +9,17 @@ typedef enum {
 	DICT_STR,
 	DICT_ARR,
 	DICT_OBJ
-} slay_type_t;
+} serialize_type_t;
 
-typedef struct slay_serialize {
+typedef struct serialize {
 	char *name;
 	void *data;
-	struct slay_serialize **child;
+	struct serialize **child;
 	unsigned int sz;
-	slay_type_t type;
-} slay_serialize_t;
+	serialize_type_t type;
+} serialize_t;
 
-slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent);
+serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent);
+void marshall_print(serialize_t *obj, int depth);
 
 #endif // MARSHALL_H_INCLUDED

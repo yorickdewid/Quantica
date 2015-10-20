@@ -6,19 +6,19 @@
 #include "zmalloc.h"
 #include "marshall.h"
 
-slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent) {
+serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent) {
 	dict_parser p;
 	dict_token_t t[data_len];
-
+puts(data);
 	dict_init(&p);
 	int o = dict_parse(&p, data, data_len, t, data_len);
 	if (o < 1)
 		return NULL;
 
-	slay_serialize_t *rtobj = (slay_serialize_t *)tree_zmalloc(sizeof(slay_serialize_t), parent);
-	memset(rtobj, 0, sizeof(slay_serialize_t));
-	rtobj->child = (struct slay_serialize **)tree_zmalloc(o * sizeof(struct slay_serialize *), rtobj);
-	memset(rtobj->child, 0, o * sizeof(struct slay_serialize *));
+	serialize_t *rtobj = (serialize_t *)tree_zmalloc(sizeof(serialize_t), parent);
+	memset(rtobj, 0, sizeof(serialize_t));
+	rtobj->child = (struct serialize **)tree_zmalloc(o * sizeof(struct serialize *), rtobj);
+	memset(rtobj->child, 0, o * sizeof(struct serialize *));
 	if (name)
 		rtobj->name = name;
 
@@ -30,8 +30,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = DICT_NULL;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -39,8 +39,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else if (dict_cmp(data, &t[i], "true")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = DICT_TRUE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -48,8 +48,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else if (dict_cmp(data, &t[i], "false")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = DICT_FALSE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -57,8 +57,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = DICT_INT;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -68,8 +68,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 						}
 						break;
 					case DICT_STRING:
-						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-						memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+						memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 						rtobj->child[rtobj->sz]->type = DICT_STR;
 						rtobj->child[rtobj->sz]->child = NULL;
 						rtobj->child[rtobj->sz]->sz = 0;
@@ -132,8 +132,8 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 						break;
 					case DICT_STRING:
 						if (!setname) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(slay_serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(slay_serialize_t));
+							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
+							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = DICT_STR;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -180,3 +180,31 @@ slay_serialize_t *marshall_decode(char *data, size_t data_len, char *name, void 
 	}
 	return rtobj;
 }
+
+#ifdef DEBUG
+void marshall_print(serialize_t *obj, int depth) {
+	if (!obj)
+		return;
+
+	printf("type %d\n", obj->type);
+	if (obj->name)
+		printf("name: %s\n", obj->name);
+	if (obj->type == DICT_INT || obj->type == DICT_STR) {
+		if (obj->data) {
+			printf("value: %s\n", (char *)obj->data);
+		}
+	} else if (obj->type == DICT_NULL) {
+		puts("null");
+	} else if (obj->type == DICT_TRUE) {
+		puts("true");
+	} else if (obj->type == DICT_FALSE) {
+		puts("false");
+	} else {
+		unsigned int i;
+		for (i = 0; i < obj->sz; ++i) {
+			printf("branch %d\n", depth + 1);
+			marshall_print(obj->child[i], depth + 1);
+		}
+	}
+}
+#endif
