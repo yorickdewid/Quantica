@@ -347,12 +347,15 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
+			size_t total_len = 0;
 
 			vector_t *arr = alloc_vector(VECTOR_SIZE);
 			for (i = 0; i < elements; ++i) {
 				size_t namelen;
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
+				total_len += (val_len + 8);
+
 				switch (val_dt) {
 					case DT_NULL: {
 						dict_t *element = dict_element_cnew(arr, FALSE, NULL, "null");
@@ -411,8 +414,8 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = zmalloc(arr->alloc_size);
-			memset(buf, 0, arr->alloc_size);
+			buf = zmalloc(total_len + 1);
+			memset(buf, 0, total_len + 1);
 			buf = dict_array(arr, buf);
 			vector_free(arr);
 
@@ -422,6 +425,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
+			size_t total_len = 0;
 
 			vector_t *obj = alloc_vector(VECTOR_SIZE);
 			for (i = 0; i < elements; ++i) {
@@ -431,11 +435,13 @@ void *slay_get_data(void *data, dstype_t *dt) {
 				next = next_row(next);
 				name = (char *)zrealloc(name, namelen + 1);
 				((char *)name)[namelen] = '\0';
+				total_len += (val_len + namelen + 8);
 
 				switch (val_dt) {
 					case DT_NULL: {
 						dict_t *element = dict_element_cnew(obj, FALSE, name, "null");
 						vector_append(obj, (void *)element);
+
 						break;
 					}
 					case DT_BOOL_T: {
@@ -491,17 +497,17 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			}
 
 			*dt = DT_JSON;
-			buf = zmalloc(obj->alloc_size);
-			memset(buf, 0, obj->alloc_size);
+			buf = zmalloc(total_len + 1);
+			memset(buf, 0, total_len + 1);
 			buf = dict_object(obj, buf);
 			vector_free(obj);
-
 			break;
 		}
 		case SCHEMA_TABLE: {
 			size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
+			size_t total_len = 0;
 
 			vector_t *arr = alloc_vector(VECTOR_SIZE);
 			for (i = 0; i < elements; ++i) {
@@ -513,22 +519,23 @@ void *slay_get_data(void *data, dstype_t *dt) {
 				val_data = (char *)zrealloc(val_data, val_len + 1);
 				((char *)val_data)[val_len] = '\0';
 				void *qbuf = _db_get(val_data, &_dt);
-				if (!qbuf)
+				if (!qbuf) {
 					element = dict_element_cnew(arr, FALSE, NULL, "null");
-				else {
+					total_len += 8;
+				} else {
 					size_t buflen = strlen(qbuf);
 					element = resolv_quid(arr, qbuf, buflen, NULL, _dt);
+					total_len += (buflen + 4);
 				}
 				vector_append(arr, (void *)element);
 				zfree(val_data);
 			}
 
 			*dt = DT_JSON;
-			buf = zmalloc(arr->alloc_size);
-			memset(buf, 0, arr->alloc_size);
+			buf = zmalloc(total_len + 1);
+			memset(buf, 0, total_len + 1);
 			buf = dict_array(arr, buf);
 			vector_free(arr);
-
 			break;
 		}
 		default:

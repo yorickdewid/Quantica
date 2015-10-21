@@ -505,6 +505,7 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 				return HTTP_OK;
 			}
 		}
+		len = strlen(data);
 		resplen = RESPONSE_SIZE;
 		if (len > (RESPONSE_SIZE / 2)) {
 			resplen = RESPONSE_SIZE + len;

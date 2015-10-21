@@ -261,6 +261,7 @@ void *_db_get(char *quid, dstype_t *dt) {
 	return buf;
 }
 
+//TODO, should return size of decoded data
 void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
