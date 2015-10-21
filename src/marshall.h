@@ -20,6 +20,7 @@ typedef struct serialize {
 } serialize_t;
 
 serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent);
+char *marshall_encode(serialize_t *obj);
 void marshall_print(serialize_t *obj, int depth);
 
 #endif // MARSHALL_H_INCLUDED

@@ -8,6 +8,7 @@
 #include "slay.h"
 #include "quid.h"
 #include "dict.h"
+#include "marshall.h"
 #include "json_encode.h"
 #include "core.h"
 #include "zmalloc.h"
@@ -204,9 +205,10 @@ void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result 
 			rs->slay = slay_parse_quid((char *)data, data_len, len);
 			rs->items = 1;
 			break;
-		case DT_JSON:
-			slay_parse_object((char *)data, data_len, len, rs);
+		case DT_JSON: {
+			slay_parse_object(data, data_len, len, rs);
 			break;
+		}
 		case DT_NULL:
 			rs->slay = slay_null(len);
 			break;

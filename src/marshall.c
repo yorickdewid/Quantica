@@ -6,10 +6,12 @@
 #include "zmalloc.h"
 #include "marshall.h"
 
+#define VECTOR_SIZE	1024
+
 serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent) {
 	dict_parser p;
 	dict_token_t t[data_len];
-puts(data);
+
 	dict_init(&p);
 	int o = dict_parse(&p, data, data_len, t, data_len);
 	if (o < 1)
@@ -181,30 +183,152 @@ puts(data);
 	return rtobj;
 }
 
-#ifdef DEBUG
-void marshall_print(serialize_t *obj, int depth) {
-	if (!obj)
-		return;
+char *marshall_encode(serialize_t *obj) {
+	switch (obj->type) {
+		case DICT_NULL: {
+			if (obj->name) {
+				size_t len = strlen(obj->name) + 8;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":null", obj->name);
+				return data;
+			} else {
+				return zstrdup("null");
+			}
+			break;
+		}
+		case DICT_TRUE: {
+			if (obj->name) {
+				size_t len = strlen(obj->name) + 8;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":true", obj->name);
+				return data;
+			} else {
+				return zstrdup("true");
+			}
+			break;
+		}
+		case DICT_FALSE: {
+			if (obj->name) {
+				size_t len = strlen(obj->name) + 10;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":false", obj->name);
+				return data;
+			} else {
+				return zstrdup("false");
+			}
+			break;
+		}
+		case DICT_INT: {
+			if (obj->name) {
+				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 4;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":%s", obj->name, (char *)obj->data);
+				return data;
+			} else {
+				return zstrdup((char *)obj->data);
+			}
+			break;
+		}
+		case DICT_STR: {
+			if (obj->name) {
+				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 6;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":\"%s\"", obj->name, (char *)obj->data);
+				return data;
+			} else {
+				size_t len = strlen((char *)obj->data) + 4;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\"", (char *)obj->data);
+				return data;
+			}
+			break;
+		}
+		case DICT_ARR: {
+			size_t nsz = 0;
+			unsigned int i;
+			for (i = 0; i < obj->sz; ++i) {
+				char *elm = marshall_encode(obj->child[i]);
+				nsz += strlen(elm) + 2;
+				zfree(elm);
+			}
 
-	printf("type %d\n", obj->type);
-	if (obj->name)
-		printf("name: %s\n", obj->name);
-	if (obj->type == DICT_INT || obj->type == DICT_STR) {
-		if (obj->data) {
-			printf("value: %s\n", (char *)obj->data);
+			if (obj->name)
+				nsz += strlen(obj->name);
+
+			nsz += obj->sz + 2;
+
+			char *data = (char *)zmalloc(nsz + 1);
+			memset(data, 0, nsz + 1);
+			size_t curr_sz = 0;
+
+			if (obj->name) {
+				sprintf(data, "\"%s\":", obj->name);
+				curr_sz += strlen(obj->name);
+			}
+
+			strcat(data, "[");
+			curr_sz++;
+
+			for (i = 0; i < obj->sz; ++i) {
+				if (i > 0) {
+					strcat(data, ",");
+					curr_sz++;
+				}
+				char *elm = marshall_encode(obj->child[i]);
+				strcat(data, elm);
+				curr_sz += strlen(elm);
+				zfree(elm);
+			}
+			strcat(data, "]");
+			return data;
 		}
-	} else if (obj->type == DICT_NULL) {
-		puts("null");
-	} else if (obj->type == DICT_TRUE) {
-		puts("true");
-	} else if (obj->type == DICT_FALSE) {
-		puts("false");
-	} else {
-		unsigned int i;
-		for (i = 0; i < obj->sz; ++i) {
-			printf("branch %d\n", depth + 1);
-			marshall_print(obj->child[i], depth + 1);
+		case DICT_OBJ: {
+			size_t nsz = 0;
+			unsigned int i;
+			for (i = 0; i < obj->sz; ++i) {
+				char *elm = marshall_encode(obj->child[i]);
+				nsz += strlen(elm) + 2;
+				zfree(elm);
+			}
+
+			if (obj->name)
+				nsz += strlen(obj->name);
+
+			nsz += obj->sz + 2;
+
+			char *data = (char *)zmalloc(nsz + 1);
+			memset(data, 0, nsz + 1);
+			size_t curr_sz = 0;
+
+			if (obj->name) {
+				sprintf(data, "\"%s\":", obj->name);
+				curr_sz += strlen(obj->name);
+			}
+
+			strcat(data, "{");
+			curr_sz++;
+
+			for (i = 0; i < obj->sz; ++i) {
+				if (i > 0) {
+					strcat(data, ",");
+					curr_sz++;
+				}
+				char *elm = marshall_encode(obj->child[i]);
+				strcat(data, elm);
+				curr_sz += strlen(elm);
+				zfree(elm);
+			}
+			strcat(data, "}");
+			return data;
 		}
+		default:
+			break;
 	}
+	return NULL;
 }
-#endif
