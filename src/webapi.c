@@ -1187,8 +1187,9 @@ unsupported:
 		c_buf = (char *)zmalloc(c_length + 1);
 		while ((total_read < c_length) && (!feof(socket_stream))) {
 			size_t diff = c_length - total_read;
-			if (diff > 1024) diff = 1024;
-			size_t chunk_read = fread(c_buf, 1, diff, socket_stream);
+			if (diff > 1024)
+				diff = 1024;
+			size_t chunk_read = fread(total_read+c_buf, 1, diff, socket_stream);
 			total_read += chunk_read;
 		}
 		c_buf[total_read] = '\0';
@@ -1205,6 +1206,7 @@ unsupported:
 			var = strtok(NULL, "&");
 		}
 	}
+
 	char *pch = NULL;
 	size_t nsz = RSIZE(route);
 	char *resp_message = (char *)zmalloc(RESPONSE_SIZE);
