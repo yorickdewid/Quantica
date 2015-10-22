@@ -1202,7 +1202,7 @@ unsupported:
 			if (value) {
 				value[0] = '\0';
 				value++;
-				hashtable_put(postdata, var, value);
+				hashtable_put(&postdata, var, value);
 			}
 			var = strtok(NULL, "&");
 		}
@@ -1236,7 +1236,7 @@ unsupported:
 						postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 						req.data = postdata;
 					}
-					hashtable_put(req.data, "quid", squid);
+					hashtable_put(&req.data, "quid", squid);
 					req.uri = _pfilename;
 					status = route[nsz].api_handler(&resp_message, &req);
 					goto respond;

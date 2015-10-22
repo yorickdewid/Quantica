@@ -453,6 +453,7 @@ char *db_list_all() {
 	return engine_list_all(&btx);
 }
 
+//TODO, should return size of decoded data
 void *db_table_get(char *name, size_t *len) {
 	if (!ready)
 		return NULL;
