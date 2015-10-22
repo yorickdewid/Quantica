@@ -1190,7 +1190,7 @@ unsupported:
 			size_t diff = c_length - total_read;
 			if (diff > 1024)
 				diff = 1024;
-			size_t chunk_read = fread(total_read+c_buf, 1, diff, socket_stream);
+			size_t chunk_read = fread(total_read + c_buf, 1, diff, socket_stream);
 			total_read += chunk_read;
 		}
 		c_buf[total_read] = '\0';

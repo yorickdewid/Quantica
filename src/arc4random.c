@@ -27,7 +27,7 @@ static void arc4_stir(arc4_stream_t *);
 static inline void arc4_init(arc4_stream_t *as) {
 	int n;
 
-	for (n=0; n<256; ++n)
+	for (n = 0; n < 256; ++n)
 		as->s[n] = n;
 	as->i = 0;
 	as->j = 0;
@@ -38,7 +38,7 @@ static inline void arc4_addrandom(arc4_stream_t *as, uint8_t *dat, int datlen) {
 	uint8_t si;
 
 	as->i--;
-	for (n=0; n<256; ++n) {
+	for (n = 0; n < 256; ++n) {
 		as->i = (as->i + 1);
 		si = as->s[as->i];
 		as->j = (as->j + si + dat[n % datlen]);
@@ -59,7 +59,7 @@ static void arc4_stir(arc4_stream_t *as) {
 	rdat.pid = getpid();
 	fd = open(RANDOMDEV, O_RDONLY, 0);
 	if (fd >= 0) {
-		if (read(fd, rdat.rnd, sizeof(rdat.rnd))>0) {
+		if (read(fd, rdat.rnd, sizeof(rdat.rnd)) > 0) {
 			close(fd);
 		} else {
 			fputs("Cannot read " RANDOMDEV, stderr);
@@ -68,7 +68,7 @@ static void arc4_stir(arc4_stream_t *as) {
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));
 
-	for (n=0; n<1024; ++n)
+	for (n = 0; n < 1024; ++n)
 		arc4_getbyte(as);
 }
 
