@@ -1,9 +1,11 @@
 #ifndef MARSHALL_H_INCLUDED
 #define MARSHALL_H_INCLUDED
 
+#define marshall_free(v) tree_zfree(v);
+
 typedef enum {
-	DICT_NULL,
-	DICT_TRUE,
+	DSTYPE_NULL,
+	DSTYPE_TRUE,
 	DICT_FALSE,
 	DICT_INT,
 	DICT_STR,

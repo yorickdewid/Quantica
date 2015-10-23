@@ -184,6 +184,9 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 }
 
 char *marshall_encode(serialize_t *obj) {
+	if (!obj)
+		return NULL;
+
 	switch (obj->type) {
 		case DICT_NULL: {
 			if (obj->name) {

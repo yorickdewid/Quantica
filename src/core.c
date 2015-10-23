@@ -17,6 +17,7 @@
 #include "time.h"
 #include "index.h"
 #include "json_encode.h"
+#include "marshall.h"
 #include "slay.h"
 #include "basecontrol.h"
 #include "engine.h"
@@ -221,6 +222,19 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	size_t len = 0;
 	struct slay_result rs;
 	quid_create(&key);
+
+////////////
+serialize_t *sdata = marshall_decode((char *)data, data_len, NULL, NULL);
+if (!sdata) {
+	puts("empty");
+}
+char *rdat = marshall_encode(sdata);
+if (rdat) {
+	puts(rdat);
+	zfree(rdat);
+}
+marshall_free(sdata);
+////////////
 
 	memset(&rs, 0, sizeof(struct slay_result));
 	slay_put_data((char *)data, data_len, &len, &rs);

@@ -559,23 +559,26 @@ struct http_response *http_get(char *url, char *custom_headers, char *data, int 
 		auth_header = (char *)zrealloc(auth_header, strlen(auth_header) + 1);
 
 		/* Add to header */
-		http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		size_t nsz = strlen(http_headers) + strlen(auth_header) + 2;
+		http_headers = (char *)zrealloc(http_headers, nsz);
+		strncat(http_headers, auth_header, nsz);
 	}
 
 	/* Add custom headers, and close */
 	if (!head && data) {
 		if (custom_headers) {
-			sprintf(http_headers, "%s%s", http_headers, custom_headers);
-			sprintf(http_headers, "%s\r\n%s", http_headers, data);
+			strcat(http_headers, custom_headers);
+			strcat(http_headers, "\r\n");
+			strcat(http_headers, data);
 		} else {
-			sprintf(http_headers, "%s\r\n", http_headers);
+			strcat(http_headers, "\r\n");
 		}
 	} else {
 		if (custom_headers) {
-			sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+			strcat(http_headers, custom_headers);
+			strcat(http_headers, "\r\n");
 		} else {
-			sprintf(http_headers, "%s\r\n", http_headers);
+			strcat(http_headers, "\r\n");
 		}
 	}
 	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
@@ -637,12 +640,13 @@ struct http_response *http_options(char *url) {
 		auth_header = (char *)zrealloc(auth_header, strlen(auth_header) + 1);
 
 		/* Add to header */
-		http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		size_t nsz = strlen(http_headers) + strlen(auth_header) + 2;
+		http_headers = (char *)zrealloc(http_headers, nsz);
+		strncat(http_headers, auth_header, nsz);
 	}
 
 	/* Build headers */
-	sprintf(http_headers, "%s\r\n", http_headers);
+	strcat(http_headers, "\r\n");
 	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */

@@ -206,8 +206,10 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	if (i < *count && !strcmp(key, kv[i].key))
 		return DUPLICATEKEY;
 	code = insert(key, key_size, valset, p[i], &keynew_r, &keynew_r_size, &valsetnew_r, &offsetnew_r);
-	if (code != INSERTNOTCOMPLETE)
+	if (code != INSERTNOTCOMPLETE) {
+		zfree(keynew_r);
 		return code;
+	}
 	/* Insertion in subtree did not completely succeed; try to insert keynew_r and offsetnew_r in the current node:  */
 	if (*count < INDEX_SIZE) {
 		i = get(keynew_r, kv, *count);

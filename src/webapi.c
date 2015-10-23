@@ -927,7 +927,6 @@ void handle_request(int sd, fd_set *set) {
 	for (i = 0; i < queue->size; ++i) {
 		char *str = (char*)(vector_at(queue, i));
 
-		//char *colon = strstr(str, ":");
 		char *colon = strchr(str, ':');
 		if (!colon) {
 			if (i > 0) {
