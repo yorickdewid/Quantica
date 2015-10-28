@@ -50,7 +50,7 @@ int serversock6 = 0;
 int max_sd;
 fd_set readfds;
 fd_set readsock;
-static unsigned long int client_requests = 0;
+static unsigned long long int client_requests = 0;
 unsigned int run = 1;
 
 typedef enum {
@@ -406,7 +406,7 @@ http_status_t api_version(char **response, http_request_t *req) {
 
 http_status_t api_status(char **response, http_request_t *req) {
 	unused(req);
-	snprintf(*response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%lu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
+	snprintf(*response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%llu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
 	return HTTP_OK;
 }
 
