@@ -230,10 +230,6 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 		case MTYPE_NULL:
 		case MTYPE_TRUE:
 		case MTYPE_FALSE: {
-			serial = (serialize_t *)tree_zmalloc(sizeof(serialize_t), NULL);
-			memset(serial, 0, sizeof(serialize_t));
-			serial->sz = 1;
-			serial->type = type;
 			break;
 		}
 		case MTYPE_INT:
@@ -257,6 +253,7 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 	}
 
 	marshall_t *marshall = (marshall_t *)zcalloc(1, sizeof(marshall_t));
+	marshall->type = type;
 	marshall->data = serial;
 	return marshall;
 }
@@ -417,7 +414,7 @@ static char *marshall_object_serialize(serialize_t *obj) {
 char *marshall_serialize(marshall_t *marshall) {
 	char *data = NULL;
 
-	switch (marshall->data->type) {
+	switch (marshall->type) {
 		case MTYPE_NULL:
 			data = zstrdup("null");
 			break;

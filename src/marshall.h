@@ -28,6 +28,7 @@ typedef struct serialize {
 typedef struct {
 	schema_t schema;	/* NOTUSED */
 	size_t size;		/* NOTUSED */
+	serialize_type_t type;
 	serialize_t *data;
 } marshall_t;
 
