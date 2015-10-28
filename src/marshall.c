@@ -27,14 +27,14 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 	switch (t[0].type) {
 		case DICT_ARRAY: {
 			int i;
-			rtobj->type = DICT_ARR;
+			rtobj->type = MTYPE_ARRAY;
 			for (i = 1; i < o; ++i) {
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = DICT_NULL;
+							rtobj->child[rtobj->sz]->type = MTYPE_NULL;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
 							rtobj->child[rtobj->sz]->name = NULL;
@@ -43,7 +43,7 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 						} else if (dict_cmp(data, &t[i], "true")) {
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = DICT_TRUE;
+							rtobj->child[rtobj->sz]->type = MTYPE_TRUE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
 							rtobj->child[rtobj->sz]->name = NULL;
@@ -52,7 +52,7 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 						} else if (dict_cmp(data, &t[i], "false")) {
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = DICT_FALSE;
+							rtobj->child[rtobj->sz]->type = MTYPE_FALSE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
 							rtobj->child[rtobj->sz]->name = NULL;
@@ -61,7 +61,7 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 						} else {
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = DICT_INT;
+							rtobj->child[rtobj->sz]->type = MTYPE_INT;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
 							rtobj->child[rtobj->sz]->name = NULL;
@@ -72,7 +72,7 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 					case DICT_STRING:
 						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 						memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-						rtobj->child[rtobj->sz]->type = DICT_STR;
+						rtobj->child[rtobj->sz]->type = MTYPE_STRING;
 						rtobj->child[rtobj->sz]->child = NULL;
 						rtobj->child[rtobj->sz]->sz = 0;
 						rtobj->child[rtobj->sz]->name = NULL;
@@ -108,25 +108,25 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 		}
 		case DICT_OBJECT: {
 			int i;
-			rtobj->type = DICT_OBJ;
+			rtobj->type = MTYPE_OBJECT;
 			unsigned char setname = 0;
 			for (i = 1; i < o; ++i) {
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
-							rtobj->child[rtobj->sz]->type = DICT_NULL;
+							rtobj->child[rtobj->sz]->type = MTYPE_NULL;
 							rtobj->sz++;
 							setname = 0;
 						} else if (dict_cmp(data, &t[i], "true")) {
-							rtobj->child[rtobj->sz]->type = DICT_TRUE;
+							rtobj->child[rtobj->sz]->type = MTYPE_TRUE;
 							rtobj->sz++;
 							setname = 0;
 						} else if (dict_cmp(data, &t[i], "false")) {
-							rtobj->child[rtobj->sz]->type = DICT_FALSE;
+							rtobj->child[rtobj->sz]->type = MTYPE_FALSE;
 							rtobj->sz++;
 							setname = 0;
 						} else {
-							rtobj->child[rtobj->sz]->type = DICT_INT;
+							rtobj->child[rtobj->sz]->type = MTYPE_INT;
 							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
 							rtobj->sz++;
 							setname = 0;
@@ -136,7 +136,7 @@ serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *pare
 						if (!setname) {
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = DICT_STR;
+							rtobj->child[rtobj->sz]->type = MTYPE_STRING;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
 							rtobj->child[rtobj->sz]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
@@ -188,7 +188,7 @@ char *marshall_encode(serialize_t *obj) {
 		return NULL;
 
 	switch (obj->type) {
-		case DICT_NULL: {
+		case MTYPE_NULL: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + 8;
 				char *data = (char *)zmalloc(len + 1);
@@ -200,7 +200,7 @@ char *marshall_encode(serialize_t *obj) {
 			}
 			break;
 		}
-		case DICT_TRUE: {
+		case MTYPE_TRUE: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + 8;
 				char *data = (char *)zmalloc(len + 1);
@@ -212,7 +212,7 @@ char *marshall_encode(serialize_t *obj) {
 			}
 			break;
 		}
-		case DICT_FALSE: {
+		case MTYPE_FALSE: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + 10;
 				char *data = (char *)zmalloc(len + 1);
@@ -224,7 +224,7 @@ char *marshall_encode(serialize_t *obj) {
 			}
 			break;
 		}
-		case DICT_INT: {
+		case MTYPE_INT: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 4;
 				char *data = (char *)zmalloc(len + 1);
@@ -236,7 +236,7 @@ char *marshall_encode(serialize_t *obj) {
 			}
 			break;
 		}
-		case DICT_STR: {
+		case MTYPE_STRING: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 6;
 				char *data = (char *)zmalloc(len + 1);
@@ -252,7 +252,7 @@ char *marshall_encode(serialize_t *obj) {
 			}
 			break;
 		}
-		case DICT_ARR: {
+		case MTYPE_ARRAY: {
 			size_t nsz = 0;
 			unsigned int i;
 			for (i = 0; i < obj->sz; ++i) {
@@ -291,7 +291,7 @@ char *marshall_encode(serialize_t *obj) {
 			strcat(data, "]");
 			return data;
 		}
-		case DICT_OBJ: {
+		case MTYPE_OBJECT: {
 			size_t nsz = 0;
 			unsigned int i;
 			for (i = 0; i < obj->sz; ++i) {

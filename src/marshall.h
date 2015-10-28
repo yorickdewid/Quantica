@@ -1,6 +1,8 @@
 #ifndef MARSHALL_H_INCLUDED
 #define MARSHALL_H_INCLUDED
 
+#include "slay.h"
+
 #define marshall_free(v) tree_zfree(v);
 
 typedef enum {
