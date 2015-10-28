@@ -88,6 +88,14 @@ int strccnt(const char *str, char c) {
 	return cnt;
 }
 
+char *str_bool(bool b) {
+	return b ? "true" : "false";
+}
+
+char *str_null() {
+	return "null";
+}
+
 uint16_t _ntohs(uint16_t x) {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char *s = (unsigned char *)&x;

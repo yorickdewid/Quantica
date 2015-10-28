@@ -10,7 +10,9 @@ typedef enum {
 	MTYPE_TRUE,
 	MTYPE_FALSE,
 	MTYPE_INT,
+	MTYPE_FLOAT,
 	MTYPE_STRING,
+	MTYPE_QUID,
 	MTYPE_ARRAY,
 	MTYPE_OBJECT
 } serialize_type_t;
@@ -24,13 +26,12 @@ typedef struct serialize {
 } serialize_t;
 
 typedef struct {
-	schema_t schema;
-	size_t size;
+	schema_t schema;	/* NOTUSED */
+	size_t size;		/* NOTUSED */
 	serialize_t *data;
 } marshall_t;
 
-serialize_t *marshall_decode(char *data, size_t data_len, char *name, void *parent);
-char *marshall_encode(serialize_t *obj);
-void marshall_print(serialize_t *obj, int depth);
+marshall_t *marshall_convert(char *data, size_t data_len);
+char *marshall_serialize(marshall_t *marshall);
 
 #endif // MARSHALL_H_INCLUDED

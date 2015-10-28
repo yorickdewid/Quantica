@@ -8,11 +8,13 @@
 #include "quid.h"
 #include "dstype.h"
 
+// DEPICATED
 struct dsinfo {
 	dstype_t ds;
 	bool data;
 };
 
+// DEPICATED
 static const struct dsinfo dsinfo[] = {
 	{DT_NULL,	TRUE},
 	{DT_BOOL_T,	TRUE},
@@ -25,6 +27,7 @@ static const struct dsinfo dsinfo[] = {
 	{DT_JSON,	FALSE}
 };
 
+// DEPICATED
 bool isdata(dstype_t ds) {
 	size_t nsz = RSIZE(dsinfo);
 	while (nsz-->0) {
@@ -34,6 +37,7 @@ bool isdata(dstype_t ds) {
 	return FALSE;
 }
 
+// DEPICATED
 dstype_t autotype(const char *data, size_t len) {
 	if (!len)
 		return DT_NULL;
@@ -71,14 +75,7 @@ dstype_t autotype(const char *data, size_t len) {
     return DT_TEXT;
 }
 
-char *str_bool(bool b) {
-	return b ? "true" : "false";
-}
-
-char *str_null() {
-	return "null";
-}
-
+// DEPICATED
 char *str_type(dstype_t dt) {
 	switch(dt) {
 		case DT_NULL:

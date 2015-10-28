@@ -57,6 +57,8 @@ char *strdtrim(char *str);
 char *strtoken(char *s, const char *delim);
 bool strismatch(const char *str, const char *tok);
 int strccnt(const char *str, char c);
+char *str_bool(bool b);
+char *str_null();
 int antoi(const char *str, size_t num);
 char *itoa(long i);
 char *strdup(const char *str);
