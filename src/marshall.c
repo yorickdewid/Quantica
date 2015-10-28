@@ -60,7 +60,7 @@ static serialize_t *marshall_obect_decode(char *data, size_t data_len, char *nam
 							rtobj->child[rtobj->sz]->name = NULL;
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
-						} else {
+						} else {//TODO this could also be float
 							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
 							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
 							rtobj->child[rtobj->sz]->type = MTYPE_INT;
@@ -222,6 +222,30 @@ static serialize_type_t autoscalar(const char *data, size_t len) {
     return MTYPE_STRING;
 }
 
+static unsigned int serial_get_size(serialize_t *obj) {
+	switch (obj->type) {
+		case MTYPE_NULL:
+		case MTYPE_TRUE:
+		case MTYPE_FALSE:
+		case MTYPE_FLOAT:
+		case MTYPE_INT:
+		case MTYPE_QUID:
+		case MTYPE_STRING:
+			return 1;
+		case MTYPE_ARRAY:
+		case MTYPE_OBJECT: {
+			unsigned int n = 1;
+			for (unsigned int i = 0; i < obj->sz; ++i) {
+				n += serial_get_size(obj->child[i]);
+			}
+			return n;
+		}
+		default:
+			return 0;
+	}
+	return 0;
+}
+
 marshall_t *marshall_convert(char *data, size_t data_len) {
 	serialize_type_t type = autoscalar(data, data_len);
 	serialize_t *serial = NULL;
@@ -253,6 +277,9 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 	}
 
 	marshall_t *marshall = (marshall_t *)zcalloc(1, sizeof(marshall_t));
+	marshall->size = 1;
+	if (serial)
+		marshall->size = serial_get_size(serial);
 	marshall->type = type;
 	marshall->data = serial;
 	return marshall;
@@ -299,6 +326,7 @@ static char *marshall_object_serialize(serialize_t *obj) {
 			}
 			break;
 		}
+		case MTYPE_FLOAT:
 		case MTYPE_INT: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 4;
@@ -311,6 +339,7 @@ static char *marshall_object_serialize(serialize_t *obj) {
 			}
 			break;
 		}
+		case MTYPE_QUID:
 		case MTYPE_STRING: {
 			if (obj->name) {
 				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 6;

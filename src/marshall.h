@@ -1,8 +1,6 @@
 #ifndef MARSHALL_H_INCLUDED
 #define MARSHALL_H_INCLUDED
 
-#include "slay.h"
-
 #define marshall_free(v) tree_zfree(v);
 
 typedef enum {
@@ -20,14 +18,15 @@ typedef enum {
 typedef struct serialize {
 	char *name;
 	void *data;
+	//TODO size_t data_len;
 	struct serialize **child;
 	unsigned int sz;
 	serialize_type_t type;
 } serialize_t;
 
 typedef struct {
-	schema_t schema;	/* NOTUSED */
-	size_t size;		/* NOTUSED */
+	//schema_t schema;	/* NOTUSED */
+	size_t size;
 	serialize_type_t type;
 	serialize_t *data;
 } marshall_t;
