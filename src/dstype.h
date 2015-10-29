@@ -3,6 +3,7 @@
 
 #include <common.h>
 
+// DEPRECATED by serialize_type_t
 typedef enum {
 	DT_NULL,
 	DT_BOOL_T,

@@ -26,12 +26,13 @@ typedef struct serialize {
 
 typedef struct {
 	//schema_t schema;	/* NOTUSED */
-	size_t size;
 	serialize_type_t type;
 	serialize_t *data;
 } marshall_t;
 
+unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth);
 marshall_t *marshall_convert(char *data, size_t data_len);
-char *marshall_serialize(marshall_t *marshall);
+char *marshall_object_serialize(serialize_t *obj);
+//char *marshall_serialize(marshall_t *marshall);
 
 #endif // MARSHALL_H_INCLUDED

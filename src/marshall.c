@@ -222,7 +222,8 @@ static serialize_type_t autoscalar(const char *data, size_t len) {
     return MTYPE_STRING;
 }
 
-static unsigned int serial_get_size(serialize_t *obj) {
+//TODO rename
+unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth) {
 	switch (obj->type) {
 		case MTYPE_NULL:
 		case MTYPE_TRUE:
@@ -235,8 +236,10 @@ static unsigned int serial_get_size(serialize_t *obj) {
 		case MTYPE_ARRAY:
 		case MTYPE_OBJECT: {
 			unsigned int n = 1;
-			for (unsigned int i = 0; i < obj->sz; ++i) {
-				n += serial_get_size(obj->child[i]);
+			if (depth == -1 || ((unsigned int)depth) > _depth) {
+				for (unsigned int i = 0; i < obj->sz; ++i) {
+					n += marshall_get_count(obj->child[i], depth, _depth+1);
+				}
 			}
 			return n;
 		}
@@ -270,6 +273,7 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 		case MTYPE_ARRAY:
 		case MTYPE_OBJECT:
 			serial = marshall_obect_decode(data, data_len, NULL, NULL);
+			type = serial->type;
 			break;
 		default:
 			//TODO: throw error
@@ -277,15 +281,13 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 	}
 
 	marshall_t *marshall = (marshall_t *)zcalloc(1, sizeof(marshall_t));
-	marshall->size = 1;
-	if (serial)
-		marshall->size = serial_get_size(serial);
 	marshall->type = type;
 	marshall->data = serial;
 	return marshall;
 }
 
-static char *marshall_object_serialize(serialize_t *obj) {
+//TODO rename
+char *marshall_object_serialize(serialize_t *obj) {
 	if (!obj)
 		return NULL;
 
@@ -439,7 +441,7 @@ static char *marshall_object_serialize(serialize_t *obj) {
 	}
 	return NULL;
 }
-
+/*
 char *marshall_serialize(marshall_t *marshall) {
 	char *data = NULL;
 
@@ -470,3 +472,4 @@ char *marshall_serialize(marshall_t *marshall) {
 
 	return data;
 }
+*/
