@@ -13,26 +13,20 @@ typedef enum {
 	MTYPE_QUID,
 	MTYPE_ARRAY,
 	MTYPE_OBJECT
-} serialize_type_t;
+} marshall_type_t;
 
-typedef struct serialize {
+typedef struct marshall {
 	char *name;
+	//TODO size_t name_len;
 	void *data;
 	//TODO size_t data_len;
-	struct serialize **child;
-	unsigned int sz;
-	serialize_type_t type;
-} serialize_t;
-
-typedef struct {
-	//schema_t schema;	/* NOTUSED */
-	serialize_type_t type;
-	serialize_t *data;
+	struct marshall **child;
+	unsigned int size;
+	marshall_type_t type;
 } marshall_t;
 
-unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth);
+unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth);
 marshall_t *marshall_convert(char *data, size_t data_len);
-char *marshall_object_serialize(serialize_t *obj);
-//char *marshall_serialize(marshall_t *marshall);
+char *marshall_serialize(marshall_t *obj);
 
 #endif // MARSHALL_H_INCLUDED

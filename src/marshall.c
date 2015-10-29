@@ -10,7 +10,7 @@
 
 #define VECTOR_SIZE	1024
 
-static serialize_t *marshall_obect_decode(char *data, size_t data_len, char *name, void *parent) {
+static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name, void *parent) {
 	dict_parser p;
 	dict_token_t t[data_len];
 
@@ -19,87 +19,69 @@ static serialize_t *marshall_obect_decode(char *data, size_t data_len, char *nam
 	if (o < 1)
 		return NULL;
 
-	serialize_t *rtobj = (serialize_t *)tree_zmalloc(sizeof(serialize_t), parent);
-	memset(rtobj, 0, sizeof(serialize_t));
-	rtobj->child = (struct serialize **)tree_zmalloc(o * sizeof(struct serialize *), rtobj);
-	memset(rtobj->child, 0, o * sizeof(struct serialize *));
+	marshall_t *obj = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+	memset(obj, 0, sizeof(marshall_t));
+	obj->child = (struct marshall **)tree_zmalloc(o * sizeof(struct serialize *), obj);
+	memset(obj->child, 0, o * sizeof(struct serialize *));
 	if (name)
-		rtobj->name = name;
+		obj->name = name;
 
 	switch (t[0].type) {
 		case DICT_ARRAY: {
 			int i;
-			rtobj->type = MTYPE_ARRAY;
+			obj->type = MTYPE_ARRAY;
 			for (i = 1; i < o; ++i) {
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = MTYPE_NULL;
-							rtobj->child[rtobj->sz]->child = NULL;
-							rtobj->child[rtobj->sz]->sz = 0;
-							rtobj->child[rtobj->sz]->name = NULL;
-							rtobj->child[rtobj->sz]->data = NULL;
-							rtobj->sz++;
+							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size]->type = MTYPE_NULL;
+							obj->size++;
 						} else if (dict_cmp(data, &t[i], "true")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = MTYPE_TRUE;
-							rtobj->child[rtobj->sz]->child = NULL;
-							rtobj->child[rtobj->sz]->sz = 0;
-							rtobj->child[rtobj->sz]->name = NULL;
-							rtobj->child[rtobj->sz]->data = NULL;
-							rtobj->sz++;
+							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size]->type = MTYPE_TRUE;
+							obj->size++;
 						} else if (dict_cmp(data, &t[i], "false")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = MTYPE_FALSE;
-							rtobj->child[rtobj->sz]->child = NULL;
-							rtobj->child[rtobj->sz]->sz = 0;
-							rtobj->child[rtobj->sz]->name = NULL;
-							rtobj->child[rtobj->sz]->data = NULL;
-							rtobj->sz++;
+							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size]->type = MTYPE_FALSE;
+							obj->size++;
 						} else {//TODO this could also be float
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = MTYPE_INT;
-							rtobj->child[rtobj->sz]->child = NULL;
-							rtobj->child[rtobj->sz]->sz = 0;
-							rtobj->child[rtobj->sz]->name = NULL;
-							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
-							rtobj->sz++;
+							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size]->type = MTYPE_INT;
+							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->size++;
 						}
 						break;
 					case DICT_STRING:
-						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-						memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-						rtobj->child[rtobj->sz]->type = MTYPE_STRING;
-						rtobj->child[rtobj->sz]->child = NULL;
-						rtobj->child[rtobj->sz]->sz = 0;
-						rtobj->child[rtobj->sz]->name = NULL;
-						rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
-						rtobj->sz++;
+						obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+						memset(obj->child[obj->size], 0, sizeof(marshall_t));
+						obj->child[obj->size]->type = MTYPE_STRING;
+						obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+						obj->size++;
 						break;
 					case DICT_OBJECT: {
-						rtobj->child[rtobj->sz] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, rtobj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 						}
 						i += j;
-						rtobj->sz++;
+						obj->size++;
 						break;
 					}
 					case DICT_ARRAY: {
-						rtobj->child[rtobj->sz] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, rtobj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 						}
 						i += j;
-						rtobj->sz++;
+						obj->size++;
 						break;
 					}
 					default:
@@ -110,66 +92,63 @@ static serialize_t *marshall_obect_decode(char *data, size_t data_len, char *nam
 		}
 		case DICT_OBJECT: {
 			int i;
-			rtobj->type = MTYPE_OBJECT;
+			obj->type = MTYPE_OBJECT;
 			unsigned char setname = 0;
 			for (i = 1; i < o; ++i) {
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
-							rtobj->child[rtobj->sz]->type = MTYPE_NULL;
-							rtobj->sz++;
+							obj->child[obj->size]->type = MTYPE_NULL;
+							obj->size++;
 							setname = 0;
 						} else if (dict_cmp(data, &t[i], "true")) {
-							rtobj->child[rtobj->sz]->type = MTYPE_TRUE;
-							rtobj->sz++;
+							obj->child[obj->size]->type = MTYPE_TRUE;
+							obj->size++;
 							setname = 0;
 						} else if (dict_cmp(data, &t[i], "false")) {
-							rtobj->child[rtobj->sz]->type = MTYPE_FALSE;
-							rtobj->sz++;
+							obj->child[obj->size]->type = MTYPE_FALSE;
+							obj->size++;
 							setname = 0;
 						} else {
-							rtobj->child[rtobj->sz]->type = MTYPE_INT;
-							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
-							rtobj->sz++;
+							obj->child[obj->size]->type = MTYPE_INT;
+							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->size++;
 							setname = 0;
 						}
 						break;
 					case DICT_STRING:
 						if (!setname) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(serialize_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(serialize_t));
-							rtobj->child[rtobj->sz]->type = MTYPE_STRING;
-							rtobj->child[rtobj->sz]->child = NULL;
-							rtobj->child[rtobj->sz]->sz = 0;
-							rtobj->child[rtobj->sz]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
-							rtobj->child[rtobj->sz]->data = NULL;
+							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
+							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size]->type = MTYPE_STRING;
+							obj->child[obj->size]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
 							setname = 1;
 						} else {
-							rtobj->child[rtobj->sz]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, rtobj);
-							rtobj->sz++;
+							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->size++;
 							setname = 0;
 						}
 						break;
 					case DICT_OBJECT: {
-						rtobj->child[rtobj->sz] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, rtobj->child[rtobj->sz]->name, rtobj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 						}
 						i += j;
-						rtobj->sz++;
+						obj->size++;
 						setname = 0;
 						break;
 					}
 					case DICT_ARRAY: {
-						rtobj->child[rtobj->sz] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, rtobj->child[rtobj->sz]->name, rtobj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
 						}
 						i += j;
-						rtobj->sz++;
+						obj->size++;
 						setname = 0;
 						break;
 					}
@@ -182,10 +161,10 @@ static serialize_t *marshall_obect_decode(char *data, size_t data_len, char *nam
 		default:
 			break;
 	}
-	return rtobj;
+	return obj;
 }
 
-static serialize_type_t autoscalar(const char *data, size_t len) {
+static marshall_type_t autoscalar(const char *data, size_t len) {
 	if (!len)
 		return MTYPE_NULL;
 	if (len == 1) {
@@ -222,8 +201,8 @@ static serialize_type_t autoscalar(const char *data, size_t len) {
     return MTYPE_STRING;
 }
 
-//TODO rename
-unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth) {
+/* Count elements in level */
+unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 	switch (obj->type) {
 		case MTYPE_NULL:
 		case MTYPE_TRUE:
@@ -237,7 +216,7 @@ unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth) {
 		case MTYPE_OBJECT: {
 			unsigned int n = 1;
 			if (depth == -1 || ((unsigned int)depth) > _depth) {
-				for (unsigned int i = 0; i < obj->sz; ++i) {
+				for (unsigned int i = 0; i < obj->size; ++i) {
 					n += marshall_get_count(obj->child[i], depth, _depth+1);
 				}
 			}
@@ -249,45 +228,44 @@ unsigned int marshall_get_count(serialize_t *obj, int depth, unsigned _depth) {
 	return 0;
 }
 
+/* Convert string to object */
 marshall_t *marshall_convert(char *data, size_t data_len) {
-	serialize_type_t type = autoscalar(data, data_len);
-	serialize_t *serial = NULL;
+	marshall_t *marshall = NULL;
+	marshall_type_t type = autoscalar(data, data_len);
 
 	switch (type) {
 		case MTYPE_NULL:
 		case MTYPE_TRUE:
 		case MTYPE_FALSE: {
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->type = type;
 			break;
 		}
 		case MTYPE_INT:
 		case MTYPE_FLOAT:
 		case MTYPE_STRING:
 		case MTYPE_QUID: {
-			serial = (serialize_t *)tree_zmalloc(sizeof(serialize_t), NULL);
-			memset(serial, 0, sizeof(serialize_t));
-			serial->data = tree_zstrndup(data, data_len, serial);
-			serial->sz = 1;
-			serial->type = type;
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->data = tree_zstrndup(data, data_len, marshall);
+			marshall->type = type;
 			break;
 		}
 		case MTYPE_ARRAY:
 		case MTYPE_OBJECT:
-			serial = marshall_obect_decode(data, data_len, NULL, NULL);
-			type = serial->type;
+			marshall = marshall_obect_decode(data, data_len, NULL, NULL);
 			break;
 		default:
 			//TODO: throw error
 			break;
 	}
 
-	marshall_t *marshall = (marshall_t *)zcalloc(1, sizeof(marshall_t));
-	marshall->type = type;
-	marshall->data = serial;
 	return marshall;
 }
 
-//TODO rename
-char *marshall_object_serialize(serialize_t *obj) {
+/* Convert marshall object to string */
+char *marshall_serialize(marshall_t *obj) {
 	if (!obj)
 		return NULL;
 
@@ -361,8 +339,8 @@ char *marshall_object_serialize(serialize_t *obj) {
 		case MTYPE_ARRAY: {
 			size_t nsz = 0;
 			unsigned int i;
-			for (i = 0; i < obj->sz; ++i) {
-				char *elm = marshall_object_serialize(obj->child[i]);
+			for (i = 0; i < obj->size; ++i) {
+				char *elm = marshall_serialize(obj->child[i]);
 				nsz += strlen(elm) + 2;
 				zfree(elm);
 			}
@@ -370,7 +348,7 @@ char *marshall_object_serialize(serialize_t *obj) {
 			if (obj->name)
 				nsz += strlen(obj->name);
 
-			nsz += obj->sz + 2;
+			nsz += obj->size + 2;
 
 			char *data = (char *)zmalloc(nsz + 1);
 			memset(data, 0, nsz + 1);
@@ -384,12 +362,12 @@ char *marshall_object_serialize(serialize_t *obj) {
 			strcat(data, "[");
 			curr_sz++;
 
-			for (i = 0; i < obj->sz; ++i) {
+			for (i = 0; i < obj->size; ++i) {
 				if (i > 0) {
 					strcat(data, ",");
 					curr_sz++;
 				}
-				char *elm = marshall_object_serialize(obj->child[i]);
+				char *elm = marshall_serialize(obj->child[i]);
 				strcat(data, elm);
 				curr_sz += strlen(elm);
 				zfree(elm);
@@ -400,8 +378,8 @@ char *marshall_object_serialize(serialize_t *obj) {
 		case MTYPE_OBJECT: {
 			size_t nsz = 0;
 			unsigned int i;
-			for (i = 0; i < obj->sz; ++i) {
-				char *elm = marshall_object_serialize(obj->child[i]);
+			for (i = 0; i < obj->size; ++i) {
+				char *elm = marshall_serialize(obj->child[i]);
 				nsz += strlen(elm) + 2;
 				zfree(elm);
 			}
@@ -409,7 +387,7 @@ char *marshall_object_serialize(serialize_t *obj) {
 			if (obj->name)
 				nsz += strlen(obj->name);
 
-			nsz += obj->sz + 2;
+			nsz += obj->size + 2;
 
 			char *data = (char *)zmalloc(nsz + 1);
 			memset(data, 0, nsz + 1);
@@ -423,12 +401,12 @@ char *marshall_object_serialize(serialize_t *obj) {
 			strcat(data, "{");
 			curr_sz++;
 
-			for (i = 0; i < obj->sz; ++i) {
+			for (i = 0; i < obj->size; ++i) {
 				if (i > 0) {
 					strcat(data, ",");
 					curr_sz++;
 				}
-				char *elm = marshall_object_serialize(obj->child[i]);
+				char *elm = marshall_serialize(obj->child[i]);
 				strcat(data, elm);
 				curr_sz += strlen(elm);
 				zfree(elm);
@@ -441,35 +419,3 @@ char *marshall_object_serialize(serialize_t *obj) {
 	}
 	return NULL;
 }
-/*
-char *marshall_serialize(marshall_t *marshall) {
-	char *data = NULL;
-
-	switch (marshall->type) {
-		case MTYPE_NULL:
-			data = zstrdup("null");
-			break;
-		case MTYPE_TRUE:
-			data = zstrdup("true");
-			break;
-		case MTYPE_FALSE:
-			data = zstrdup("false");
-			break;
-		case MTYPE_INT:
-		case MTYPE_FLOAT:
-		case MTYPE_STRING:
-		case MTYPE_QUID:
-			data = zstrdup(marshall->data->data);
-			break;
-		case MTYPE_ARRAY:
-		case MTYPE_OBJECT:
-			data = marshall_object_serialize(marshall->data);
-			break;
-		default:
-			//TODO: throw error
-			break;
-	}
-
-	return data;
-}
-*/
