@@ -140,6 +140,7 @@ void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct sla
 	}
 }
 
+// DEPRECATED by slay_put()
 void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
@@ -148,6 +149,7 @@ void *slay_parse_quid(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_parse_text(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
@@ -156,6 +158,7 @@ void *slay_parse_text(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_bool(bool boolean, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, 0, slay_len);
 
@@ -164,6 +167,7 @@ void *slay_bool(bool boolean, size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_null(size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, 0, slay_len);
 
@@ -172,6 +176,7 @@ void *slay_null(size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_char(char *data, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, 1, slay_len);
 
@@ -181,6 +186,7 @@ void *slay_char(char *data, size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_float(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
@@ -189,6 +195,7 @@ void *slay_float(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
+// DEPRECATED by slay_put()
 void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	void *slay = create_row(SCHEMA_FIELD, 1, data_len, slay_len);
 
@@ -197,6 +204,138 @@ void *slay_integer(char *data, size_t data_len, size_t *slay_len) {
 	return slay;
 }
 
+int object_descent_count(marshall_t *obj) {
+	int cnt = 0;
+	for (unsigned int i = 0; i < obj->size; ++i) {
+		if (obj->child[i]->type == MTYPE_OBJECT || obj->child[i]->type == MTYPE_ARRAY)
+			cnt++;
+	}
+	return cnt;
+}
+
+//TODO rewrite switches
+void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
+	void *slay = NULL;
+
+	switch (marshall->type) {
+		case MTYPE_NULL:
+		case MTYPE_TRUE:
+		case MTYPE_FALSE: {
+			rs->schema = SCHEMA_FIELD;
+			rs->items = 1;
+
+			slay = create_row(rs->schema, 1, 0, len);
+			if (marshall->type == MTYPE_NULL)
+				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_NULL);
+			else if (marshall->type == MTYPE_TRUE)
+				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_BOOL_T);
+			else if (marshall->type == MTYPE_FALSE)
+				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_BOOL_F);
+			return slay;
+		}
+		case MTYPE_INT:
+		case MTYPE_FLOAT:
+		case MTYPE_STRING:
+		case MTYPE_QUID: {
+			rs->schema = SCHEMA_FIELD;
+			rs->items = 1;
+
+			slay = create_row(rs->schema, 1, strlen(marshall->data), len);
+			if (marshall->type == MTYPE_INT)
+				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_INT);
+			else if (marshall->type == MTYPE_FLOAT)
+				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_FLOAT);
+			else if (marshall->type == MTYPE_STRING)
+				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_TEXT);
+			else if (marshall->type == MTYPE_QUID)
+				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_QUID);
+			return slay;
+		}
+		case MTYPE_ARRAY: 
+		case MTYPE_OBJECT: {
+			if (marshall->type == MTYPE_ARRAY) {
+				rs->schema = SCHEMA_ARRAY;
+			} else if (marshall->type == MTYPE_OBJECT)
+				rs->schema = SCHEMA_OBJECT;
+
+			size_t desccnt = object_descent_count(marshall);
+			rs->items = marshall_get_count(marshall, 1, 0) - 1;
+			//TODO sz should be counter by traversal {
+			char *dataerial = marshall_serialize(marshall);
+			size_t data_len = strlen(dataerial);
+			zfree(dataerial);
+			// }
+			data_len += desccnt * QUID_LENGTH;
+			if (desccnt == rs->items && rs->items > 1) {
+				data_len = rs->items * QUID_LENGTH;
+				if (rs->schema == SCHEMA_ARRAY)
+					rs->schema = SCHEMA_TABLE;
+				else
+					rs->schema = SCHEMA_SET;
+			}
+
+			slay = create_row(rs->schema, rs->items, data_len, len);
+			void *next = movetodata_row(slay);
+			for (unsigned int i = 0; i < marshall->size; ++i) {
+				char *name = NULL;
+				size_t name_len = 0;
+				if (rs->schema == SCHEMA_OBJECT && marshall->child[i]->name) {
+					name = marshall->child[i]->name;
+					name_len = strlen(marshall->child[i]->name);
+				}
+
+				switch (marshall->child[i]->type) {
+					case MTYPE_NULL:
+					case MTYPE_TRUE:
+					case MTYPE_FALSE: {
+						if (marshall->child[i]->type == MTYPE_NULL)
+							next = slay_wrap(next, name, name_len, NULL, 0, DT_NULL);
+						else if (marshall->child[i]->type == MTYPE_TRUE)
+							next = slay_wrap(next, name, name_len, NULL, 0, DT_BOOL_T);
+						else if (marshall->child[i]->type == MTYPE_FALSE)
+							next = slay_wrap(next, name, name_len, NULL, 0, DT_BOOL_F);
+						break;
+					}
+					case MTYPE_INT:
+					case MTYPE_FLOAT:
+					case MTYPE_STRING:
+					case MTYPE_QUID: {
+						if (marshall->child[i]->type == MTYPE_INT)
+							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_INT);
+						else if (marshall->child[i]->type == MTYPE_FLOAT)
+							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_FLOAT);
+						else if (marshall->child[i]->type == MTYPE_STRING)
+							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_TEXT);
+						else if (marshall->child[i]->type == MTYPE_QUID)
+							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_QUID);
+						break;
+					}
+					case MTYPE_ARRAY:
+					case MTYPE_OBJECT: {
+						size_t _len = 0;
+						slay_result_t _rs;
+						char squid[QUID_LENGTH + 1];
+						void *_slay = slay_put(marshall->child[i], &_len, &_rs);
+						_db_put(squid, _slay, _len);
+						next = slay_wrap(next, name, name_len, squid, QUID_LENGTH, DT_QUID);
+						break;
+					}
+					default:
+						break;
+				}
+			}
+
+			return slay;
+		}
+		default:
+			//TODO: throw error
+			break;
+	}
+
+	return slay;
+}
+
+// DEPRECATED by slay_put()
 void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result *rs) {
 	rs->slay = NULL;
 	dstype_t adt = autotype(data, data_len);
@@ -547,6 +686,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 }
 
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
+	zassert(el >= 1);
 	struct row_slay *row = zcalloc(1, sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len);
 	row->elements = el;
 	row->schema = schema;
