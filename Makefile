@@ -114,16 +114,6 @@ genquid:
 genlookup3:
 	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
-#qcli:
-#	$(eval CFLAGS := $(filter-out -c,$(CFLAGS)))
-#	$(CC) $(CFLAGS) -I$(INCLUDE) $(SRCDIR)/time.c \
-#								$(SRCDIR)/log.c \
-#								$(SRCDIR)/strlcpy.c \
-#								$(SRCDIR)/zmalloc.c \
-#								$(SRCDIR)/strlcat.c \
-#								$(SRCDIR)/webclient.c \
-#								$(UTILDIR)/qcli.c -lm -ljansson -o $(BINDIR)/qcli
-
 qcli: $(CLIENTOBJECTS)
 	$(CC) $(CLIENTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 

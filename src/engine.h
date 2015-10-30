@@ -41,7 +41,7 @@ enum key_importance {
 
 enum key_type {
 	MD_TYPE_RECORD = 0,		/* Key maps to record */
-	MD_TYPE_TABLE,			/* Key represents a table */
+	MD_TYPE_GROUP,			/* Key represents a table or set */
 	MD_TYPE_POINTER,		/* Key points to key */
 	MD_TYPE_RAW				/* Key points to key */
 };

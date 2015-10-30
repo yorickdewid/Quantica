@@ -34,20 +34,27 @@
 #include "../src/quid.h"
 
 int main(int argc, const char *argv[]) {
-	long int i;
+	long long int i;
+	int fin = 0;
 	quid_t key;
-	char squid[35] = {'\0'};
+	char squid[QUID_SHORT_LENGTH] = {'\0'};
 
 	if (argc < 2) {
-		fprintf(stderr, "%s [COUNT]\n", argv[0]);
+		fprintf(stderr, "%s [COUNT] -1 for infinite\n", argv[0]);
 		return 1;
 	}
 
-	long int n = atoi(argv[1]);
-	for (i=0; i<n; ++i) {
+	long long int n = atoll(argv[1]);
+
+	// If count equals -1 loop forever
+	if (n == -1) {
+		fin = 1;
+	}
+
+	for (i = 0; i < n || fin; ++i) {
 		quid_create(&key);
 		quidtostr(squid, &key);
-		printf("%ld: %s\n", i, squid);
+		printf("%lld: %s\n", i, squid);
 	}
 	return 0;
 }

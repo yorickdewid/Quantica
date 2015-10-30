@@ -1367,8 +1367,8 @@ char *get_str_lifecycle(enum key_lifecycle lifecycle) {
 char *get_str_type(enum key_type key_type) {
 	static char buf[STATUS_TYPE_SIZE];
 	switch (key_type) {
-		case MD_TYPE_TABLE:
-			strlcpy(buf, "TABLE", STATUS_TYPE_SIZE);
+		case MD_TYPE_GROUP:
+			strlcpy(buf, "GROUP", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_RAW:
 			strlcpy(buf, "RAW", STATUS_TYPE_SIZE);
@@ -1400,8 +1400,8 @@ enum key_lifecycle get_meta_lifecycle(char *lifecycle) {
 }
 
 enum key_type get_meta_type(char *key_type) {
-	if (!strcmp(key_type, "TABLE"))
-		return MD_TYPE_TABLE;
+	if (!strcmp(key_type, "GROUP"))
+		return MD_TYPE_GROUP;
 	else if (!strcmp(key_type, "RAW"))
 		return MD_TYPE_RAW;
 	else if (!strcmp(key_type, "POINTER"))
