@@ -51,6 +51,7 @@ void *slay_float(char *data, size_t data_len, size_t *slay_len);
 void *slay_integer(char *data, size_t data_len, size_t *slay_len);
 void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs);
 void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result *rs);
+marshall_t *slay_get(void *data, void *parent);
 void *slay_get_data(void *data, dstype_t *dt);
 void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len);
 void *get_row(void *arrp, schema_t *schema, uint64_t *el);

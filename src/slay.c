@@ -15,6 +15,7 @@
 
 #define VECTOR_SIZE	1024
 
+// DEPRECATED
 void slay_parse_object(char *data, size_t data_len, size_t *slay_len, struct slay_result *rs) {
 	int i;
 	int r;
@@ -261,9 +262,9 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 			size_t desccnt = object_descent_count(marshall);
 			rs->items = marshall_get_count(marshall, 1, 0) - 1;
 			//TODO sz should be counter by traversal {
-			char *dataerial = marshall_serialize(marshall);
-			size_t data_len = strlen(dataerial);
-			zfree(dataerial);
+			char *dataserial = marshall_serialize(marshall);
+			size_t data_len = strlen(dataserial);
+			zfree(dataserial);
 			// }
 			data_len += desccnt * QUID_LENGTH;
 			if (desccnt == rs->items && rs->items > 1) {
@@ -272,6 +273,10 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 					rs->schema = SCHEMA_TABLE;
 				else
 					rs->schema = SCHEMA_SET;
+
+				for (unsigned int i = 0; i < marshall->size; ++i) {
+					data_len += strlen(marshall->child[i]->name);
+				}
 			}
 
 			slay = create_row(rs->schema, rs->items, data_len, len);
@@ -279,7 +284,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 			for (unsigned int i = 0; i < marshall->size; ++i) {
 				char *name = NULL;
 				size_t name_len = 0;
-				if (rs->schema == SCHEMA_OBJECT && marshall->child[i]->name) {
+				if (marshall->child[i]->name) {
 					name = marshall->child[i]->name;
 					name_len = strlen(marshall->child[i]->name);
 				}
@@ -382,10 +387,10 @@ void slay_put_data(char *data, size_t data_len, size_t *len, struct slay_result 
 dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t dt) {
 	switch (dt) {
 		case DT_QUID: {
-			dstype_t _dt;
-			char *rbuf = _db_get(buf, &_dt);
-			size_t rbuflen = strlen(rbuf);
-			return resolv_quid(v, rbuf, rbuflen, name, _dt);
+			//dstype_t _dt;
+			//char *rbuf = NULL;//_db_get(buf, &_dt);
+			//size_t rbuflen = strlen(rbuf);
+			return NULL;//resolv_quid(v, rbuf, rbuflen, name, _dt);
 		}
 		case DT_NULL:
 			zfree(buf);
@@ -419,6 +424,238 @@ dict_t *resolv_quid(vector_t *v, char *buf, size_t buflen, char *name, dstype_t 
 
 	}
 	return dict_element_cnew(v, FALSE, name, "null");
+}
+
+marshall_t *slay_get(void *data, void *parent) {
+	marshall_t *marshall = NULL;
+	uint64_t elements;
+	schema_t schema;
+	void *name = NULL;
+	size_t namelen;
+	size_t val_len;
+	dstype_t val_dt;
+
+	void *slay = get_row(data, &schema, &elements);
+	void *next = movetodata_row(slay);
+
+	switch (schema) {
+		case SCHEMA_FIELD: {
+			void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+			if (val_data) {
+				val_data = (void *)zrealloc(val_data, val_len + 1);
+				((uint8_t *)val_data)[val_len] = '\0';
+			}
+
+			if (val_dt == DT_QUID) {
+				marshall = _db_get(val_data, NULL);
+				if (!marshall) {
+					marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+					memset(marshall, 0, sizeof(marshall_t));
+					marshall->type = MTYPE_NULL;
+					marshall->size = 1;
+				}
+				zfree(val_data);
+				return marshall;
+			}
+
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+			memset(marshall, 0, sizeof(marshall_t));
+
+			if (val_dt == DT_NULL)
+				marshall->type = MTYPE_NULL;
+			else if (val_dt == DT_BOOL_T)
+				marshall->type = MTYPE_TRUE;
+			else if (val_dt == DT_BOOL_F)
+				marshall->type = MTYPE_FALSE;
+			else if (val_dt == DT_INT)
+				marshall->type = MTYPE_INT;
+			else if (val_dt == DT_FLOAT)
+				marshall->type = MTYPE_FLOAT;
+			else if (val_dt == DT_TEXT) {
+				marshall->type = MTYPE_STRING;
+				char *_tmp = stresc(val_data);
+				zfree(val_data);
+				val_data = _tmp;
+			}
+
+			marshall->data = tree_zstrndup(val_data, val_len, marshall);
+			marshall->size = 1;
+			if (val_data)
+				zfree(val_data);
+			break;
+		}
+		case SCHEMA_ARRAY: {
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
+			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall->type = MTYPE_ARRAY;
+			
+			for (unsigned int i = 0; i < elements; ++i) {
+				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+
+				if (val_data) {
+					val_data = (void *)zrealloc(val_data, val_len + 1);
+					((uint8_t *)val_data)[val_len] = '\0';
+				}
+
+				if (val_dt == DT_QUID) {
+					marshall->child[marshall->size] = _db_get(val_data, marshall);
+					if (!marshall->child[marshall->size]) {
+						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+						memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+						marshall->child[marshall->size]->type = MTYPE_NULL;
+						marshall->child[marshall->size]->size = 1;
+					}
+					marshall->size++;
+					zfree(val_data);
+					continue;
+				}
+
+				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+
+				if (val_dt == DT_NULL)
+					marshall->child[marshall->size]->type = MTYPE_NULL;
+				else if (val_dt == DT_BOOL_T)
+					marshall->child[marshall->size]->type = MTYPE_TRUE;
+				else if (val_dt == DT_BOOL_F)
+					marshall->child[marshall->size]->type = MTYPE_FALSE;
+				else if (val_dt == DT_INT)
+					marshall->child[marshall->size]->type = MTYPE_INT;
+				else if (val_dt == DT_FLOAT)
+					marshall->child[marshall->size]->type = MTYPE_FLOAT;
+				else if (val_dt == DT_TEXT) {
+					marshall->child[marshall->size]->type = MTYPE_STRING;
+					char *_tmp = stresc(val_data);
+					zfree(val_data);
+					val_data = _tmp;
+				}
+
+				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+				marshall->size++;
+				if (val_data)
+					zfree(val_data);
+			}
+			break;
+		}
+		case SCHEMA_OBJECT: {
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
+			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall->type = MTYPE_OBJECT;
+
+			for (unsigned int i = 0; i < elements; ++i) {
+				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+
+				name = (char *)zrealloc(name, namelen + 1);
+				((char *)name)[namelen] = '\0';
+
+				if (val_data) {
+					val_data = (void *)zrealloc(val_data, val_len + 1);
+					((uint8_t *)val_data)[val_len] = '\0';
+				}
+
+				if (val_dt == DT_QUID) {
+					marshall->child[marshall->size] = _db_get(val_data, marshall);
+					if (!marshall->child[marshall->size]) {
+						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+						memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+						marshall->child[marshall->size]->type = MTYPE_NULL;
+						marshall->child[marshall->size]->size = 1;
+					}
+					marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
+					marshall->size++;
+					zfree(name);
+					zfree(val_data);
+					continue;
+				}
+
+				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+				marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
+				zfree(name);
+
+				if (val_dt == DT_NULL)
+					marshall->child[marshall->size]->type = MTYPE_NULL;
+				else if (val_dt == DT_BOOL_T)
+					marshall->child[marshall->size]->type = MTYPE_TRUE;
+				else if (val_dt == DT_BOOL_F)
+					marshall->child[marshall->size]->type = MTYPE_FALSE;
+				else if (val_dt == DT_INT)
+					marshall->child[marshall->size]->type = MTYPE_INT;
+				else if (val_dt == DT_FLOAT)
+					marshall->child[marshall->size]->type = MTYPE_FLOAT;
+				else if (val_dt == DT_TEXT) {
+					marshall->child[marshall->size]->type = MTYPE_STRING;
+					char *_tmp = stresc(val_data);
+					zfree(val_data);
+					val_data = _tmp;
+				}
+
+				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+				marshall->size++;
+				if (val_data)
+					zfree(val_data);
+			}
+			break;
+		}
+		case SCHEMA_TABLE: {
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
+			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall->type = MTYPE_ARRAY;
+
+			for (unsigned int i = 0; i < elements; ++i) {
+				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+
+				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+
+				val_data = (void *)zrealloc(val_data, val_len + 1);
+				((uint8_t *)val_data)[val_len] = '\0';
+
+				marshall->child[marshall->size] = _db_get(val_data, marshall);
+				marshall->size++;
+				zfree(val_data);
+			}
+			break;			
+		}
+		case SCHEMA_SET: {
+			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
+			memset(marshall, 0, sizeof(marshall_t));
+			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
+			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall->type = MTYPE_OBJECT;
+
+			for (unsigned int i = 0; i < elements; ++i) {
+				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				next = next_row(next);
+
+				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+
+				val_data = (void *)zrealloc(val_data, val_len + 1);
+				((uint8_t *)val_data)[val_len] = '\0';
+
+				marshall->child[marshall->size] = _db_get(val_data, marshall);
+				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
+				marshall->size++;
+				zfree(name);
+				zfree(val_data);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+
+	return marshall;
 }
 
 void *slay_get_data(void *data, dstype_t *dt) {
@@ -468,10 +705,11 @@ void *slay_get_data(void *data, dstype_t *dt) {
 					buf = zstrdup(val_data);
 					break;
 				case DT_QUID: {
-					dstype_t _dt;
-					val_data = (char *)zrealloc(val_data, val_len + 1);
-					((char *)val_data)[val_len] = '\0';
-					buf = _db_get(val_data, &_dt);
+					//dstype_t _dt;
+					//val_data = (char *)zrealloc(val_data, val_len + 1);
+					//((char *)val_data)[val_len] = '\0';
+					//buf = _db_get(val_data, &_dt);
+					buf = NULL;//_db_get(val_data, &_dt);
 				}
 				default:
 					buf = zstrdup(str_null());
@@ -529,18 +767,19 @@ void *slay_get_data(void *data, dstype_t *dt) {
 						break;
 					}
 					case DT_QUID: {
-						dstype_t _dt;
+						/*dstype_t _dt;
 						dict_t *element = NULL;
 						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
-						void *qbuf = _db_get(val_data, &_dt);
+						//void *qbuf = _db_get(val_data, &_dt);
+						void *qbuf = NULL;//_db_get(val_data, &_dt);
 						if (!qbuf)
 							element = dict_element_cnew(arr, FALSE, NULL, "null");
 						else {
 							size_t buflen = strlen(qbuf);
 							element = resolv_quid(arr, qbuf, buflen, NULL, _dt);
 						}
-						vector_append(arr, (void *)element);
+						vector_append(arr, (void *)element);*/
 						break;
 					}
 					default: {
@@ -611,18 +850,19 @@ void *slay_get_data(void *data, dstype_t *dt) {
 						break;
 					}
 					case DT_QUID: {
-						dstype_t _dt;
+						/*dstype_t _dt;
 						dict_t *element = NULL;
 						val_data = (char *)zrealloc(val_data, val_len + 1);
 						((char *)val_data)[val_len] = '\0';
-						void *qbuf = _db_get(val_data, &_dt);
+						//void *qbuf = _db_get(val_data, &_dt);
+						void *qbuf = NULL;//_db_get(val_data, &_dt);
 						if (!qbuf)
 							element = dict_element_cnew(obj, FALSE, name, "null");
 						else {
 							size_t buflen = strlen(qbuf);
 							element = resolv_quid(obj, qbuf, buflen, name, _dt);
 						}
-						vector_append(obj, (void *)element);
+						vector_append(obj, (void *)element);*/
 						break;
 					}
 					default: {
@@ -643,7 +883,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			break;
 		}
 		case SCHEMA_TABLE: {
-			size_t val_len;
+			/*size_t val_len;
 			dstype_t val_dt;
 			unsigned int i;
 			size_t total_len = 0;
@@ -657,7 +897,8 @@ void *slay_get_data(void *data, dstype_t *dt) {
 				next = next_row(next);
 				val_data = (char *)zrealloc(val_data, val_len + 1);
 				((char *)val_data)[val_len] = '\0';
-				void *qbuf = _db_get(val_data, &_dt);
+				//void *qbuf = _db_get(val_data, &_dt);
+				void *qbuf = NULL;//_db_get(val_data, &_dt);
 				if (!qbuf) {
 					element = dict_element_cnew(arr, FALSE, NULL, "null");
 					total_len += 8;
@@ -674,7 +915,7 @@ void *slay_get_data(void *data, dstype_t *dt) {
 			buf = zmalloc(total_len + 1);
 			memset(buf, 0, total_len + 1);
 			buf = dict_array(arr, buf);
-			vector_free(arr);
+			vector_free(arr);*/
 			break;
 		}
 		default:
@@ -735,7 +976,6 @@ void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_
 	}
 
 	if (slay->namesize) {
-		zassert(!*name);
 		void *src = ((uint8_t *)arrp) + sizeof(struct value_slay) + slay->size;
 		*name = zmalloc(slay->namesize);
 		memcpy(*name, src, slay->namesize);
