@@ -61,6 +61,8 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						memset(obj->child[obj->size], 0, sizeof(marshall_t));
 						obj->child[obj->size]->type = MTYPE_STRING;
 						obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+						if (strquid_format(obj->child[obj->size]->data)>0)
+							obj->child[obj->size]->type = MTYPE_QUID;
 						obj->size++;
 						break;
 					case DICT_OBJECT: {
@@ -125,6 +127,8 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 							setname = 1;
 						} else {
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							if (strquid_format(obj->child[obj->size]->data)>0)
+								obj->child[obj->size]->type = MTYPE_QUID;
 							obj->size++;
 							setname = 0;
 						}
