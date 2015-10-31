@@ -1299,6 +1299,8 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 	return -1;
 }
 
+//TODO push items into marshall
+//TODO null on empty list
 char *engine_list_all(struct engine *e) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
@@ -1312,8 +1314,7 @@ char *engine_list_all(struct engine *e) {
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
 		zassert(tablelist->size <= LIST_SIZE);
 
-		int i = 0;
-		for (; i < tablelist->size; ++i) {
+		for (int i = 0; i < tablelist->size; ++i) {
 			char squid[QUID_LENGTH + 1];
 			quidtostr(squid, &tablelist->items[i].quid);
 			size_t len = from_be32(tablelist->items[i].len);

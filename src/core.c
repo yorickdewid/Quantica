@@ -306,13 +306,14 @@ char *db_get_type(char *quid) {
 	if (!data)
 		return NULL;
 
-	dstype_t dt;
+	/*dstype_t dt;
 	void *buf = slay_get_data(data, &dt);
 	zfree(buf);
-	zfree(data);
-	return str_type(dt);
+	zfree(data);*/
+	return "null";//str_type(dt);
 }
 
+//TODO may not work nolonger
 char *db_get_schema(char *quid) {
 	if (!ready)
 		return NULL;
@@ -324,11 +325,11 @@ char *db_get_schema(char *quid) {
 	if (!data)
 		return NULL;
 
-	uint64_t elements;
+	/*uint64_t elements;
 	schema_t schema;
 	get_row(data, &schema, &elements);
-	zfree(data);
-	return str_schema(schema);
+	zfree(data);*/
+	return "null";//str_schema(schema);
 }
 
 //TODO rename

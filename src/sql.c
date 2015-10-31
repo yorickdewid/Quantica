@@ -492,8 +492,11 @@ insert_arr:
 		int j = 0;
 		if (name && cnt > i)
 			cnt = i;
-		void *slay = create_row(schema, cnt, charcnt, &slay_len);
-		void *next = movetodata_row(slay);
+		//TODO push to marshall
+		(void)schema;
+		void *slay = NULL;//create_row(schema, cnt, charcnt, &slay_len);
+		void *next = NULL;//movetodata_row(slay);
+		(void)next;
 		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
@@ -502,40 +505,40 @@ insert_arr:
 				break;
 			if (tok->token == T_STRING) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_TEXT);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_TEXT);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
 			} else if (tok->token == T_INTEGER || tok->token == T_DOUBLE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_INT);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_INT);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
 			} else if (tok->token == T_QUID) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_QUID);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_QUID);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
 			} else if (tok->token == T_FALSE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_F);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_F);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
 			} else if (tok->token == T_TRUE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
 			} else if (tok->token == T_NULL) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
 			}
 			j++;
 		}
 		if (name)
 			zfree(name);
-		_db_put(rs.quid, slay, slay_len);
+		raw_db_put(rs.quid, slay, slay_len);
 		rs.items = j;
 		return &rs;
 	} else if (tok->token == T_UPDATE) {
@@ -601,8 +604,10 @@ update_arr:
 		int j = 0;
 		if (name && cnt > i)
 			cnt = i;
-		void *slay = create_row(schema, cnt, charcnt, &slay_len);
-		void *next = movetodata_row(slay);
+		(void)schema;
+		//TODO push to marshall
+		void *slay = NULL;//create_row(schema, cnt, charcnt, &slay_len);
+		void *next = NULL;//movetodata_row(slay);
 		while (stack->size > 0) {
 			tok = stack_rpop(stack);
 			if (tok->token == T_BRACK_CLOSE)
@@ -611,40 +616,41 @@ update_arr:
 				break;
 			if (tok->token == T_STRING) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_TEXT);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_TEXT);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_TEXT);
 			} else if (tok->token == T_INTEGER || tok->token == T_DOUBLE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_INT);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_INT);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_INT);
 			} else if (tok->token == T_QUID) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_QUID);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, tok->string, tok->length, DT_QUID);
 				else
-					next = slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
+					next = NULL;//slay_wrap(next, NULL, 0, tok->string, tok->length, DT_QUID);
 			} else if (tok->token == T_FALSE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_F);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_F);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_F);
 			} else if (tok->token == T_TRUE) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_BOOL_T);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_BOOL_T);
 			} else if (tok->token == T_NULL) {
 				if (name)
-					next = slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
+					next = NULL;//slay_wrap(next, name[j].name, name[j].length, NULL, 0, DT_NULL);
 				else
-					next = slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
+					next = NULL;//slay_wrap(next, NULL, 0, NULL, 0, DT_NULL);
 			}
 			j++;
+			(void)next;
 		}
 		if (name)
 			zfree(name);
-		_db_update(rs.quid, slay, slay_len);
+		raw_db_update(rs.quid, slay, slay_len);
 		rs.items = j;
 		return &rs;
 	} else if (tok->token == T_DELETE) {
