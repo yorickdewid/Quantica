@@ -199,17 +199,17 @@ void filesync() {
 	base_sync(&control);
 }
 
-int _db_put(char *quid, void *slay, size_t len) {
+int raw_db_put(char *quid, void *dataslay, size_t len) {
 	if (!ready)
 		return -1;
 	quid_t key;
 	quid_create(&key);
 
-	if (engine_insert(&btx, &key, slay, len) < 0) {
-		zfree(slay);
+	if (engine_insert(&btx, &key, dataslay, len) < 0) {
+		zfree(dataslay);
 		return -1;
 	}
-	zfree(slay);
+	zfree(dataslay);
 
 	quidtostr(quid, &key);
 	return 0;
@@ -220,35 +220,42 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	quid_t key;
 	size_t len = 0;
-	struct slay_result rs;
 	quid_create(&key);
+	slay_result_t nrs;
 
-	memset(&rs, 0, sizeof(struct slay_result));
-	slay_put_data((char *)data, data_len, &len, &rs);
-	*items = rs.items;
-	if (engine_insert(&btx, &key, rs.slay, len) < 0) {
-		zfree(rs.slay);
+	marshall_t *dataobj = marshall_convert((char *)data, data_len);
+	if (!dataobj) {
 		return -1;
 	}
-	zfree(rs.slay);
+
+	void *dataslay = slay_put(dataobj, &len, &nrs);
+	*items = nrs.items;
+	if (engine_insert(&btx, &key, dataslay, len) < 0) {
+		zfree(dataslay);
+		marshall_free(dataobj);
+		return -1;
+	}
+	zfree(dataslay);
+	marshall_free(dataobj);
 
 	quidtostr(quid, &key);
-	if (rs.table) {
+	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
 
 		struct metadata meta;
 		if (engine_getmeta(&btx, &key, &meta) < 0)
 			return -1;
-		meta.type = MD_TYPE_TABLE;
+		meta.type = MD_TYPE_GROUP;
 		if (engine_setmeta(&btx, &key, &meta) < 0)
 			return -1;
 	}
 	return 0;
 }
 
-void *_db_get(char *quid, dstype_t *dt) {
+marshall_t *raw_db_get(char *quid, void *parent) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	strtoquid(quid, &key);
 
@@ -257,33 +264,42 @@ void *_db_get(char *quid, dstype_t *dt) {
 	if (!data)
 		return NULL;
 
-	char *buf = slay_get_data(data, dt);
+	marshall_t *dataobj = slay_get(data, parent);
 	zfree(data);
-	return buf;
+	return dataobj;
 }
 
-//TODO, should return size of decoded data
 void *db_get(char *quid, size_t *len) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	strtoquid(quid, &key);
+	size_t _len;
 
-	void *data = engine_get(&btx, &key, len);
+	void *data = engine_get(&btx, &key, &_len);
 	if (!data)
 		return NULL;
 
-	dstype_t dt;
-	char *buf = slay_get_data(data, &dt);
+	marshall_t *dataobj = slay_get(data, NULL);
+	if (!dataobj)
+		return NULL;
+
+	char *buf = marshall_serialize(dataobj);
+	*len = strlen(buf);
 	zfree(data);
+	marshall_free(dataobj);
+
 	return buf;
 }
 
+//TODO may not return correct type
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
 	quid_t key;
 	strtoquid(quid, &key);
+
 
 	size_t len;
 	void *data = engine_get(&btx, &key, &len);
@@ -315,7 +331,8 @@ char *db_get_schema(char *quid) {
 	return str_schema(schema);
 }
 
-int _db_update(char *quid, void *slay, size_t len) {
+//TODO rename
+int raw_db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
 	quid_t key;
@@ -329,22 +346,29 @@ int _db_update(char *quid, void *slay, size_t len) {
 	return 0;
 }
 
+//TODO may not work nolonger
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 	quid_t key;
 	size_t len = 0;
-	struct slay_result rs;
+	slay_result_t nrs;
 	strtoquid(quid, &key);
 
-	memset(&rs, 0, sizeof(struct slay_result));
-	slay_put_data((char *)data, data_len, &len, &rs);
-	*items = rs.items;
-	if (engine_update(&btx, &key, rs.slay, len) < 0) {
-		zfree(rs.slay);
+	marshall_t *dataobj = marshall_convert((char *)data, data_len);
+	if (!dataobj) {
 		return -1;
 	}
-	zfree(rs.slay);
+
+	void *dataslay = slay_put(dataobj, &len, &nrs);
+	*items = nrs.items;
+	if (engine_update(&btx, &key, dataslay, len) < 0) {
+		zfree(dataslay);
+		marshall_free(dataobj);
+		return -1;
+	}
+	zfree(dataslay);
+	marshall_free(dataobj);
 	return 0;
 }
 
@@ -356,7 +380,7 @@ int db_delete(char *quid) {
 	strtoquid(quid, &key);
 	if (engine_getmeta(&btx, &key, &meta) < 0)
 		return -1;
-	if (meta.type == MD_TYPE_TABLE)
+	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
 	if (engine_delete(&btx, &key) < 0)
 		return -1;
@@ -371,7 +395,7 @@ int db_purge(char *quid) {
 	strtoquid(quid, &key);
 	if (engine_getmeta(&btx, &key, &meta) < 0)
 		return -1;
-	if (meta.type == MD_TYPE_TABLE)
+	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
 	if (engine_purge(&btx, &key) < 0)
 		return -1;
@@ -448,27 +472,34 @@ int db_list_update(char *quid, const char *name) {
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
 
+//TODO use marshall type
 char *db_list_all() {
 	if (!ready)
 		return NULL;
 	return engine_list_all(&btx);
 }
 
-//TODO, should return size of decoded data
 void *db_table_get(char *name, size_t *len) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	if (engine_list_get_key(&btx, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	void *data = engine_get(&btx, &key, len);
+	size_t _len;
+	void *data = engine_get(&btx, &key, &_len);
 	if (!data)
 		return NULL;
 
-	dstype_t dt;
-	char *buf = slay_get_data(data, &dt);
+	marshall_t *dataobj = slay_get(data, NULL);
+	if (!dataobj)
+		return NULL;
+
+	char *buf = marshall_serialize(dataobj);
+	*len = strlen(buf);
 	zfree(data);
+	marshall_free(dataobj);
 	return buf;
 }
 
