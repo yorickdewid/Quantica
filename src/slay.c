@@ -4,7 +4,6 @@
 
 #include <log.h>
 #include <error.h>
-#include "dstype.h"
 #include "slay.h"
 #include "quid.h"
 #include "dict.h"
@@ -43,11 +42,8 @@ static void *get_row(void *val, schema_t *schema, uint64_t *el) {
 	return (void *)row;
 }
 
-static uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t len, dstype_t dt) {
+static uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, size_t len, marshall_type_t dt) {
 	size_t data_size = len;
-	if (isdata(dt))
-		data_size = 0;
-
 	struct value_slay *slay = (struct value_slay *)arrp;
 	slay->val_type = dt;
 	slay->size = data_size;
@@ -66,7 +62,7 @@ static uint8_t *slay_wrap(void *arrp, void *name, size_t namelen, void *data, si
 	return (uint8_t *)dest + slay->size + namelen;
 }
 
-static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, dstype_t *dt) {
+static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, marshall_type_t *dt) {
 	struct value_slay *slay = (struct value_slay *)arrp;
 	void *data = NULL;
 
@@ -101,12 +97,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 			rs->items = 1;
 
 			slay = create_row(rs->schema, 1, 0, len);
-			if (marshall->type == MTYPE_NULL)
-				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_NULL);
-			else if (marshall->type == MTYPE_TRUE)
-				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_BOOL_T);
-			else if (marshall->type == MTYPE_FALSE)
-				slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, DT_BOOL_F);
+			slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, marshall->type);
 			return slay;
 		}
 		case MTYPE_INT:
@@ -117,14 +108,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 			rs->items = 1;
 
 			slay = create_row(rs->schema, 1, strlen(marshall->data), len);
-			if (marshall->type == MTYPE_INT)
-				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_INT);
-			else if (marshall->type == MTYPE_FLOAT)
-				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_FLOAT);
-			else if (marshall->type == MTYPE_STRING)
-				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_TEXT);
-			else if (marshall->type == MTYPE_QUID)
-				slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), DT_QUID);
+			slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), marshall->type);
 			return slay;
 		}
 		case MTYPE_ARRAY: 
@@ -168,26 +152,14 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 					case MTYPE_NULL:
 					case MTYPE_TRUE:
 					case MTYPE_FALSE: {
-						if (marshall->child[i]->type == MTYPE_NULL)
-							next = slay_wrap(next, name, name_len, NULL, 0, DT_NULL);
-						else if (marshall->child[i]->type == MTYPE_TRUE)
-							next = slay_wrap(next, name, name_len, NULL, 0, DT_BOOL_T);
-						else if (marshall->child[i]->type == MTYPE_FALSE)
-							next = slay_wrap(next, name, name_len, NULL, 0, DT_BOOL_F);
+						next = slay_wrap(next, name, name_len, NULL, 0, marshall->child[i]->type);
 						break;
 					}
 					case MTYPE_INT:
 					case MTYPE_FLOAT:
 					case MTYPE_STRING:
 					case MTYPE_QUID: {
-						if (marshall->child[i]->type == MTYPE_INT)
-							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_INT);
-						else if (marshall->child[i]->type == MTYPE_FLOAT)
-							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_FLOAT);
-						else if (marshall->child[i]->type == MTYPE_STRING)
-							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_TEXT);
-						else if (marshall->child[i]->type == MTYPE_QUID)
-							next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), DT_QUID);
+						next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), marshall->child[i]->type);
 						break;
 					}
 					case MTYPE_ARRAY:
@@ -197,7 +169,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 						char squid[QUID_LENGTH + 1];
 						void *_slay = slay_put(marshall->child[i], &_len, &_rs);
 						raw_db_put(squid, _slay, _len);
-						next = slay_wrap(next, name, name_len, squid, QUID_LENGTH, DT_QUID);
+						next = slay_wrap(next, name, name_len, squid, QUID_LENGTH, MTYPE_QUID);
 						break;
 					}
 					default:
@@ -222,7 +194,7 @@ marshall_t *slay_get(void *data, void *parent) {
 	void *name = NULL;
 	size_t namelen;
 	size_t val_len;
-	dstype_t val_dt;
+	marshall_type_t val_dt;
 
 	void *slay = get_row(data, &schema, &elements);
 	void *next = movetodata_row(slay);
@@ -235,7 +207,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				((uint8_t *)val_data)[val_len] = '\0';
 			}
 
-			if (val_dt == DT_QUID) {
+			if (val_dt == MTYPE_QUID) {
 				marshall = raw_db_get(val_data, NULL);
 				if (!marshall) {
 					marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
@@ -250,18 +222,8 @@ marshall_t *slay_get(void *data, void *parent) {
 			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
 			memset(marshall, 0, sizeof(marshall_t));
 
-			if (val_dt == DT_NULL)
-				marshall->type = MTYPE_NULL;
-			else if (val_dt == DT_BOOL_T)
-				marshall->type = MTYPE_TRUE;
-			else if (val_dt == DT_BOOL_F)
-				marshall->type = MTYPE_FALSE;
-			else if (val_dt == DT_INT)
-				marshall->type = MTYPE_INT;
-			else if (val_dt == DT_FLOAT)
-				marshall->type = MTYPE_FLOAT;
-			else if (val_dt == DT_TEXT) {
-				marshall->type = MTYPE_STRING;
+			marshall->type = val_dt;
+			if (val_dt == MTYPE_STRING) {
 				char *_tmp = stresc(val_data);
 				zfree(val_data);
 				val_data = _tmp;
@@ -289,7 +251,7 @@ marshall_t *slay_get(void *data, void *parent) {
 					((uint8_t *)val_data)[val_len] = '\0';
 				}
 
-				if (val_dt == DT_QUID) {
+				if (val_dt == MTYPE_QUID) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
@@ -305,18 +267,8 @@ marshall_t *slay_get(void *data, void *parent) {
 				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
 				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
 
-				if (val_dt == DT_NULL)
-					marshall->child[marshall->size]->type = MTYPE_NULL;
-				else if (val_dt == DT_BOOL_T)
-					marshall->child[marshall->size]->type = MTYPE_TRUE;
-				else if (val_dt == DT_BOOL_F)
-					marshall->child[marshall->size]->type = MTYPE_FALSE;
-				else if (val_dt == DT_INT)
-					marshall->child[marshall->size]->type = MTYPE_INT;
-				else if (val_dt == DT_FLOAT)
-					marshall->child[marshall->size]->type = MTYPE_FLOAT;
-				else if (val_dt == DT_TEXT) {
-					marshall->child[marshall->size]->type = MTYPE_STRING;
+				marshall->child[marshall->size]->type = val_dt;
+				if (val_dt == MTYPE_STRING) {
 					char *_tmp = stresc(val_data);
 					zfree(val_data);
 					val_data = _tmp;
@@ -348,7 +300,7 @@ marshall_t *slay_get(void *data, void *parent) {
 					((uint8_t *)val_data)[val_len] = '\0';
 				}
 
-				if (val_dt == DT_QUID) {
+				if (val_dt == MTYPE_QUID) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
@@ -368,18 +320,8 @@ marshall_t *slay_get(void *data, void *parent) {
 				marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
 				zfree(name);
 
-				if (val_dt == DT_NULL)
-					marshall->child[marshall->size]->type = MTYPE_NULL;
-				else if (val_dt == DT_BOOL_T)
-					marshall->child[marshall->size]->type = MTYPE_TRUE;
-				else if (val_dt == DT_BOOL_F)
-					marshall->child[marshall->size]->type = MTYPE_FALSE;
-				else if (val_dt == DT_INT)
-					marshall->child[marshall->size]->type = MTYPE_INT;
-				else if (val_dt == DT_FLOAT)
-					marshall->child[marshall->size]->type = MTYPE_FLOAT;
-				else if (val_dt == DT_TEXT) {
-					marshall->child[marshall->size]->type = MTYPE_STRING;
+				marshall->child[marshall->size]->type = val_dt;
+				if (val_dt == MTYPE_STRING) {
 					char *_tmp = stresc(val_data);
 					zfree(val_data);
 					val_data = _tmp;

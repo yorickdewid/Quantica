@@ -4,7 +4,6 @@
 #include "quid.h"
 #include "time.h"
 #include "sql.h"
-#include "dstype.h"
 #include "marshall.h"
 #include "engine.h"
 

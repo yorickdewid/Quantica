@@ -4,7 +4,6 @@
 #include <config.h>
 #include <common.h>
 
-#include "dstype.h"
 #include "marshall.h"
 
 typedef enum {
@@ -24,13 +23,6 @@ struct value_slay {
 struct row_slay {
 	uint64_t elements;
 	uint8_t schema;
-};
-
-// DEPRECATED by slay_result_t
-struct slay_result {
-	void *slay;
-	int items;
-	bool table;
 };
 
 typedef struct {

@@ -28,7 +28,6 @@
 #include "core.h"
 #include "sha1.h"
 #include "md5.h"
-#include "dstype.h"
 #include "sha2.h"
 #include "vector.h"
 #include "time.h"
