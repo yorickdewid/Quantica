@@ -8,6 +8,7 @@
 #include <config.h>
 #include <common.h>
 #include "quid.h"
+#include "marshall.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
 #define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist_item))
@@ -106,6 +107,7 @@ struct engine_super {
 	__be64 nfree_table;
 	__be64 crc_zero_key;
 	__be64 list_top;
+	__be64 list_size;
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
@@ -117,6 +119,7 @@ struct engine_dbsuper {
 struct engine_stats {
 	uint64_t keys;
 	uint64_t free_tables;
+	uint64_t list_size;
 };
 
 struct engine {
@@ -178,7 +181,8 @@ char *engine_list_get_val(struct engine *e, const quid_t *c_quid);
 int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t len);
 int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 int engine_list_delete(struct engine *e, const quid_t *c_quid);
-char *engine_list_all(struct engine *e);
+//char *engine_list_all(struct engine *e);
+marshall_t *engine_list_all(struct engine *e);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);

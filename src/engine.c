@@ -12,6 +12,7 @@
 #include "jenhash.h"
 #include "quid.h"
 #include "dict.h"
+#include "marshall.h"
 #include "core.h"
 #include "engine.h"
 
@@ -43,14 +44,13 @@ static struct engine_table *alloc_table() {
 }
 
 static struct engine_tablelist *alloc_tablelist() {
-	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
+	struct engine_tablelist *tablelist = zcalloc(1, sizeof(struct engine_tablelist));
 	if (!tablelist) {
 		zfree(tablelist);
 		lprint("[erro] Failed to request memory\n");
 		ERROR(EM_ALLOC, EL_FATAL);
 		return NULL;
 	}
-	memset(tablelist, 0, sizeof(struct engine_tablelist));
 	return tablelist;
 }
 
@@ -177,6 +177,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->free_top = from_be64(super.free_top);
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
+	e->stats.list_size = from_be64(super.list_size);
 	e->list_top = from_be64(super.list_top);
 	zassert(from_be64(super.version) == VERSION_RELESE);
 
@@ -398,6 +399,7 @@ static void flush_super(struct engine *e, bool fast_flush) {
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
+	super.list_size = to_be64(e->stats.list_size);
 	super.list_top = to_be64(e->list_top);
 	if (fast_flush)
 		goto flush_disk;
@@ -1133,6 +1135,8 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 		tablelist->items[tablelist->size].hash = to_be32(hash);
 		tablelist->size++;
 
+		e->stats.list_size++;
+
 		/* check if we need to add a new table*/
 		if (tablelist->size >= LIST_SIZE) {
 			flush_tablelist(e, tablelist, e->list_top);
@@ -1158,6 +1162,7 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 		flush_tablelist(e, new_tablelist, new_table_offset);
 
 		e->list_top = new_table_offset;
+		e->stats.list_size = 1;
 	}
 	flush_super(e, TRUE);
 
@@ -1285,6 +1290,7 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 				memset(&tablelist->items[i].quid, 0, sizeof(quid_t));
 				tablelist->items[i].len = 0;
 				flush_tablelist(e, tablelist, offset);
+				e->stats.list_size--;
 				return 0;
 			}
 		}
@@ -1299,16 +1305,19 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 	return -1;
 }
 
-//TODO push items into marshall
-//TODO null on empty list
-char *engine_list_all(struct engine *e) {
+marshall_t *engine_list_all(struct engine *e) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return NULL;
 	}
 
-	vector_t *obj = alloc_vector(VECTOR_SIZE);
+	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+	memset(marshall, 0, sizeof(marshall_t));
+	marshall->child = (marshall_t **)tree_zmalloc(e->stats.list_size * sizeof(marshall_t *), marshall);
+	memset(marshall->child, 0, e->stats.list_size * sizeof(marshall_t *));
+	marshall->type = MTYPE_OBJECT;
+
 	uint64_t offset = e->list_top;
 	while (offset) {
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
@@ -1321,8 +1330,13 @@ char *engine_list_all(struct engine *e) {
 			if (!len)
 				continue;
 			tablelist->items[i].name[len] = '\0';
-			dict_t *element = dict_element_new(obj, TRUE, squid, tablelist->items[i].name);
-			vector_append(obj, (void *)element);
+
+			marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+			memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+			marshall->child[marshall->size]->type = MTYPE_QUID;
+			marshall->child[marshall->size]->name = tree_zstrdup(squid, marshall);
+			marshall->child[marshall->size]->data = tree_zstrdup(tablelist->items[i].name, marshall);
+			marshall->size++;
 		}
 		if (tablelist->link) {
 			offset = from_be64(tablelist->link);
@@ -1331,12 +1345,7 @@ char *engine_list_all(struct engine *e) {
 		zfree(tablelist);
 	}
 
-	char *buf = zmalloc(obj->alloc_size);
-	memset(buf, 0, obj->alloc_size);
-	buf = dict_object(obj, buf);
-	vector_free(obj);
-
-	return buf;
+	return marshall;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {

@@ -473,11 +473,18 @@ int db_list_update(char *quid, const char *name) {
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
 
-//TODO use marshall type
 char *db_list_all() {
 	if (!ready)
 		return NULL;
-	return engine_list_all(&btx);
+
+	marshall_t *dataobj = engine_list_all(&btx);
+	if (!dataobj) {
+		return NULL;
+	}
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
 }
 
 void *db_table_get(char *name, size_t *len) {
