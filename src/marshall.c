@@ -21,8 +21,8 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 
 	marshall_t *obj = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
 	memset(obj, 0, sizeof(marshall_t));
-	obj->child = (struct marshall **)tree_zmalloc(o * sizeof(struct serialize *), obj);
-	memset(obj->child, 0, o * sizeof(struct serialize *));
+	obj->child = (marshall_t **)tree_zmalloc(o * sizeof(marshall_t *), obj);
+	memset(obj->child, 0, o * sizeof(marshall_t *));
 	if (name)
 		obj->name = name;
 
@@ -342,6 +342,19 @@ char *marshall_serialize(marshall_t *obj) {
 		}
 		case MTYPE_ARRAY: {
 			size_t nsz = 0;
+
+			if (!obj->size) {
+				if (obj->name) {
+					size_t len = strlen(obj->name) + 8;
+					char *data = (char *)zmalloc(len + 1);
+					memset(data, 0, len + 1);
+					sprintf(data, "\"%s\":null", obj->name);
+					return data;
+				} else {
+					return zstrdup("null");
+				}
+			}
+
 			unsigned int i;
 			for (i = 0; i < obj->size; ++i) {
 				char *elm = marshall_serialize(obj->child[i]);
@@ -381,6 +394,19 @@ char *marshall_serialize(marshall_t *obj) {
 		}
 		case MTYPE_OBJECT: {
 			size_t nsz = 0;
+
+			if (!obj->size) {
+				if (obj->name) {
+					size_t len = strlen(obj->name) + 8;
+					char *data = (char *)zmalloc(len + 1);
+					memset(data, 0, len + 1);
+					sprintf(data, "\"%s\":null", obj->name);
+					return data;
+				} else {
+					return zstrdup("null");
+				}
+			}
+
 			unsigned int i;
 			for (i = 0; i < obj->size; ++i) {
 				char *elm = marshall_serialize(obj->child[i]);
