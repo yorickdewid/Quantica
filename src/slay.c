@@ -192,8 +192,7 @@ marshall_t *slay_get(void *data, void *parent) {
 	uint64_t elements;
 	schema_t schema;
 	void *name = NULL;
-	size_t namelen;
-	size_t val_len;
+	size_t namelen, val_len;
 	marshall_type_t val_dt;
 
 	void *slay = get_row(data, &schema, &elements);
@@ -202,6 +201,7 @@ marshall_t *slay_get(void *data, void *parent) {
 	switch (schema) {
 		case SCHEMA_FIELD: {
 			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
+			//TODO ugly
 			if (val_data) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
@@ -230,6 +230,7 @@ marshall_t *slay_get(void *data, void *parent) {
 			}
 
 			marshall->data = tree_zstrndup(val_data, val_len, marshall);
+			marshall->data_len = val_len;
 			marshall->size = 1;
 			if (val_data)
 				zfree(val_data);
@@ -246,6 +247,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
+				//TODO ugly
 				if (val_data) {
 					val_data = (void *)zrealloc(val_data, val_len + 1);
 					((uint8_t *)val_data)[val_len] = '\0';
@@ -275,6 +277,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				}
 
 				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+				marshall->child[marshall->size]->data_len = val_len;
 				marshall->size++;
 				if (val_data)
 					zfree(val_data);
@@ -292,9 +295,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
-				name = (char *)zrealloc(name, namelen + 1);
-				((char *)name)[namelen] = '\0';
-
+				//TODO ugly
 				if (val_data) {
 					val_data = (void *)zrealloc(val_data, val_len + 1);
 					((uint8_t *)val_data)[val_len] = '\0';
@@ -308,7 +309,8 @@ marshall_t *slay_get(void *data, void *parent) {
 						marshall->child[marshall->size]->type = MTYPE_NULL;
 						marshall->child[marshall->size]->size = 1;
 					}
-					marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
+					marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
+					marshall->child[marshall->size]->name_len = namelen;
 					marshall->size++;
 					zfree(name);
 					zfree(val_data);
@@ -317,8 +319,8 @@ marshall_t *slay_get(void *data, void *parent) {
 
 				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
 				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
-				marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
-				zfree(name);
+				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
+				marshall->child[marshall->size]->name_len = namelen;
 
 				marshall->child[marshall->size]->type = val_dt;
 				if (val_dt == MTYPE_STRING) {
@@ -328,9 +330,11 @@ marshall_t *slay_get(void *data, void *parent) {
 				}
 
 				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+				marshall->child[marshall->size]->data_len = val_len;
 				marshall->size++;
 				if (val_data)
 					zfree(val_data);
+				zfree(name);
 			}
 			break;
 		}
@@ -348,6 +352,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
 				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
 
+				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
 
@@ -371,11 +376,13 @@ marshall_t *slay_get(void *data, void *parent) {
 				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
 				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
 
+				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
 
 				marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
+				marshall->child[marshall->size]->name_len = namelen;
 				marshall->size++;
 				zfree(name);
 				zfree(val_data);
@@ -387,6 +394,40 @@ marshall_t *slay_get(void *data, void *parent) {
 	}
 
 	return marshall;
+}
+
+marshall_type_t slay_get_type(void *data) {
+	uint64_t elements;
+	schema_t schema;
+	void *name = NULL;
+	size_t namelen, val_len;
+	marshall_type_t val_dt;
+
+	void *slay = get_row(data, &schema, &elements);
+
+	switch (schema) {
+		/* Only for single item can the type be determined */
+		case SCHEMA_FIELD: {
+			void *val_data = slay_unwrap(movetodata_row(slay), &name, &namelen, &val_len, &val_dt);
+			if (val_data)
+				zfree(val_data);
+			if (name)
+				zfree(name);
+			break;
+		}
+		case SCHEMA_OBJECT:
+		case SCHEMA_SET:
+			val_dt = MTYPE_OBJECT;
+			break;
+		case SCHEMA_ARRAY:
+		case SCHEMA_TABLE:
+			val_dt = MTYPE_ARRAY;
+			break;
+		default:
+			val_dt = MTYPE_NULL;
+	}
+
+	return val_dt;
 }
 
 char *slay_get_schema(void *data) {
