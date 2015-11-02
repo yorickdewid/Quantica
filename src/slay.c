@@ -111,7 +111,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 			slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), marshall->type);
 			return slay;
 		}
-		case MTYPE_ARRAY: 
+		case MTYPE_ARRAY:
 		case MTYPE_OBJECT: {
 			if (marshall->type == MTYPE_ARRAY) {
 				rs->schema = SCHEMA_ARRAY;
@@ -120,22 +120,22 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 
 			size_t desccnt = object_descent_count(marshall);
 			rs->items = marshall_get_count(marshall, 1, 0) - 1;
-			//TODO sz should be counter by traversal {
-			char *dataserial = marshall_serialize(marshall);
-			size_t data_len = strlen(dataserial);
-			zfree(dataserial);
-			// }
-			data_len += desccnt * QUID_LENGTH;
+
+			/* Estimate the total bytes for the object */
+			size_t data_len = desccnt * QUID_LENGTH;
+			for (unsigned int i = 0; i < marshall->size; ++i) {
+				if (marshall->child[i]->data)
+					data_len += strlen(marshall->child[i]->data);
+				if (marshall->child[i]->name)
+					data_len += strlen(marshall->child[i]->name);
+			}
+
+			/* Does the structure qualify for table/set */
 			if (desccnt == rs->items && rs->items > 1) {
-				data_len = rs->items * QUID_LENGTH;
 				if (rs->schema == SCHEMA_ARRAY)
 					rs->schema = SCHEMA_TABLE;
 				else
 					rs->schema = SCHEMA_SET;
-
-				for (unsigned int i = 0; i < marshall->size; ++i) {
-					data_len += strlen(marshall->child[i]->name);
-				}
 			}
 
 			slay = create_row(rs->schema, rs->items, data_len, len);
@@ -241,7 +241,7 @@ marshall_t *slay_get(void *data, void *parent) {
 			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
 			memset(marshall->child, 0, elements * sizeof(marshall_t *));
 			marshall->type = MTYPE_ARRAY;
-			
+
 			for (unsigned int i = 0; i < elements; ++i) {
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
@@ -355,7 +355,7 @@ marshall_t *slay_get(void *data, void *parent) {
 				marshall->size++;
 				zfree(val_data);
 			}
-			break;			
+			break;
 		}
 		case SCHEMA_SET: {
 			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
@@ -389,7 +389,11 @@ marshall_t *slay_get(void *data, void *parent) {
 	return marshall;
 }
 
-char *str_schema(schema_t schema) {
+char *slay_get_schema(void *data) {
+	uint64_t elements;
+	schema_t schema;
+
+	get_row(data, &schema, &elements);
 	switch (schema) {
 		case SCHEMA_FIELD:
 			return "FIELD";
@@ -399,7 +403,10 @@ char *str_schema(schema_t schema) {
 			return "OBJECT";
 		case SCHEMA_TABLE:
 			return "TABLE";
+		case SCHEMA_SET:
+			return "SET";
 		default:
 			return "NULL";
 	}
+	return "NULL";
 }

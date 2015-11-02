@@ -300,7 +300,6 @@ char *db_get_type(char *quid) {
 	quid_t key;
 	strtoquid(quid, &key);
 
-
 	size_t len;
 	void *data = engine_get(&btx, &key, &len);
 	if (!data)
@@ -313,7 +312,6 @@ char *db_get_type(char *quid) {
 	return "null";//str_type(dt);
 }
 
-//TODO may not work nolonger
 char *db_get_schema(char *quid) {
 	if (!ready)
 		return NULL;
@@ -325,14 +323,11 @@ char *db_get_schema(char *quid) {
 	if (!data)
 		return NULL;
 
-	/*uint64_t elements;
-	schema_t schema;
-	get_row(data, &schema, &elements);
-	zfree(data);*/
-	return "null";//str_schema(schema);
+	char *buf = slay_get_schema(data);
+	zfree(data);
+	return buf;
 }
 
-//TODO rename
 int raw_db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
@@ -347,7 +342,6 @@ int raw_db_update(char *quid, void *slay, size_t len) {
 	return 0;
 }
 
-//TODO may not work nolonger
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;

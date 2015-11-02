@@ -194,7 +194,7 @@ static marshall_type_t autoscalar(const char *data, size_t len) {
 	return MTYPE_STRING;
 }
 
-/* Count elements in level */
+/* Count elements by level */
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 	switch (obj->type) {
 		case MTYPE_NULL:
