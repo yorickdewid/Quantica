@@ -89,101 +89,71 @@ static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, 
 void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 	void *slay = NULL;
 
-	switch (marshall->type) {
-		case MTYPE_NULL:
-		case MTYPE_TRUE:
-		case MTYPE_FALSE: {
-			rs->schema = SCHEMA_FIELD;
-			rs->items = 1;
+	if (marshall_type_hasdata(marshall->type)) {
+		rs->schema = SCHEMA_FIELD;
+		rs->items = 1;
 
-			slay = create_row(rs->schema, 1, 0, len);
-			slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, marshall->type);
-			return slay;
+		slay = create_row(rs->schema, 1, marshall->data_len, len);
+		slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, marshall->data_len, marshall->type);
+		return slay;
+	} else if (marshall_type_hasdescent(marshall->type)) {
+		if (marshall->type == MTYPE_ARRAY) {
+			rs->schema = SCHEMA_ARRAY;
+		} else if (marshall->type == MTYPE_OBJECT)
+			rs->schema = SCHEMA_OBJECT;
+
+		size_t desccnt = object_descent_count(marshall);
+		rs->items = marshall_get_count(marshall, 1, 0) - 1;
+
+		/* Estimate the total bytes for the object */
+		size_t data_len = desccnt * QUID_LENGTH;
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			if (marshall->child[i]->data)
+				data_len += marshall->child[i]->data_len;
+			if (marshall->child[i]->name)
+				data_len += marshall->child[i]->name_len;
 		}
-		case MTYPE_INT:
-		case MTYPE_FLOAT:
-		case MTYPE_STRING:
-		case MTYPE_QUID: {
-			rs->schema = SCHEMA_FIELD;
-			rs->items = 1;
 
-			slay = create_row(rs->schema, 1, strlen(marshall->data), len);
-			slay_wrap(movetodata_row(slay), NULL, 0, marshall->data, strlen(marshall->data), marshall->type);
-			return slay;
+		/* Does the structure qualify for table/set */
+		if (desccnt == rs->items && rs->items > 1) {
+			if (rs->schema == SCHEMA_ARRAY)
+				rs->schema = SCHEMA_TABLE;
+			else
+				rs->schema = SCHEMA_SET;
 		}
-		case MTYPE_ARRAY:
-		case MTYPE_OBJECT: {
-			if (marshall->type == MTYPE_ARRAY) {
-				rs->schema = SCHEMA_ARRAY;
-			} else if (marshall->type == MTYPE_OBJECT)
-				rs->schema = SCHEMA_OBJECT;
 
-			size_t desccnt = object_descent_count(marshall);
-			rs->items = marshall_get_count(marshall, 1, 0) - 1;
-
-			/* Estimate the total bytes for the object */
-			size_t data_len = desccnt * QUID_LENGTH;
-			for (unsigned int i = 0; i < marshall->size; ++i) {
-				if (marshall->child[i]->data)
-					data_len += strlen(marshall->child[i]->data);
-				if (marshall->child[i]->name)
-					data_len += strlen(marshall->child[i]->name);
+		slay = create_row(rs->schema, rs->items, data_len, len);
+		void *next = movetodata_row(slay);
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			char *name = NULL;
+			size_t name_len = 0;
+			if (marshall->child[i]->name) {
+				name = marshall->child[i]->name;
+				name_len = marshall->child[i]->name_len;
 			}
 
-			/* Does the structure qualify for table/set */
-			if (desccnt == rs->items && rs->items > 1) {
-				if (rs->schema == SCHEMA_ARRAY)
-					rs->schema = SCHEMA_TABLE;
-				else
-					rs->schema = SCHEMA_SET;
+			if (marshall_type_hasdata(marshall->child[i]->type)) {
+				next = slay_wrap(next, name, name_len, marshall->child[i]->data, marshall->child[i]->data_len, marshall->child[i]->type);
+			} else if (marshall_type_hasdescent(marshall->child[i]->type)) {
+				size_t _len = 0;
+				slay_result_t _rs;
+				char squid[QUID_LENGTH + 1];
+				void *_slay = slay_put(marshall->child[i], &_len, &_rs);
+				raw_db_put(squid, _slay, _len);
+				next = slay_wrap(next, name, name_len, squid, QUID_LENGTH, MTYPE_QUID);
+			} else {
+				next = slay_wrap(next, name, name_len, NULL, 0, marshall->child[i]->type);
 			}
-
-			slay = create_row(rs->schema, rs->items, data_len, len);
-			void *next = movetodata_row(slay);
-			for (unsigned int i = 0; i < marshall->size; ++i) {
-				char *name = NULL;
-				size_t name_len = 0;
-				if (marshall->child[i]->name) {
-					name = marshall->child[i]->name;
-					name_len = strlen(marshall->child[i]->name);
-				}
-
-				switch (marshall->child[i]->type) {
-					case MTYPE_NULL:
-					case MTYPE_TRUE:
-					case MTYPE_FALSE: {
-						next = slay_wrap(next, name, name_len, NULL, 0, marshall->child[i]->type);
-						break;
-					}
-					case MTYPE_INT:
-					case MTYPE_FLOAT:
-					case MTYPE_STRING:
-					case MTYPE_QUID: {
-						next = slay_wrap(next, name, name_len, marshall->child[i]->data, strlen(marshall->child[i]->data), marshall->child[i]->type);
-						break;
-					}
-					case MTYPE_ARRAY:
-					case MTYPE_OBJECT: {
-						size_t _len = 0;
-						slay_result_t _rs;
-						char squid[QUID_LENGTH + 1];
-						void *_slay = slay_put(marshall->child[i], &_len, &_rs);
-						raw_db_put(squid, _slay, _len);
-						next = slay_wrap(next, name, name_len, squid, QUID_LENGTH, MTYPE_QUID);
-						break;
-					}
-					default:
-						break;
-				}
-			}
-
-			return slay;
 		}
-		default:
-			//TODO: throw error
-			break;
+		return slay;
+	} else {
+		rs->schema = SCHEMA_FIELD;
+		rs->items = 1;
+
+		slay = create_row(rs->schema, 1, 0, len);
+		slay_wrap(movetodata_row(slay), NULL, 0, NULL, 0, marshall->type);
+		return slay;
 	}
-
 	return slay;
 }
 

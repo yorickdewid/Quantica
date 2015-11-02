@@ -287,7 +287,7 @@ char *marshall_serialize(marshall_t *obj) {
 	switch (obj->type) {
 		case MTYPE_NULL: {
 			if (obj->name) {
-				size_t len = strlen(obj->name) + 8;
+				size_t len = obj->name_len + 8;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\":null", obj->name);
@@ -299,7 +299,7 @@ char *marshall_serialize(marshall_t *obj) {
 		}
 		case MTYPE_TRUE: {
 			if (obj->name) {
-				size_t len = strlen(obj->name) + 8;
+				size_t len = obj->name_len + 8;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\":true", obj->name);
@@ -311,7 +311,7 @@ char *marshall_serialize(marshall_t *obj) {
 		}
 		case MTYPE_FALSE: {
 			if (obj->name) {
-				size_t len = strlen(obj->name) + 10;
+				size_t len = obj->name_len + 10;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\":false", obj->name);
@@ -324,7 +324,7 @@ char *marshall_serialize(marshall_t *obj) {
 		case MTYPE_FLOAT:
 		case MTYPE_INT: {
 			if (obj->name) {
-				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 4;
+				size_t len = obj->name_len + obj->data_len + 4;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\":%s", obj->name, (char *)obj->data);
@@ -337,13 +337,13 @@ char *marshall_serialize(marshall_t *obj) {
 		case MTYPE_QUID:
 		case MTYPE_STRING: {
 			if (obj->name) {
-				size_t len = strlen(obj->name) + strlen((char *)obj->data) + 6;
+				size_t len = obj->name_len + obj->data_len + 6;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\":\"%s\"", obj->name, (char *)obj->data);
 				return data;
 			} else {
-				size_t len = strlen((char *)obj->data) + 4;
+				size_t len = obj->data_len + 4;
 				char *data = (char *)zmalloc(len + 1);
 				memset(data, 0, len + 1);
 				sprintf(data, "\"%s\"", (char *)obj->data);
@@ -356,7 +356,7 @@ char *marshall_serialize(marshall_t *obj) {
 
 			if (!obj->size) {
 				if (obj->name) {
-					size_t len = strlen(obj->name) + 8;
+					size_t len = obj->name_len + 8;
 					char *data = (char *)zmalloc(len + 1);
 					memset(data, 0, len + 1);
 					sprintf(data, "\"%s\":null", obj->name);
@@ -374,7 +374,7 @@ char *marshall_serialize(marshall_t *obj) {
 			}
 
 			if (obj->name)
-				nsz += strlen(obj->name);
+				nsz += obj->name_len;
 
 			nsz += obj->size + 2;
 
@@ -384,7 +384,7 @@ char *marshall_serialize(marshall_t *obj) {
 
 			if (obj->name) {
 				sprintf(data, "\"%s\":", obj->name);
-				curr_sz += strlen(obj->name);
+				curr_sz += obj->name_len;
 			}
 
 			strcat(data, "[");
@@ -408,7 +408,7 @@ char *marshall_serialize(marshall_t *obj) {
 
 			if (!obj->size) {
 				if (obj->name) {
-					size_t len = strlen(obj->name) + 8;
+					size_t len = obj->name_len + 8;
 					char *data = (char *)zmalloc(len + 1);
 					memset(data, 0, len + 1);
 					sprintf(data, "\"%s\":null", obj->name);
@@ -426,7 +426,7 @@ char *marshall_serialize(marshall_t *obj) {
 			}
 
 			if (obj->name)
-				nsz += strlen(obj->name);
+				nsz += obj->name_len;
 
 			nsz += obj->size + 2;
 
@@ -436,7 +436,7 @@ char *marshall_serialize(marshall_t *obj) {
 
 			if (obj->name) {
 				sprintf(data, "\"%s\":", obj->name);
-				curr_sz += strlen(obj->name);
+				curr_sz += obj->name_len;
 			}
 
 			strcat(data, "{");
