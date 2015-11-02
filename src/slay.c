@@ -201,7 +201,7 @@ marshall_t *slay_get(void *data, void *parent) {
 
 	switch (schema) {
 		case SCHEMA_FIELD: {
-			void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 			if (val_data) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
@@ -243,7 +243,7 @@ marshall_t *slay_get(void *data, void *parent) {
 			marshall->type = MTYPE_ARRAY;
 			
 			for (unsigned int i = 0; i < elements; ++i) {
-				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
 				if (val_data) {
@@ -342,7 +342,7 @@ marshall_t *slay_get(void *data, void *parent) {
 			marshall->type = MTYPE_ARRAY;
 
 			for (unsigned int i = 0; i < elements; ++i) {
-				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
+				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
 				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
