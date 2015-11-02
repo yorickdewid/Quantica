@@ -10,7 +10,42 @@
 
 #define VECTOR_SIZE	1024
 
-static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name, void *parent) {
+struct {
+	marshall_type_t type;
+	bool data;
+	bool descent;
+} type_info[] = {
+	/* No data */
+	{MTYPE_NULL, FALSE, FALSE},
+	{MTYPE_TRUE, FALSE, FALSE},
+	{MTYPE_FALSE, FALSE, FALSE},
+	/* Containing data */
+	{MTYPE_INT, TRUE, FALSE},
+	{MTYPE_FLOAT, TRUE, FALSE},
+	{MTYPE_STRING, TRUE, FALSE},
+	{MTYPE_QUID, TRUE, FALSE},
+	/* Containing descending data */
+	{MTYPE_ARRAY, FALSE, TRUE},
+	{MTYPE_OBJECT, FALSE, TRUE},
+};
+
+bool marshall_type_hasdata(marshall_type_t type) {
+	for(unsigned int i = 0; i < RSIZE(type_info); ++i) {
+		if (type_info[i].type == type)
+			return type_info[i].data;
+	}
+	return FALSE;
+}
+
+bool marshall_type_hasdescent(marshall_type_t type) {
+	for(unsigned int i = 0; i < RSIZE(type_info); ++i) {
+		if (type_info[i].type == type)
+			return type_info[i].descent;
+	}
+	return FALSE;
+}
+
+static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name, size_t name_len, void *parent) {
 	dict_parser p;
 	dict_token_t t[data_len];
 
@@ -23,8 +58,11 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 	memset(obj, 0, sizeof(marshall_t));
 	obj->child = (marshall_t **)tree_zmalloc(o * sizeof(marshall_t *), obj);
 	memset(obj->child, 0, o * sizeof(marshall_t *));
-	if (name)
+
+	if (name && name_len) {
 		obj->name = name;
+		obj->name_len = name_len;
+	}
 
 	switch (t[0].type) {
 		case DICT_ARRAY: {
@@ -44,6 +82,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						} else {
 							obj->child[obj->size]->type = MTYPE_INT;
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strismatch(obj->child[obj->size]->data, "1234567890."))
 								obj->child[obj->size]->type = MTYPE_FLOAT;
 						}
@@ -54,12 +93,13 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						memset(obj->child[obj->size], 0, sizeof(marshall_t));
 						obj->child[obj->size]->type = MTYPE_STRING;
 						obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+						obj->child[obj->size]->data_len = t[i].end - t[i].start;
 						if (strquid_format(obj->child[obj->size]->data) > 0)
 							obj->child[obj->size]->type = MTYPE_QUID;
 						obj->size++;
 						break;
 					case DICT_OBJECT: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, obj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -70,7 +110,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						break;
 					}
 					case DICT_ARRAY: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, obj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -101,6 +141,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						} else {
 							obj->child[obj->size]->type = MTYPE_INT;
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strismatch(obj->child[obj->size]->data, "1234567890."))
 								obj->child[obj->size]->type = MTYPE_FLOAT;
 						}
@@ -113,9 +154,11 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 							memset(obj->child[obj->size], 0, sizeof(marshall_t));
 							obj->child[obj->size]->type = MTYPE_STRING;
 							obj->child[obj->size]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->child[obj->size]->name_len = t[i].end - t[i].start;
 							setname = 1;
 						} else {
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
+							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strquid_format(obj->child[obj->size]->data) > 0)
 								obj->child[obj->size]->type = MTYPE_QUID;
 							obj->size++;
@@ -123,7 +166,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						}
 						break;
 					case DICT_OBJECT: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -135,7 +178,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						break;
 					}
 					case DICT_ARRAY: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj);
+						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -191,34 +234,26 @@ static marshall_type_t autoscalar(const char *data, size_t len) {
 		return MTYPE_QUID;
 	if (json_valid(data))
 		return MTYPE_OBJECT;
+	if (!strcmp(data, "null") || !strcmp(data, "NULL"))
+		return MTYPE_NULL;
 	return MTYPE_STRING;
 }
 
 /* Count elements by level */
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
-	switch (obj->type) {
-		case MTYPE_NULL:
-		case MTYPE_TRUE:
-		case MTYPE_FALSE:
-		case MTYPE_FLOAT:
-		case MTYPE_INT:
-		case MTYPE_QUID:
-		case MTYPE_STRING:
-			return 1;
-		case MTYPE_ARRAY:
-		case MTYPE_OBJECT: {
-			unsigned int n = 1;
-			if (depth == -1 || ((unsigned int)depth) > _depth) {
-				for (unsigned int i = 0; i < obj->size; ++i) {
-					n += marshall_get_count(obj->child[i], depth, _depth + 1);
-				}
+
+	/* Only descending scalars need to be counted */
+	if (marshall_type_hasdescent(obj->type)) {
+		unsigned int n = 1;
+		if (depth == -1 || ((unsigned int)depth) > _depth) {
+			for (unsigned int i = 0; i < obj->size; ++i) {
+				n += marshall_get_count(obj->child[i], depth, _depth + 1);
 			}
-			return n;
 		}
-		default:
-			return 0;
+		return n;
 	}
-	return 0;
+
+	return 1;
 }
 
 /* Convert string to object */
@@ -226,32 +261,19 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 	marshall_t *marshall = NULL;
 	marshall_type_t type = autoscalar(data, data_len);
 
-	switch (type) {
-		case MTYPE_NULL:
-		case MTYPE_TRUE:
-		case MTYPE_FALSE: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->type = type;
-			break;
-		}
-		case MTYPE_INT:
-		case MTYPE_FLOAT:
-		case MTYPE_STRING:
-		case MTYPE_QUID: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->data = tree_zstrndup(data, data_len, marshall);
-			marshall->type = type;
-			break;
-		}
-		case MTYPE_ARRAY:
-		case MTYPE_OBJECT:
-			marshall = marshall_obect_decode(data, data_len, NULL, NULL);
-			break;
-		default:
-			//TODO: throw error
-			break;
+	/* Create marshall object based on scalar */
+	if (marshall_type_hasdata(type)) {
+		marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+		memset(marshall, 0, sizeof(marshall_t));
+		marshall->data = tree_zstrndup(data, data_len, marshall);
+		marshall->data_len = data_len;
+		marshall->type = type;
+	} else if (marshall_type_hasdescent(type)) {
+		marshall = marshall_obect_decode(data, data_len, NULL, 0, NULL);
+	} else {
+		marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+		memset(marshall, 0, sizeof(marshall_t));
+		marshall->type = type;
 	}
 
 	return marshall;
@@ -437,4 +459,30 @@ char *marshall_serialize(marshall_t *obj) {
 			break;
 	}
 	return NULL;
+}
+
+char *marshall_get_type(marshall_type_t type) {
+	switch (type) {
+		case MTYPE_NULL:
+			return "NULL";
+		case MTYPE_TRUE:
+			return "TRUE";
+		case MTYPE_FALSE:
+			return "FALSE";
+		case MTYPE_INT:
+			return "INTEGER";
+		case MTYPE_FLOAT:
+			return "FLOAT";
+		case MTYPE_STRING:
+			return "STRING";
+		case MTYPE_QUID:
+			return "QUID";
+		case MTYPE_ARRAY:
+			return "ARRAY";
+		case MTYPE_OBJECT:
+			return "OBJECT";
+		default:
+			return "NULL";
+	}
+	return "NULL";
 }

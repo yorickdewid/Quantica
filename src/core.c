@@ -305,11 +305,9 @@ char *db_get_type(char *quid) {
 	if (!data)
 		return NULL;
 
-	/*dstype_t dt;
-	void *buf = slay_get_data(data, &dt);
-	zfree(buf);
-	zfree(data);*/
-	return "null";//str_type(dt);
+	marshall_type_t type = slay_get_type(data);
+	zfree(data);
+	return marshall_get_type(type);
 }
 
 char *db_get_schema(char *quid) {
