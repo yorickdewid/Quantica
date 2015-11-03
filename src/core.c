@@ -293,7 +293,6 @@ void *db_get(char *quid, size_t *len) {
 	return buf;
 }
 
-//TODO may not return correct type
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
@@ -507,8 +506,225 @@ int db_create_index(char *quid, const char *idxkey) {
 	if (!ready)
 		return -1;
 
-	unused(quid);
+	//unused(quid);
 	unused(idxkey);
+
+
+	quid_t key;
+	strtoquid(quid, &key);
+	size_t _len;
+
+	void *data = engine_get(&btx, &key, &_len);
+	if (!data)
+		return NULL;
+
+	marshall_t *dataobj = slay_get(data, NULL);
+	if (!dataobj)
+		return NULL;
+
+	switch (obj->type) {
+		case MTYPE_NULL: {
+			if (obj->name) {
+				/*size_t len = obj->name_len + 8;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":null", obj->name);
+				return data;*/
+				puts(obj->name);
+				puts("null");
+			} else {
+				//return zstrdup("null");
+				puts("null");
+			}
+			break;
+		}
+		case MTYPE_TRUE: {
+			if (obj->name) {
+				/*size_t len = obj->name_len + 8;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":true", obj->name);
+				return data;*/
+				puts(obj->name);
+				puts("true");
+			} else {
+				//return zstrdup("true");
+				puts("true");
+			}
+			break;
+		}
+		case MTYPE_FALSE: {
+			if (obj->name) {
+				/*size_t len = obj->name_len + 10;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":false", obj->name);
+				return data;*/
+				puts(obj->name);
+				puts("false");
+			} else {
+				//return zstrdup("false");
+				puts("false");
+			}
+			break;
+		}
+		case MTYPE_FLOAT:
+		case MTYPE_INT: {
+			if (obj->name) {
+				/*size_t len = obj->name_len + obj->data_len + 4;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":%s", obj->name, (char *)obj->data);
+				return data;*/
+				puts(obj->name);
+				puts((char *)obj->data);
+			} else {
+				//return zstrdup((char *)obj->data);
+				puts((char *)obj->data);
+			}
+			break;
+		}
+		case MTYPE_QUID:
+		case MTYPE_STRING: {
+			if (obj->name) {
+				/*size_t len = obj->name_len + obj->data_len + 6;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\":\"%s\"", obj->name, (char *)obj->data);
+				return data;*/
+				puts(obj->name);
+				puts((char *)obj->data);
+			} else {
+				/*size_t len = obj->data_len + 4;
+				char *data = (char *)zmalloc(len + 1);
+				memset(data, 0, len + 1);
+				sprintf(data, "\"%s\"", (char *)obj->data);
+				return data;*/
+				puts((char *)obj->data);
+			}
+			break;
+		}
+		case MTYPE_ARRAY: {
+			/*size_t nsz = 0;
+
+			if (!obj->size) {
+				if (obj->name) {
+					size_t len = obj->name_len + 8;
+					char *data = (char *)zmalloc(len + 1);
+					memset(data, 0, len + 1);
+					sprintf(data, "\"%s\":null", obj->name);
+					return data;
+				} else {
+					return zstrdup("null");
+				}
+			}
+
+			unsigned int i;
+			for (i = 0; i < obj->size; ++i) {
+				char *elm = marshall_serialize(obj->child[i]);
+				nsz += strlen(elm) + 2;
+				zfree(elm);
+			}
+
+			if (obj->name)
+				nsz += obj->name_len;
+
+			nsz += obj->size + 2;
+
+			char *data = (char *)zmalloc(nsz + 1);
+			memset(data, 0, nsz + 1);
+			size_t curr_sz = 0;
+
+			if (obj->name) {
+				sprintf(data, "\"%s\":", obj->name);
+				curr_sz += obj->name_len;
+			}
+
+			strcat(data, "[");
+			curr_sz++;*/
+
+			for (unsigned int i = 0; i < obj->size; ++i) {
+				//if (i > 0) {
+				//	strcat(data, ",");
+				//	curr_sz++;
+				//}
+				char *elm = marshall_serialize(obj->child[i]);
+				strcat(data, elm);
+				curr_sz += strlen(elm);
+				zfree(elm);
+			}
+			strcat(data, "]");
+			return data;
+		}
+		case MTYPE_OBJECT: {
+			size_t nsz = 0;
+
+			if (!obj->size) {
+				if (obj->name) {
+					size_t len = obj->name_len + 8;
+					char *data = (char *)zmalloc(len + 1);
+					memset(data, 0, len + 1);
+					sprintf(data, "\"%s\":null", obj->name);
+					return data;
+				} else {
+					return zstrdup("null");
+				}
+			}
+
+			unsigned int i;
+			for (i = 0; i < obj->size; ++i) {
+				char *elm = marshall_serialize(obj->child[i]);
+				nsz += strlen(elm) + 2;
+				zfree(elm);
+			}
+
+			if (obj->name)
+				nsz += obj->name_len;
+
+			nsz += obj->size + 2;
+
+			char *data = (char *)zmalloc(nsz + 1);
+			memset(data, 0, nsz + 1);
+			size_t curr_sz = 0;
+
+			if (obj->name) {
+				sprintf(data, "\"%s\":", obj->name);
+				curr_sz += obj->name_len;
+			}
+
+			strcat(data, "{");
+			curr_sz++;
+
+			for (i = 0; i < obj->size; ++i) {
+				if (i > 0) {
+					strcat(data, ",");
+					curr_sz++;
+				}
+				char *elm = marshall_serialize(obj->child[i]);
+				strcat(data, elm);
+				curr_sz += strlen(elm);
+				zfree(elm);
+			}
+			strcat(data, "}");
+			return data;
+		}
+		default:
+			break;
+	}
+
+	//char *buf = marshall_serialize(dataobj);
+	//*len = strlen(buf);
+	zfree(data);
+	//marshall_free(dataobj);
+
+	return buf;
+
+
+
+
+
+
+
 
 	return 0;
 }

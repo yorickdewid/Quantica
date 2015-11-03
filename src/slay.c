@@ -85,7 +85,6 @@ static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, 
 	return data;
 }
 
-//TODO rewrite switches
 void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 	void *slay = NULL;
 
