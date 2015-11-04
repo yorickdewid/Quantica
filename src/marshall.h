@@ -33,6 +33,6 @@ bool marshall_type_hasdescent(marshall_type_t type);
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth);
 marshall_t *marshall_convert(char *data, size_t data_len);
 char *marshall_serialize(marshall_t *obj);
-char *marshall_get_type(marshall_type_t type);
+char *marshall_get_strtype(marshall_type_t type);
 
 #endif // MARSHALL_H_INCLUDED

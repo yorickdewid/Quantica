@@ -33,6 +33,7 @@ typedef struct {
 void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs);
 marshall_t *slay_get(void *data, void *parent);
 marshall_type_t slay_get_type(void *data);
-char *slay_get_schema(void *data);
+schema_t slay_get_schema(void *data);
+char *slay_get_strschema(void *data);
 
 #endif // SLAY_H_INCLUDED

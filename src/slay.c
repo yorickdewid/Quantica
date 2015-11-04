@@ -399,7 +399,15 @@ marshall_type_t slay_get_type(void *data) {
 	return val_dt;
 }
 
-char *slay_get_schema(void *data) {
+schema_t slay_get_schema(void *data) {
+	uint64_t elements;
+	schema_t schema;
+
+	get_row(data, &schema, &elements);
+	return schema;
+}
+
+char *slay_get_strschema(void *data) {
 	uint64_t elements;
 	schema_t schema;
 

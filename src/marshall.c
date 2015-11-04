@@ -461,7 +461,7 @@ char *marshall_serialize(marshall_t *obj) {
 	return NULL;
 }
 
-char *marshall_get_type(marshall_type_t type) {
+char *marshall_get_strtype(marshall_type_t type) {
 	switch (type) {
 		case MTYPE_NULL:
 			return "NULL";
