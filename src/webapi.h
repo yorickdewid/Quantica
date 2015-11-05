@@ -1,7 +1,7 @@
 #ifndef WEBAPI_H_INCLUDED
 #define WEBAPI_H_INCLUDED
 
-#define API_VERSION     1
+#define API_VERSION     2
 
 int start_webapi();
 

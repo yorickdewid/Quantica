@@ -175,13 +175,17 @@ http_status_t api_not_found(char **response, http_request_t *req) {
 
 http_status_t api_root(char **response, http_request_t *req) {
 	unused(req);
-	strlcpy(*response, "{\"description\":\"The server is ready to accept requests\",\"status\":\"SERVER_READY\",\"success\":true}", RESPONSE_SIZE);
+	snprintf(*response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"instance\":{\"name\":\"%s\",\"quid\":\"%s\"},\"session\":{\"quid\":\"%s\"},\"license\":\"" LICENSE  "\",\"active\":true,\"description\":\"The server is ready to accept requests\",\"status\":\"COMMAND_OK\",\"success\":true}", API_VERSION, get_version_string(), get_instance_name(), get_instance_key(), get_session_key());
 	return HTTP_OK;
 }
 
-http_status_t api_license(char **response, http_request_t *req) {
+http_status_t api_variables(char **response, http_request_t *req) {
 	unused(req);
-	strlcpy(*response, "{\"license\":\"" LICENSE  "\",\"description\":\"Quantica is licensed under the New BSD license\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
+	char buf[26];
+	char buf2[TIMENAME_SIZE + 1];
+	buf2[TIMENAME_SIZE] = '\0';
+	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
+	snprintf(*response, RESPONSE_SIZE, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"dataheap\":\"" BINDATA "\"},\"date\":{\"timestamp\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"release\":%d,\"major\":%d,\"minor\":%d},\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_timestamp(), htime, timename_now(buf2), VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
 	return HTTP_OK;
 }
 
@@ -203,12 +207,6 @@ http_status_t api_instance(char **response, http_request_t *req) {
 		return HTTP_OK;
 	}
 	snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"quid\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":true}", get_instance_name(), get_instance_key());
-	return HTTP_OK;
-}
-
-http_status_t api_session(char **response, http_request_t *req) {
-	unused(req);
-	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"Server instance name\",\"status\":\"COMMAND_OK\",\"success\":true}", get_session_key());
 	return HTTP_OK;
 }
 
@@ -398,37 +396,11 @@ http_status_t api_sync(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_version(char **response, http_request_t *req) {
-	unused(req);
-	snprintf(*response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"description\":\"Database and component versions\",\"status\":\"COMMAND_OK\",\"success\":true}", API_VERSION, get_version_string());
-	return HTTP_OK;
-}
-
-http_status_t api_status(char **response, http_request_t *req) {
-	unused(req);
-	snprintf(*response, RESPONSE_SIZE, "{\"records\":%lu,\"free\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"uptime\":\"%s\",\"client_requests\":%llu,\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", stat_getkeys(), stat_getfreekeys(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_uptime(), client_requests);
-	return HTTP_OK;
-}
-
 http_status_t api_gen_quid(char **response, http_request_t *req) {
 	unused(req);
 	char squid[QUID_LENGTH + 1];
 	quid_generate(squid);
 	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"COMMAND_OK\",\"success\":true}", squid);
-	return HTTP_OK;
-}
-
-http_status_t api_time_now(char **response, http_request_t *req) {
-	unused(req);
-	char buf[26];
-	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
-#if TN12
-	char buf2[TIMENAME_SIZE + 1];
-	buf2[TIMENAME_SIZE] = '\0';
-	snprintf(*response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":true}", get_timestamp(), htime, timename_now(buf2));
-#else
-	snprintf(*response, RESPONSE_SIZE, "{\"timestamp\":%lld,\"datetime\":\"%s\",\"description\":\"Current time\",\"status\":\"COMMAND_OK\",\"success\":true}", get_timestamp(), htime);
-#endif // TN12
 	return HTTP_OK;
 }
 
@@ -740,44 +712,39 @@ http_status_t api_rec_meta(char **response, http_request_t *req) {
 http_status_t api_db_listget(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
-		char *name = db_list_get(param_quid);
-		if (!name) {
-			if (IFERROR(ETBL_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
+			char *param_name = (char *)hashtable_get(req->data, "name");
+			if (param_name && param_quid) {
+				if (db_list_update(param_quid, param_name) < 0) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
+					return HTTP_OK;
+				}
+				snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Table renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
 				return HTTP_OK;
 			}
+			strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
+			return HTTP_OK;
+		} else {
+			char *name = db_list_get(param_quid);
+			if (!name) {
+				if (IFERROR(ETBL_NOTFOUND)) {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				} else {
+					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
+					return HTTP_OK;
+				}
+			}
+			snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"COMMAND_OK\",\"success\":true}", name);
+			zfree(name);
+			return HTTP_OK;
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"COMMAND_OK\",\"success\":true}", name);
-		zfree(name);
-		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
-http_status_t api_db_listupdate(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_name = (char *)hashtable_get(req->data, "name");
-		char *param_quid = (char *)hashtable_get(req->data, "quid");
-		if (param_name && param_quid) {
-			if (db_list_update(param_quid, param_name) < 0) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
-				return HTTP_OK;
-			}
-			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Table renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
-			return HTTP_OK;
-		}
-		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
-		return HTTP_OK;
-	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
-}
-
-http_status_t api_table(char **response, http_request_t *req) {
+http_status_t api_table_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 	bool resolve = TRUE;
 	if (req->querystring) {
@@ -830,16 +797,14 @@ http_status_t api_listall(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-const struct webroute route[] = {
+static const struct webroute route[] = {
 	/* URL				callback			QUID*/
 	{"/",				api_root,			FALSE},
-	{"/license",		api_license,		FALSE},
-	{"/help",			api_help,			FALSE},
 #if 0
+	{"/help",			api_help,			FALSE},
 	{"/api",			api_help,			FALSE},
 #endif
 	{"/instance",		api_instance,		FALSE},
-	{"/session",		api_session,		FALSE},
 	{"/sha1",			api_sha1,			FALSE},
 	{"/md5",			api_md5,			FALSE},
 	{"/sha256",			api_sha256,			FALSE},
@@ -849,19 +814,15 @@ const struct webroute route[] = {
 	{"/sql",			api_sqlquery,		FALSE},
 	{"/vacuum",			api_vacuum,			FALSE},
 	{"/sync",			api_sync,			FALSE},
-	{"/version",		api_version,		FALSE},
-	{"/status",			api_status,			FALSE},
+	{"/vars",			api_variables,		FALSE},
 	{"/quid",			api_gen_quid,		FALSE},
-	{"/now",			api_time_now,		FALSE},
-	{"/time",			api_time_now,		FALSE},
-	{"/date",			api_time_now,		FALSE},
 	{"/shutdown",		api_shutdown,		FALSE},
 	{"/base64/enc",		api_base64_enc,		FALSE},
 	{"/base64/dec",		api_base64_dec,		FALSE},
 	{"/put",			api_db_put,			FALSE},
 	{"/store",			api_db_put,			FALSE},
 	{"/insert",			api_db_put,			FALSE},
-	{"/table/*",		api_table,			FALSE},
+	{"/table/*",		api_table_get,		FALSE},
 	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
@@ -874,7 +835,6 @@ const struct webroute route[] = {
 	{"/index",			api_db_index,		TRUE},
 	{"/meta",			api_rec_meta,		TRUE},
 	{"/name",			api_db_listget,		TRUE},
-	{"/rename",			api_db_listupdate,	TRUE},
 };
 
 void handle_request(int sd, fd_set *set) {

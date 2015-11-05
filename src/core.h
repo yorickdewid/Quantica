@@ -43,6 +43,7 @@ char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
+unsigned long int stat_tablesize();
 void quid_generate(char *quid);
 void filesync();
 
