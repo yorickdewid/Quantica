@@ -1348,7 +1348,9 @@ marshall_t *engine_list_all(struct engine *e) {
 			memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
 			marshall->child[marshall->size]->type = MTYPE_QUID;
 			marshall->child[marshall->size]->name = tree_zstrdup(squid, marshall);
+			marshall->child[marshall->size]->name_len = QUID_LENGTH;
 			marshall->child[marshall->size]->data = tree_zstrdup(tablelist->items[i].name, marshall);
+			marshall->child[marshall->size]->data_len = len;
 			marshall->size++;
 		}
 		if (tablelist->link) {

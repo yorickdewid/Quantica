@@ -67,7 +67,7 @@ int db_record_set_meta(char *quid, struct record_status *status);
 char *db_list_get(char *quid);
 int db_list_update(char *quid, const char *name);
 char *db_list_all();
-void *db_table_get(char *name, size_t *len);
+void *db_table_get(char *name, size_t *len, bool descent);
 
 int db_create_index(char *quid, const char *idxkey);
 

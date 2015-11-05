@@ -478,7 +478,7 @@ char *db_list_all() {
 	return buf;
 }
 
-void *db_table_get(char *name, size_t *len) {
+void *db_table_get(char *name, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
@@ -491,7 +491,7 @@ void *db_table_get(char *name, size_t *len) {
 	if (!data)
 		return NULL;
 
-	marshall_t *dataobj = slay_get(data, NULL, TRUE);
+	marshall_t *dataobj = slay_get(data, NULL, descent);
 	if (!dataobj)
 		return NULL;
 
