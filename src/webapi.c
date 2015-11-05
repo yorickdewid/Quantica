@@ -779,7 +779,14 @@ http_status_t api_db_listupdate(char **response, http_request_t *req) {
 
 http_status_t api_table(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
-	char *data = db_table_get(req->uri, &len, TRUE);
+	bool resolve = TRUE;
+	if (req->querystring) {
+		char *noresolve = (char *)hashtable_get(req->querystring, "noresolve");
+		if (noresolve && !strcmp(noresolve, "true")) {
+			resolve = FALSE;
+		}
+	}
+	char *data = db_table_get(req->uri, &len, resolve);
 	if (!data) {
 		if (IFERROR(EREC_NOTFOUND)) {
 			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());

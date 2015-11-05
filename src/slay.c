@@ -326,7 +326,16 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
 
-				marshall->child[marshall->size] = raw_db_get(val_data, marshall);
+				if (descent) {
+					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
+				} else {
+					marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+					memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+					marshall->child[marshall->size]->type = val_dt;
+					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+					marshall->child[marshall->size]->data_len = val_len;
+				}
+
 				marshall->size++;
 				zfree(val_data);
 			}
@@ -350,7 +359,15 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
 
-				marshall->child[marshall->size] = raw_db_get(val_data, marshall);
+				if (descent) {
+					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
+				} else {
+					marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+					memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+					marshall->child[marshall->size]->type = val_dt;
+					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
+					marshall->child[marshall->size]->data_len = val_len;
+				}
 				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
 				marshall->child[marshall->size]->name_len = namelen;
 				marshall->size++;
