@@ -13,26 +13,33 @@
 #define NTIMENAME (31 * 36 * 36 * 36)
 #define EPOCH_DIFF 1262304000
 
-qtime_t get_timestamp() {
-    qtime_t ts;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ts = tv.tv_sec - EPOCH_DIFF;
-    return ts;
+long long get_timestamp() {
+	long long ts;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	ts = tv.tv_sec - EPOCH_DIFF;
+	return ts;
 }
 
-char *tstostrf(char *buf, size_t len, qtime_t ts, char *fmt) {
-    time_t now = ts + EPOCH_DIFF;
-    struct tm uts = *localtime(&now);
-    strftime(buf, len, fmt, &uts);
-    return buf;
+long long get_unixtimestamp() {
+	long long ts;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	ts = tv.tv_sec;
+	return ts;
 }
 
-qtime_t timetots(struct tm *t) {
-    return (qtime_t)mktime(t) - EPOCH_DIFF;
+char *tstostrf(char *buf, size_t len, long long ts, char *fmt) {
+	time_t now = ts + EPOCH_DIFF;
+	struct tm uts = *localtime(&now);
+	strftime(buf, len, fmt, &uts);
+	return buf;
 }
 
-#ifdef TN12
+long long timetots(struct tm *t) {
+	return (long long)mktime(t) - EPOCH_DIFF;
+}
+
 static void curr_time(int *days, int *secs, int *nanosecs) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -57,7 +64,7 @@ static void timename(int days, int secs, int nanosecs, char *str) {
 	}
 
 	d.quot = days + DAYS45_70 + NTIMENAME;
-	for (i=4; i--; ) {
+	for (i = 4; i--;) {
 		d = ldiv(d.quot, 36);
 		str[i] = d.rem < 10 ? '0' + (char)d.rem : 'a' + (char)d.rem - 10;
 	}
@@ -71,4 +78,3 @@ char *timename_now(char *str) {
 
 	return str;
 }
-#endif

@@ -28,7 +28,7 @@
 static struct engine btx;
 static struct base control;
 static uint8_t ready = FALSE;
-static qtime_t uptime;
+static long long uptime;
 static quid_t sessionid;
 struct error _eglobal;
 
@@ -96,7 +96,7 @@ char *get_session_key() {
 
 char *get_uptime() {
 	static char buf[32];
-	qtime_t passed = get_timestamp() - uptime;
+	long long passed = get_timestamp() - uptime;
 	unsigned int days = passed / 86400;
 	passed = passed % 86400;
 	unsigned int hours = passed / 3600;
