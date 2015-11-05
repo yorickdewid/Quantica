@@ -492,9 +492,14 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 
 http_status_t api_db_get(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
+	char *noresolve = (char *)hashtable_get(req->data, "noresolve");
 	if (param_quid) {
 		size_t len = 0, resplen;
-		char *data = db_get(param_quid, &len);
+		bool resolve = TRUE;
+		if (noresolve && !strcmp(noresolve, "true")) {
+			resolve = FALSE;
+		}
+		char *data = db_get(param_quid, &len, resolve);
 		if (!data) {
 			if (IFERROR(EREC_NOTFOUND)) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());

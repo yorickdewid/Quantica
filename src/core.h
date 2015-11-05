@@ -52,7 +52,7 @@ void filesync();
 int raw_db_put(char *quid, void *slay, size_t len);
 int db_put(char *quid, int *items, const void *data, size_t len);
 marshall_t *raw_db_get(char *quid, void *parent);
-void *db_get(char *quid, size_t *len);
+void *db_get(char *quid, size_t *len, bool descent);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
 int raw_db_update(char *quid, void *slay, size_t len);

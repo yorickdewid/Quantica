@@ -418,7 +418,7 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 			ERROR(ESQL_PARSE_VAL, EL_WARN);
 			return &rs;
 		}
-		rs.data = db_get(tok->string, len);
+		rs.data = db_get(tok->string, len, TRUE);
 		if (rs.data)
 			return &rs;
 select_alias:

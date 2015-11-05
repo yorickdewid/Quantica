@@ -828,6 +828,19 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	return data;
 }
 
+uint64_t engine_get_offset(struct engine *e, const quid_t *quid) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return 0;
+	}
+	uint64_t offset = lookup_key(e, e->top, quid);
+	if (ISERROR())
+		return 0;
+
+	return offset;
+}
+
 int engine_purge(struct engine *e, quid_t *quid) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {

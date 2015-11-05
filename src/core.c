@@ -264,12 +264,12 @@ marshall_t *raw_db_get(char *quid, void *parent) {
 	if (!data)
 		return NULL;
 
-	marshall_t *dataobj = slay_get(data, parent);
+	marshall_t *dataobj = slay_get(data, parent, TRUE);
 	zfree(data);
 	return dataobj;
 }
 
-void *db_get(char *quid, size_t *len) {
+void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
@@ -281,7 +281,7 @@ void *db_get(char *quid, size_t *len) {
 	if (!data)
 		return NULL;
 
-	marshall_t *dataobj = slay_get(data, NULL);
+	marshall_t *dataobj = slay_get(data, NULL, descent);
 	if (!dataobj)
 		return NULL;
 
@@ -491,7 +491,7 @@ void *db_table_get(char *name, size_t *len) {
 	if (!data)
 		return NULL;
 
-	marshall_t *dataobj = slay_get(data, NULL);
+	marshall_t *dataobj = slay_get(data, NULL, TRUE);
 	if (!dataobj)
 		return NULL;
 

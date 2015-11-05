@@ -156,7 +156,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 	return slay;
 }
 
-marshall_t *slay_get(void *data, void *parent) {
+marshall_t *slay_get(void *data, void *parent, bool descent) {
 	marshall_t *marshall = NULL;
 	uint64_t elements;
 	schema_t schema;
@@ -170,13 +170,14 @@ marshall_t *slay_get(void *data, void *parent) {
 	switch (schema) {
 		case SCHEMA_FIELD: {
 			void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
+
 			//TODO ugly
 			if (val_data) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
 				((uint8_t *)val_data)[val_len] = '\0';
 			}
 
-			if (val_dt == MTYPE_QUID) {
+			if (val_dt == MTYPE_QUID && descent) {
 				marshall = raw_db_get(val_data, NULL);
 				if (!marshall) {
 					marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
@@ -222,7 +223,7 @@ marshall_t *slay_get(void *data, void *parent) {
 					((uint8_t *)val_data)[val_len] = '\0';
 				}
 
-				if (val_dt == MTYPE_QUID) {
+				if (val_dt == MTYPE_QUID && descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
@@ -270,7 +271,7 @@ marshall_t *slay_get(void *data, void *parent) {
 					((uint8_t *)val_data)[val_len] = '\0';
 				}
 
-				if (val_dt == MTYPE_QUID) {
+				if (val_dt == MTYPE_QUID && descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);

@@ -166,6 +166,8 @@ int engine_purge(struct engine *e, quid_t *quid);
 
 void engine_sync(struct engine *e);
 
+uint64_t engine_get_offset(struct engine *e, const quid_t *quid);
+
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md);
 
 int engine_setmeta(struct engine *e, const quid_t *quid, const struct metadata *data);
