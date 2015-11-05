@@ -72,6 +72,7 @@ typedef enum {
 typedef struct {
 	char *uri;
 	hashtable_t *data;
+	hashtable_t *querystring;
 	http_method_t method;
 } http_request_t;
 
@@ -885,6 +886,7 @@ void handle_request(int sd, fd_set *set) {
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
 	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);
 	hashtable_t *postdata = NULL;
+	hashtable_t *getdata = NULL;
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE - 2, socket_stream);
@@ -1091,24 +1093,37 @@ void handle_request(int sd, fd_set *set) {
 	char logreqline[RLOGLINE_SIZE];
 	memset(logreqline, 0, RLOGLINE_SIZE);
 	snprintf(logreqline, RLOGLINE_SIZE, "[info] %s - ", str_addr);
-	if (request_type == HTTP_GET) {
-		strlcat(logreqline, "GET", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_POST) {
-		strlcat(logreqline, "POST", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_PUT) {
-		strlcat(logreqline, "PUT", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_HEAD) {
-		strlcat(logreqline, "HEAD", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_TRACE) {
-		strlcat(logreqline, "TRACE", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_PATCH) {
-		strlcat(logreqline, "PATCH", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_DELETE) {
-		strlcat(logreqline, "DELETE", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_OPTIONS) {
-		strlcat(logreqline, "OPTIONS", RLOGLINE_SIZE);
-	} else if (request_type == HTTP_CONNECT) {
-		strlcat(logreqline, "CONNECT", RLOGLINE_SIZE);
+	switch (request_type) {
+		case HTTP_GET:
+			strlcat(logreqline, "GET", RLOGLINE_SIZE);
+			break;
+		case HTTP_POST:
+			strlcat(logreqline, "POST", RLOGLINE_SIZE);
+			break;
+		case HTTP_PUT:
+			strlcat(logreqline, "PUT", RLOGLINE_SIZE);
+			break;
+		case HTTP_HEAD:
+			strlcat(logreqline, "HEAD", RLOGLINE_SIZE);
+			break;
+		case HTTP_TRACE:
+			strlcat(logreqline, "TRACE", RLOGLINE_SIZE);
+			break;
+		case HTTP_PATCH:
+			strlcat(logreqline, "PATCH", RLOGLINE_SIZE);
+			break;
+		case HTTP_DELETE:
+			strlcat(logreqline, "DELETE", RLOGLINE_SIZE);
+			break;
+		case HTTP_OPTIONS:
+			strlcat(logreqline, "OPTIONS", RLOGLINE_SIZE);
+			break;
+		case HTTP_CONNECT:
+			strlcat(logreqline, "CONNECT", RLOGLINE_SIZE);
+			break;
+		default:
+			strlcat(logreqline, "UNKNOWN", RLOGLINE_SIZE);
+			break;
 	}
 
 	snprintf(logreqline + strlen(logreqline), RLOGLINE_SIZE, " %s - ", http_version);
@@ -1211,12 +1226,27 @@ unsupported:
 		}
 	}
 
+	if (querystring) {
+		getdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
+		char *var = strtok(querystring, "&");
+		while (var != NULL) {
+			char *value = strchr(var, '=');
+			if (value) {
+				value[0] = '\0';
+				value++;
+				hashtable_put(&getdata, var, value);
+			}
+			var = strtok(NULL, "&");
+		}
+	}
+
 	char *pch = NULL;
 	size_t nsz = RSIZE(route);
 	char *resp_message = (char *)zmalloc(RESPONSE_SIZE);
 	http_status_t status = 0;
 	http_request_t req;
 	req.data = postdata;
+	req.querystring = getdata;
 	req.method = request_type;
 	while (nsz-- > 0) {
 		if (route[nsz].require_quid) {
@@ -1279,6 +1309,9 @@ done:
 	zfree(_filename);
 	vector_free(queue);
 	vector_free(headers);
+	if (getdata) {
+		free_hashtable(getdata);
+	}
 	if (postdata) {
 		free_hashtable(postdata);
 	}
