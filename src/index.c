@@ -271,6 +271,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	newnode.items[INDEX_MSIZE - 1].valset = v_final;
 	newnode.ptr[INDEX_MSIZE] = p_final;
 	zfree(k_final);
+	zfree(keynew_r);
 	flush_node(offset, &node);
 	flush_node(*offsetnew, &newnode);
 	return INSERTNOTCOMPLETE;
