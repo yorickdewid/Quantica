@@ -10,111 +10,114 @@
 #include "index.h"
 #include "zmalloc.h"
 
-node_t rootnode;
-
-struct {
+//TODO needs bitflip
+struct root_super {
 	long int root;
 	long int freelist;
-} index_root = {
-	.root = -1,
-	.freelist = -1
 };
 
-long int root = -1;
-long int freelist = -1;
-static FILE *fptree;
-
-void get_node(long int offset, node_t *pnode) {
-	if (offset == root) {
-		*pnode = rootnode;
+void get_node(index_t *index, long int offset, node_t *pnode) {
+	if (offset == index->root) {
+		*pnode = index->rootnode;
 		return;
 	}
-	if (fseek(fptree, offset, SEEK_SET)) {
+	if (fseek(index->fp, offset, SEEK_SET)) {
 		lprint("[erro] Failed to read disk\n");
 		return;
 	}
-	if (fread(pnode, sizeof(node_t), 1, fptree) == 0)
+	if (fread(pnode, sizeof(node_t), 1, index->fp) == 0)
 		lprint("[erro] Failed to read disk\n");
 }
 
-static void flush_node(long int t, node_t *pnode) {
-	if (t == root)
-		rootnode = *pnode;
-	if (fseek(fptree, t, SEEK_SET)) {
+static void flush_node(index_t *index, long int offset, node_t *pnode) {
+	if (offset == index->root)
+		index->rootnode = *pnode;
+	if (fseek(index->fp, offset, SEEK_SET)) {
 		lprint("[erro] Failed to write disk\n");
 		return;
 	}
-	if (fwrite(pnode, sizeof(node_t), 1, fptree) == 0)
+	if (fwrite(pnode, sizeof(node_t), 1, index->fp) == 0)
 		lprint("[erro] Failed to write disk\n");
 }
 
-static long int alloc_node() {
+static long int alloc_node(index_t *index) {
 	long int offset;
 	node_t node;
 
 	/* Check freelist */
-	if (freelist == -1) {
-		if (fseek(fptree, 0, SEEK_END)) {
+	if (index->freelist < 0) {
+		if (fseek(index->fp, 0, SEEK_END)) {
 			lprint("[erro] Failed to write disk\n");
 			return -1;
 		}
-		offset = ftell(fptree);
-		flush_node(offset, &node);
+		offset = ftell(index->fp);
+		flush_node(index, offset, &node);
 	} else {
-		offset = freelist;
-		get_node(offset, &node);
-		freelist = node.ptr[0];
+		offset = index->freelist;
+		get_node(index, offset, &node);
+		index->freelist = node.ptr[0];
 	}
 	return offset;
 }
 
-static void free_node(long int offset) {
+static void free_node(index_t *index, long int offset) {
 	node_t node;
 
-	get_node(offset, &node);
-	node.ptr[0] = freelist;
-	freelist = offset;
-	flush_node(offset, &node);
+	get_node(index, offset, &node);
+	node.ptr[0] = index->freelist;
+	index->freelist = offset;
+	flush_node(index, offset, &node);
 }
 
-static void index_read() {
-	if (fseek(fptree, 0, SEEK_SET)) {
+static void index_read(index_t *index) {
+	struct root_super super;
+	memset(&super, 0, sizeof(struct root_super));
+
+	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to read disk\n");
 		return;
 	}
-	if (fread(&index_root, sizeof(index_root), 1, fptree) == 0)
+	if (fread(&super, sizeof(struct root_super), 1, index->fp) == sizeof(struct root_super))
 		lprint("[erro] Failed to read disk\n");
-	get_node(index_root.root, &rootnode);
-	root = index_root.root;
-	freelist = index_root.freelist;
+	get_node(index, super.root, &index->rootnode);
+	index->root = super.root;
+	index->freelist = super.freelist;
 }
 
-static void index_write() {
-	index_root.root = root;
-	index_root.freelist = freelist;
-	if (fseek(fptree, 0, SEEK_SET)) {
+static void index_write(index_t *index) {
+	struct root_super super;
+	memset(&super, 0, sizeof(struct root_super));
+
+	super.root = index->root;
+	super.freelist = index->freelist;
+	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to write disk\n");
 		return;
 	}
-	if (fwrite(&index_root, sizeof(index_root), 1, fptree) == 0)
+	if (fwrite(&super, sizeof(struct root_super), 1, index->fp) == 0)
 		lprint("[erro] Failed to write disk\n");
-	if (root != -1)
-		flush_node(root, &rootnode);
+	if (index->root != -1)
+		flush_node(index, super.root, &index->rootnode);
 }
 
-void index_init(char *treefilname) {
-	fptree = fopen(treefilname, "r+b");
-	if (fptree == NULL) {
-		fptree = fopen(treefilname, "w+b");
-		index_write();
+void index_init(index_t *index, char *name) {
+	memset(index, 0, sizeof(index_t));
+	index->root = -1;
+	index->freelist = -1;
+	index->fp = fopen(name, "r+b");
+	if (index->fp == NULL) {
+		// TODO set RW flag
+		index->fp = fopen(name, "w+b");
+		index_write(index);
 	} else {
-		index_read();
+		index_read(index);
 	}
 }
 
-void index_close() {
-	index_write();
-	fclose(fptree);
+void index_close(index_t *index) {
+	index_write(index);
+	if (index->fp)
+		fclose(index->fp);
 }
 
 static int get(char *key, item_t *kv, int n) {
@@ -137,35 +140,20 @@ static int get(char *key, item_t *kv, int n) {
 	return right;
 }
 
-status_t index_get(char *key) {
-	int i, j, n;
+status_t index_get(index_t *index, char *key) {
+	int i, n;
 	item_t *kv = NULL;
 	node_t node;
-	long int offset = root;
+	long int offset = index->root;
 
-#if 1
-	printf("Looking for: %s\n", key);
-	puts("Search path:");
-#endif
 	while (offset != -1) {
-		get_node(offset, &node);
+		get_node(index, offset, &node);
 		kv = node.items;
 		n = node.cnt;
-
-#if 1
-		for (j = 0; j < n; ++j)
-			printf("  %s", kv[j].key);
-		puts("");
-#endif
-
 		i = get(key, kv, n);
 		if (i < n && !strcmp(key, kv[i].key)) {
-
-#if 1
-			printf("valset %llu\n", kv[i].valset);
-			printf("Found in position %d\n", i);
-#endif
-
+			//printf("valset %llu\n", kv[i].valset);
+			//printf("Found in position %d\n", i);
 			return SUCCESS;
 		}
 		offset = node.ptr[i];
@@ -177,7 +165,7 @@ status_t index_get(char *key) {
 	Insert x in B-tree with root offset.  If not completely successful, the
 	integer *y and the pointer *u remain to be inserted.
 */
-static status_t insert(char *key, size_t key_size, long long int valset, long int offset, char **keynew, size_t *key_sizenew, long long int *valsetnew, long int *offsetnew) {
+static status_t insert(index_t *index, char *key, size_t key_size, long long int valset, long int offset, char **keynew, size_t *key_sizenew, long long int *valsetnew, long int *offsetnew) {
 	long int offsetnew_r, *p;
 	int i, j, *count;
 	char *keynew_r = NULL;
@@ -196,7 +184,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 		return INSERTNOTCOMPLETE;
 	}
 
-	get_node(offset, &node);
+	get_node(index, offset, &node);
 	count = &node.cnt;
 	kv = node.items;
 	p = node.ptr;
@@ -205,7 +193,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	i = get(key, kv, *count);
 	if (i < *count && !strcmp(key, kv[i].key))
 		return DUPLICATEKEY;
-	code = insert(key, key_size, valset, p[i], &keynew_r, &keynew_r_size, &valsetnew_r, &offsetnew_r);
+	code = insert(index, key, key_size, valset, p[i], &keynew_r, &keynew_r_size, &valsetnew_r, &offsetnew_r);
 	if (code != INSERTNOTCOMPLETE) {
 		zfree(keynew_r);
 		return code;
@@ -223,7 +211,8 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 		p[i + 1] = offsetnew_r;
 		++*count;
 		zfree(keynew_r);
-		flush_node(offset, &node);
+		flush_node(index, offset, &node);
+		printf("RETURN INSERTNOTCOMPLETE\n");
 		return SUCCESS;
 	}
 	/*  The current node was already full, so split it.  Pass item kv[INDEX_SIZE/2] in the
@@ -259,7 +248,7 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	*key_sizenew = kv[INDEX_MSIZE].key_size;
 	*valsetnew = kv[INDEX_MSIZE].valset;
 	*count = INDEX_MSIZE;
-	*offsetnew = alloc_node();
+	*offsetnew = alloc_node(index);
 	newnode.cnt = INDEX_MSIZE;
 	for (j = 0; j < INDEX_MSIZE - 1; j++) {
 		newnode.items[j] = kv[j + INDEX_MSIZE + 1];
@@ -272,35 +261,36 @@ static status_t insert(char *key, size_t key_size, long long int valset, long in
 	newnode.ptr[INDEX_MSIZE] = p_final;
 	zfree(k_final);
 	zfree(keynew_r);
-	flush_node(offset, &node);
-	flush_node(*offsetnew, &newnode);
+	flush_node(index, offset, &node);
+	flush_node(index, *offsetnew, &newnode);
 	return INSERTNOTCOMPLETE;
 }
 
-status_t index_insert(char *key, size_t key_size, long long int valset) {
+status_t index_insert(index_t *index, char *key, size_t key_size, long long int valset) {
 	long int offsetnew, offset;
 	char *keynew = NULL;
 	size_t key_sizenew;
 	long long int valsetnew;
-	status_t code = insert(key, key_size, valset, root, &keynew, &key_sizenew, &valsetnew, &offsetnew);
+	printf(">> %ld\n", index->root);
+	status_t code = insert(index, key, key_size, valset, index->root, &keynew, &key_sizenew, &valsetnew, &offsetnew);
 
 	if (code == INSERTNOTCOMPLETE) {
-		offset = alloc_node();
-		rootnode.cnt = 1;
-		strlcpy(rootnode.items[0].key, keynew, key_sizenew + 1);
-		rootnode.items[0].key_size = key_sizenew;
-		rootnode.items[0].valset = valsetnew;
-		rootnode.ptr[0] = root;
-		rootnode.ptr[1] = offsetnew;
-		root = offset;
+		offset = alloc_node(index);
+		index->rootnode.cnt = 1;
+		strlcpy(index->rootnode.items[0].key, keynew, key_sizenew + 1);
+		index->rootnode.items[0].key_size = key_sizenew;
+		index->rootnode.items[0].valset = valsetnew;
+		index->rootnode.ptr[0] = index->root;
+		index->rootnode.ptr[1] = offsetnew;
+		index->root = offset;
 		zfree(keynew);
-		flush_node(offset, &rootnode);
+		flush_node(index, offset, &index->rootnode);
 		code = SUCCESS;
 	}
 	return code;
 }
 
-static status_t delete(char *key, long int t) {
+static status_t delete(index_t *index, char *key, long int t) {
 	int i, j, *n, *nleft, *nright, borrowleft = 0, nq;
 	status_t code;
 	item_t *kv;
@@ -313,7 +303,7 @@ static status_t delete(char *key, long int t) {
 
 	if (t == -1)
 		return NOTFOUND;
-	get_node(t, &nod);
+	get_node(index, t, &nod);
 	n = &nod.cnt;
 	kv = nod.items;
 	p = nod.ptr;
@@ -329,14 +319,14 @@ static status_t delete(char *key, long int t) {
 			p[j] = p[j + 1];
 		}
 		--*n;
-		flush_node(t, &nod);
-		return *n >= (t == root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+		flush_node(index, t, &nod);
+		return *n >= (t == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 	}
 
 	/*  t is an interior node (not a leaf): */
 	item = kv + i;
 	left = p[i];
-	get_node(left, &nod1);
+	get_node(index, left, &nod1);
 	nleft = & nod1.cnt;
 	/* key found in interior node.  Go to left child *p[i] and then follow a
 
@@ -344,11 +334,11 @@ static status_t delete(char *key, long int t) {
 	if (i < *n && !strcmp(key, item->key)) {
 		size_t key_size = item->key_size;
 		q = p[i];
-		get_node(q, &nod1);
+		get_node(index, q, &nod1);
 		nq = nod1.cnt;
 		while (q1 = nod1.ptr[nq], q1 != -1) {
 			q = q1;
-			get_node(q, &nod1);
+			get_node(index, q, &nod1);
 			nq = nod1.cnt;
 		}
 
@@ -356,21 +346,21 @@ static status_t delete(char *key, long int t) {
 		addr = nod1.items + nq - 1;
 		*item = *addr;
 		strlcpy(addr->key, key, key_size + 1);
-		flush_node(t, &nod);
-		flush_node(q, &nod1);
+		flush_node(index, t, &nod);
+		flush_node(index, q, &nod1);
 	}
 
 	/*  Delete key in subtree with root p[i]:  */
-	code = delete(key, left);
+	code = delete(index, key, left);
 	if (code != UNDERFLOW)
 		return code;
 
 	/*  Underflow, borrow, and , if necessary, merge:  */
 	if (i < *n)
-		get_node(p[i + 1], &nodR);
+		get_node(index, p[i + 1], &nodR);
 	if (i == *n || nodR.cnt == INDEX_MSIZE) {
 		if (i > 0) {
-			get_node(p[i - 1], &nodL);
+			get_node(index, p[i - 1], &nodL);
 			if (i == *n || nodL.cnt > INDEX_MSIZE)
 				borrowleft = 1;
 		}
@@ -382,11 +372,11 @@ static status_t delete(char *key, long int t) {
 		left = p[i - 1];
 		right = p[i];
 		nod1 = nodL;
-		get_node(right, &nod2);
+		get_node(index, right, &nod2);
 		nleft = & nod1.cnt;
 	} else {
 		right = p[i + 1];      /*  borrow from right sibling   */
-		get_node(left, &nod1);
+		get_node(index, left, &nod1);
 		nod2 = nodR;
 	}
 	nright = & nod2.cnt;
@@ -405,9 +395,9 @@ static status_t delete(char *key, long int t) {
 		rptr[0] = lptr[*nleft];
 		*item = lkey[*nleft - 1];
 		if (--*nleft >= INDEX_MSIZE) {
-			flush_node(t, &nod);
-			flush_node(left, &nod1);
-			flush_node(right, &nod2);
+			flush_node(index, t, &nod);
+			flush_node(index, left, &nod1);
+			flush_node(index, right, &nod2);
 			return SUCCESS;
 		}
 	} else {
@@ -423,9 +413,9 @@ static status_t delete(char *key, long int t) {
 				rkey[j] = rkey[j + 1];
 			}
 			rptr[*nright] = rptr[*nright + 1];
-			flush_node(t, &nod);
-			flush_node(left, &nod1);
-			flush_node(right, &nod2);
+			flush_node(index, t, &nod);
+			flush_node(index, left, &nod1);
+			flush_node(index, right, &nod2);
 			return SUCCESS;
 		}
 	}
@@ -438,34 +428,34 @@ static status_t delete(char *key, long int t) {
 		lptr[INDEX_MSIZE + j + 1] = rptr[j + 1];
 	}
 	*nleft = INDEX_SIZE;
-	free_node(right);
+	free_node(index, right);
 	for (j = i + 1; j < *n; j++) {
 		kv[j - 1] = kv[j];
 		p[j] = p[j + 1];
 	}
 	--*n;
-	flush_node(t, &nod);
-	flush_node(left, &nod1);
+	flush_node(index, t, &nod);
+	flush_node(index, left, &nod1);
 
-	return *n >= (t == root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+	return *n >= (t == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
-status_t index_delete(char *key) {
+status_t index_delete(index_t *index, char *key) {
 	long int newroot;
 
-	status_t code = delete(key, root);
+	status_t code = delete(index, key, index->root);
 	if (code == UNDERFLOW) {
-		newroot = rootnode.ptr[0];
-		free_node(root);
-		if (newroot != -1)
-			get_node(newroot, &rootnode);
-		root = newroot;
+		newroot = index->rootnode.ptr[0];
+		free_node(index, index->root);
+		if (newroot > 0)
+			get_node(index, newroot, &index->rootnode);
+		index->root = newroot;
 		code = SUCCESS;
 	}
 	return code;  /* Return value:  SUCCESS  or NOTFOUND   */
 }
 
-#if 1
+#if 0
 void index_print(long int offset) {
 	static int position = 0;
 	int i, n;
