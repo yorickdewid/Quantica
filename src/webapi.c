@@ -613,7 +613,6 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 		char *param_key = (char *)hashtable_get(req->data, "key");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_key && param_quid) {
-			puts(param_quid);
 			if (db_create_index(param_quid, param_key) < 0) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 				return HTTP_OK;

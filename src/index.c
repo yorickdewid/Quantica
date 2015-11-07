@@ -152,8 +152,6 @@ status_t index_get(index_t *index, char *key) {
 		n = node.cnt;
 		i = get(key, kv, n);
 		if (i < n && !strcmp(key, kv[i].key)) {
-			//printf("valset %llu\n", kv[i].valset);
-			//printf("Found in position %d\n", i);
 			return SUCCESS;
 		}
 		offset = node.ptr[i];
@@ -212,7 +210,6 @@ static status_t insert(index_t *index, char *key, size_t key_size, long long int
 		++*count;
 		zfree(keynew_r);
 		flush_node(index, offset, &node);
-		printf("RETURN INSERTNOTCOMPLETE\n");
 		return SUCCESS;
 	}
 	/*  The current node was already full, so split it.  Pass item kv[INDEX_SIZE/2] in the
@@ -271,7 +268,6 @@ status_t index_insert(index_t *index, char *key, size_t key_size, long long int 
 	char *keynew = NULL;
 	size_t key_sizenew;
 	long long int valsetnew;
-	printf(">> %ld\n", index->root);
 	status_t code = insert(index, key, key_size, valset, index->root, &keynew, &key_sizenew, &valsetnew, &offsetnew);
 
 	if (code == INSERTNOTCOMPLETE) {
@@ -455,29 +451,29 @@ status_t index_delete(index_t *index, char *key) {
 	return code;  /* Return value:  SUCCESS  or NOTFOUND   */
 }
 
-#if 0
-void index_print(long int offset) {
+#if 1
+static void index_print(index_t *index, long int offset) {
 	static int position = 0;
 	int i, n;
 	item_t *kv = NULL;
-	node_t nod;
+	node_t node;
 
 	if (offset != -1) {
 		position += 6;
-		get_node(offset, &nod);
-		kv = nod.items;
-		n = nod.cnt;
+		get_node(index, offset, &node);
+		kv = node.items;
+		n = node.cnt;
 		printf("%*s", position, "");
 		for (i = 0; i < n; i++)
 			printf(" %.*s[%d][%llu]", kv[i].key_size, kv[i].key, kv[i].key_size, kv[i].valset);
-		puts("");
+		putchar('\n');
 		for (i = 0; i <= n; i++)
-			index_print(nod.ptr[i]);
+			index_print(index, node.ptr[i]);
 		position -= 6;
 	}
 }
 
-void index_print_root() {
-	index_print(root);
+void index_print_root(index_t *index) {
+	index_print(index, index->root);
 }
 #endif
