@@ -16,7 +16,6 @@
 #include "base64.h"
 #include "time.h"
 #include "index.h"
-#include "json_encode.h"
 #include "marshall.h"
 #include "slay.h"
 #include "basecontrol.h"
@@ -510,8 +509,50 @@ int db_create_index(char *quid, const char *idxkey) {
 	if (!ready)
 		return -1;
 
-	unused(quid);
-	unused(idxkey);
+	quid_t key;
+	strtoquid(quid, &key);
+	size_t _len;
+	char squid[QUID_LENGTH + 1];
+
+	void *data = engine_get(&btx, &key, &_len);
+	if (!data)
+		return -1;
+
+	marshall_t *dataobj = slay_get(data, NULL, FALSE);
+	if (!dataobj)
+		return -1;
+
+	schema_t group = slay_get_schema(data);
+
+	if (group == SCHEMA_TABLE) {
+		quid_t idxkey_name;
+		quid_create(&idxkey_name);
+		quidtostr(squid, &idxkey_name);
+
+		index_t index;
+		index_init(&index, squid);
+
+		for (unsigned int i = 0; i < dataobj->size; ++i) {
+			quid_t _key;
+			strtoquid(dataobj->child[i]->data, &_key);
+
+			marshall_t *rowobj = raw_db_get(dataobj->child[i]->data, NULL);
+			uint64_t offset = engine_get_offset(&btx, &_key);
+			for (unsigned int j = 0; j < rowobj->size; ++j) {
+				if (!strcmp(rowobj->child[j]->name, idxkey)) {
+					index_insert(&index, rowobj->child[j]->data, rowobj->child[j]->data_len, offset);
+				}
+			}
+			marshall_free(rowobj);
+		}
+
+		index_close(&index);
+	} else if (group == SCHEMA_SET) {
+		puts("deal with set");
+	}
+
+	marshall_free(dataobj);
+	zfree(data);
 
 	return 0;
 }

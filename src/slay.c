@@ -8,7 +8,6 @@
 #include "quid.h"
 #include "dict.h"
 #include "marshall.h"
-#include "json_encode.h"
 #include "core.h"
 #include "zmalloc.h"
 
