@@ -15,37 +15,49 @@ struct {
 	bool data;
 	bool descent;
 } type_info[] = {
+
 	/* No data */
-	{MTYPE_NULL, FALSE, FALSE},
-	{MTYPE_TRUE, FALSE, FALSE},
-	{MTYPE_FALSE, FALSE, FALSE},
+	{MTYPE_NULL,	FALSE, FALSE},
+	{MTYPE_TRUE,	FALSE, FALSE},
+	{MTYPE_FALSE,	FALSE, FALSE},
+
 	/* Containing data */
-	{MTYPE_INT, TRUE, FALSE},
-	{MTYPE_FLOAT, TRUE, FALSE},
-	{MTYPE_STRING, TRUE, FALSE},
-	{MTYPE_QUID, TRUE, FALSE},
+	{MTYPE_INT,		TRUE, FALSE},
+	{MTYPE_FLOAT,	TRUE, FALSE},
+	{MTYPE_STRING,	TRUE, FALSE},
+	{MTYPE_QUID,	TRUE, FALSE},
+
 	/* Containing descending data */
-	{MTYPE_ARRAY, FALSE, TRUE},
-	{MTYPE_OBJECT, FALSE, TRUE},
+	{MTYPE_ARRAY,	FALSE, TRUE},
+	{MTYPE_OBJECT,	FALSE, TRUE},
 };
 
+/*
+ * Does marshall type require additional data
+ */
 bool marshall_type_hasdata(marshall_type_t type) {
-	for(unsigned int i = 0; i < RSIZE(type_info); ++i) {
+	for (unsigned int i = 0; i < RSIZE(type_info); ++i) {
 		if (type_info[i].type == type)
 			return type_info[i].data;
 	}
 	return FALSE;
 }
 
+/*
+ * Can marshall type contain one or more marshall objects
+ */
 bool marshall_type_hasdescent(marshall_type_t type) {
-	for(unsigned int i = 0; i < RSIZE(type_info); ++i) {
+	for (unsigned int i = 0; i < RSIZE(type_info); ++i) {
 		if (type_info[i].type == type)
 			return type_info[i].descent;
 	}
 	return FALSE;
 }
 
-static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name, size_t name_len, void *parent) {
+/*
+ * Recursively parse dictionary into marshall object
+ */
+static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name, size_t name_len, void *parent) {
 	dict_parser p;
 	dict_token_t t[data_len];
 
@@ -99,7 +111,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						obj->size++;
 						break;
 					case DICT_OBJECT: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
+						obj->child[obj->size] = marshall_dict_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -110,7 +122,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						break;
 					}
 					case DICT_ARRAY: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
+						obj->child[obj->size] = marshall_dict_decode(data + t[i].start, t[i].end - t[i].start, NULL, 0, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -166,7 +178,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						}
 						break;
 					case DICT_OBJECT: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
+						obj->child[obj->size] = marshall_dict_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -178,7 +190,7 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 						break;
 					}
 					case DICT_ARRAY: {
-						obj->child[obj->size] = marshall_obect_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
+						obj->child[obj->size] = marshall_dict_decode(data + t[i].start, t[i].end - t[i].start, obj->child[obj->size]->name, obj->child[obj->size]->name_len, obj);
 						int x, j = 0;
 						for (x = 0; x < t[i].size; x++) {
 							j += dict_levelcount(&t[i + 1 + j], 0, 0, NULL);
@@ -200,6 +212,9 @@ static marshall_t *marshall_obect_decode(char *data, size_t data_len, char *name
 	return obj;
 }
 
+/*
+ * Detect datatype based on characteristics
+ */
 static marshall_type_t autoscalar(const char *data, size_t len) {
 	if (!len)
 		return MTYPE_NULL;
@@ -239,7 +254,9 @@ static marshall_type_t autoscalar(const char *data, size_t len) {
 	return MTYPE_STRING;
 }
 
-/* Count elements by level */
+/*
+ * Count elements by level
+ */
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 
 	/* Only descending scalars need to be counted */
@@ -256,7 +273,9 @@ unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 	return 1;
 }
 
-/* Convert string to object */
+/*
+ * Convert string to object
+ */
 marshall_t *marshall_convert(char *data, size_t data_len) {
 	marshall_t *marshall = NULL;
 	marshall_type_t type = autoscalar(data, data_len);
@@ -269,7 +288,7 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 		marshall->data_len = data_len;
 		marshall->type = type;
 	} else if (marshall_type_hasdescent(type)) {
-		marshall = marshall_obect_decode(data, data_len, NULL, 0, NULL);
+		marshall = marshall_dict_decode(data, data_len, NULL, 0, NULL);
 	} else {
 		marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
 		memset(marshall, 0, sizeof(marshall_t));
@@ -279,7 +298,41 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 	return marshall;
 }
 
-/* Convert marshall object to string */
+/*
+ * Convert object data to string
+ */
+char *marshall_strdata(marshall_t *obj, size_t *len) {
+	switch (obj->type) {
+		case MTYPE_NULL:
+			*len = 4;
+			return "null";
+
+		case MTYPE_TRUE:
+			*len = 4;
+			return "true";
+
+		case MTYPE_FALSE:
+			*len = 5;
+			return "false";
+
+		case MTYPE_FLOAT:
+		case MTYPE_INT:
+		case MTYPE_QUID:
+		case MTYPE_STRING:
+			*len = obj->data_len;
+			return (char *)obj->data;
+
+		default:
+			// TODO throw err
+			return NULL;
+			break;
+	}
+	return NULL;
+}
+
+/*
+ * Convert marshall object to string
+ */
 char *marshall_serialize(marshall_t *obj) {
 	if (!obj)
 		return NULL;
@@ -456,6 +509,8 @@ char *marshall_serialize(marshall_t *obj) {
 			return data;
 		}
 		default:
+			// TODO throw err
+			return NULL;
 			break;
 	}
 	return NULL;

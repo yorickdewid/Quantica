@@ -610,10 +610,10 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 
 http_status_t api_db_index(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_key = (char *)hashtable_get(req->data, "key");
+		char *param_element = (char *)hashtable_get(req->data, "element");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
-		if (param_key && param_quid) {
-			if (db_create_index(param_quid, param_key) < 0) {
+		if (param_element && param_quid) {
+			if (db_create_index(param_quid, param_element) < 0) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 				return HTTP_OK;
 			}
@@ -633,7 +633,7 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}");
 			return HTTP_OK;
 		}
-		strlcpy(*response, "{\"description\":\"Request expects key to be given\",\"status\":\"EMPTY_KEY\",\"success\":false}", RESPONSE_SIZE);
+		strlcpy(*response, "{\"description\":\"Request expects element to be given\",\"status\":\"EMPTY_KEY\",\"success\":false}", RESPONSE_SIZE);
 		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
