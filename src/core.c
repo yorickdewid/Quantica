@@ -15,6 +15,7 @@
 #include "crc32.h"
 #include "base64.h"
 #include "time.h"
+#include "btree.h"
 #include "index.h"
 #include "marshall.h"
 #include "slay.h"
@@ -328,6 +329,16 @@ char *db_get_schema(char *quid) {
 	return buf;
 }
 
+uint64_t db_get_offset(char *quid) {
+	if (!ready)
+		return 0;
+
+	quid_t key;
+	strtoquid(quid, &key);
+
+	return engine_get_offset(&btx, &key);
+}
+
 int raw_db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
@@ -512,7 +523,6 @@ int db_create_index(char *quid, const char *idxkey) {
 	quid_t key;
 	strtoquid(quid, &key);
 	size_t _len;
-	char squid[QUID_LENGTH + 1];
 
 	void *data = engine_get(&btx, &key, &_len);
 	if (!data)
@@ -524,32 +534,7 @@ int db_create_index(char *quid, const char *idxkey) {
 
 	schema_t group = slay_get_schema(data);
 
-	if (group == SCHEMA_TABLE) {
-		quid_t idxkey_name;
-		quid_create(&idxkey_name);
-		quidtostr(squid, &idxkey_name);
-
-		index_t index;
-		index_init(&index, squid);
-
-		for (unsigned int i = 0; i < dataobj->size; ++i) {
-			quid_t _key;
-			strtoquid(dataobj->child[i]->data, &_key);
-
-			marshall_t *rowobj = raw_db_get(dataobj->child[i]->data, NULL);
-			uint64_t offset = engine_get_offset(&btx, &_key);
-			for (unsigned int j = 0; j < rowobj->size; ++j) {
-				if (!strcmp(rowobj->child[j]->name, idxkey)) {
-					index_insert(&index, rowobj->child[j]->data, rowobj->child[j]->data_len, offset);
-				}
-			}
-			marshall_free(rowobj);
-		}
-
-		index_close(&index);
-	} else if (group == SCHEMA_SET) {
-		puts("deal with set");
-	}
+	index_create_btree(idxkey, dataobj, group);
 
 	marshall_free(dataobj);
 	zfree(data);

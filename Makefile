@@ -41,8 +41,9 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/marshall.c \
 		$(SRCDIR)/slay.c \
 		$(SRCDIR)/basecontrol.c \
-		$(SRCDIR)/index.c \
+		$(SRCDIR)/btree.c \
 		$(SRCDIR)/engine.c \
+		$(SRCDIR)/index.c \
 		$(SRCDIR)/core.c \
 		$(SRCDIR)/hashtable.c \
 		$(SRCDIR)/jenhash.c \
