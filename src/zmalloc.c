@@ -78,7 +78,7 @@ char *tree_zstrdup(const char *str, void *parent) {
 char *tree_zstrndup(const char *str, size_t n, void *parent) {
 	char *copy;
 
-	if ((copy = tree_zmalloc(n+1, parent)) == NULL) {
+	if ((copy = tree_zmalloc(n + 1, parent)) == NULL) {
 		return NULL;
 	}
 	memcpy(copy, str, n);
@@ -87,17 +87,53 @@ char *tree_zstrndup(const char *str, size_t n, void *parent) {
 	return copy;
 }
 
+long long *zlldup(long long const *src, size_t len) {
+	long long *p = zmalloc(len * sizeof(long long));
+	memcpy(p, src, len * sizeof(long long));
+	return p;
+}
+
+unsigned long long *zlludup(unsigned long long const *src, size_t len) {
+	unsigned long long *p = zmalloc(len * sizeof(unsigned long long));
+	memcpy(p, src, len * sizeof(unsigned long long));
+	return p;
+}
+
+long *zldup(long const *src, size_t len) {
+	long *p = zmalloc(len * sizeof(long));
+	memcpy(p, src, len * sizeof(long));
+	return p;
+}
+
+unsigned long *zludup(unsigned long const *src, size_t len) {
+	unsigned long *p = zmalloc(len * sizeof(unsigned long));
+	memcpy(p, src, len * sizeof(unsigned long));
+	return p;
+}
+
+int *zidup(int const *src, size_t len) {
+	int *p = zmalloc(len * sizeof(int));
+	memcpy(p, src, len * sizeof(int));
+	return p;
+}
+
+unsigned int *ziudup(unsigned int const *src, size_t len) {
+	unsigned int *p = zmalloc(len * sizeof(unsigned int));
+	memcpy(p, src, len * sizeof(unsigned int));
+	return p;
+}
+
 static void __zfree(void *mem) {
-    if (!mem)
-        return;
+	if (!mem)
+		return;
 
-    /* Fail if the tree hierarchy has cycles. */
-    zassert(prev(mem));
-    prev(mem) = NULL;
+	/* Fail if the tree hierarchy has cycles. */
+	zassert(prev(mem));
+	prev(mem) = NULL;
 
-    __zfree(child(mem));
-    __zfree(next(mem));
-    zfree(usr2raw(mem));
+	__zfree(child(mem));
+	__zfree(next(mem));
+	zfree(usr2raw(mem));
 }
 
 void *tree_zfree(void *mem) {

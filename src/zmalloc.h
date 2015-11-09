@@ -19,4 +19,11 @@ void tree_set_parent(void *mem, void *parent);
 void tree_steal(void *mem, void *parent);
 void *zrealloc(void *ptr, size_t sz);
 
+long long *zlldup(long long const *src, size_t len);
+unsigned long long *zlludup(unsigned long long const *src, size_t len);
+long *zldup(long const *src, size_t len);
+unsigned long *zludup(unsigned long const *src, size_t len);
+int *zidup(int const *src, size_t len);
+unsigned int *ziudup(unsigned int const *src, size_t len);
+
 #endif /* ZMALLOC_H_INCLUDED */
