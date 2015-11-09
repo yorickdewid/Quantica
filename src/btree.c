@@ -16,7 +16,7 @@ struct root_super {
 	long int freelist;
 };
 
-static void get_node(index_t *index, long int offset, node_t *pnode) {
+static void get_node(btree_t *index, long int offset, node_t *pnode) {
 	if (offset == index->root) {
 		*pnode = index->rootnode;
 		return;
@@ -29,7 +29,7 @@ static void get_node(index_t *index, long int offset, node_t *pnode) {
 		lprint("[erro] Failed to read disk\n");
 }
 
-static void flush_node(index_t *index, long int offset, node_t *pnode) {
+static void flush_node(btree_t *index, long int offset, node_t *pnode) {
 	if (offset == index->root)
 		index->rootnode = *pnode;
 	if (fseek(index->fp, offset, SEEK_SET)) {
@@ -40,7 +40,7 @@ static void flush_node(index_t *index, long int offset, node_t *pnode) {
 		lprint("[erro] Failed to write disk\n");
 }
 
-static long int alloc_node(index_t *index) {
+static long int alloc_node(btree_t *index) {
 	long int offset;
 	node_t node;
 	memset(&node, 0, sizeof(node_t));
@@ -61,7 +61,7 @@ static long int alloc_node(index_t *index) {
 	return offset;
 }
 
-static void free_node(index_t *index, long int offset) {
+static void free_node(btree_t *index, long int offset) {
 	node_t node;
 	memset(&node, 0, sizeof(node_t));
 
@@ -71,7 +71,7 @@ static void free_node(index_t *index, long int offset) {
 	flush_node(index, offset, &node);
 }
 
-static void storage_read(index_t *index) {
+static void storage_read(btree_t *index) {
 	struct root_super super;
 	memset(&super, 0, sizeof(struct root_super));
 
@@ -86,7 +86,7 @@ static void storage_read(index_t *index) {
 	index->freelist = super.freelist;
 }
 
-static void storage_write(index_t *index) {
+static void storage_write(btree_t *index) {
 	struct root_super super;
 	memset(&super, 0, sizeof(struct root_super));
 
@@ -102,8 +102,8 @@ static void storage_write(index_t *index) {
 		flush_node(index, super.root, &index->rootnode);
 }
 
-void btree_init(index_t *index, char *name) {
-	memset(index, 0, sizeof(index_t));
+void btree_init(btree_t *index, char *name) {
+	memset(index, 0, sizeof(btree_t));
 	index->root = -1;
 	index->freelist = -1;
 	index->fp = fopen(name, "r+b");
@@ -117,7 +117,7 @@ void btree_init(index_t *index, char *name) {
 	}
 }
 
-void btree_close(index_t *index) {
+void btree_close(btree_t *index) {
 	storage_write(index);
 	if (index->fp)
 		fclose(index->fp);
@@ -143,7 +143,7 @@ static int get(char *key, item_t *kv, int n) {
 	return right;
 }
 
-status_t index_get(index_t *index, char *key) {
+status_t index_get(btree_t *index, char *key) {
 	int i, n;
 	item_t *kv = NULL;
 	node_t node;
@@ -166,7 +166,7 @@ status_t index_get(index_t *index, char *key) {
 	Insert x in B-tree with root offset.  If not completely successful, the
 	integer *y and the pointer *u remain to be inserted.
 */
-static status_t insert(index_t *index, char *key, size_t key_size, long long int valset, long int offset, char **keynew, size_t *key_sizenew, long long int *valsetnew, long int *offsetnew) {
+static status_t insert(btree_t *index, char *key, size_t key_size, long long int valset, long int offset, char **keynew, size_t *key_sizenew, long long int *valsetnew, long int *offsetnew) {
 	long int offsetnew_r, *p;
 	int i, j, *count;
 	char *keynew_r = NULL;
@@ -268,7 +268,7 @@ static status_t insert(index_t *index, char *key, size_t key_size, long long int
 	return INSERTNOTCOMPLETE;
 }
 
-status_t btree_insert(index_t *index, char *key, size_t key_size, long long int valset) {
+status_t btree_insert(btree_t *index, char *key, size_t key_size, long long int valset) {
 	long int offsetnew, offset;
 	char *keynew = NULL;
 	size_t key_sizenew;
@@ -291,7 +291,7 @@ status_t btree_insert(index_t *index, char *key, size_t key_size, long long int 
 	return code;
 }
 
-static status_t delete(index_t *index, char *key, long int t) {
+static status_t delete(btree_t *index, char *key, long int t) {
 	int i, j, *n, *nleft, *nright, borrowleft = 0, nq;
 	status_t code;
 	item_t *kv;
@@ -444,7 +444,7 @@ static status_t delete(index_t *index, char *key, long int t) {
 	return *n >= (t == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
-status_t btree_delete(index_t *index, char *key) {
+status_t btree_delete(btree_t *index, char *key) {
 	long int newroot;
 
 	status_t code = delete(index, key, index->root);
@@ -460,7 +460,7 @@ status_t btree_delete(index_t *index, char *key) {
 }
 
 #if 1
-static void print_traversal(index_t *index, long int offset) {
+static void print_traversal(btree_t *index, long int offset) {
 	static int position = 0;
 	int i, n;
 	item_t *kv = NULL;
@@ -481,7 +481,7 @@ static void print_traversal(index_t *index, long int offset) {
 	}
 }
 
-void btree_print(index_t *index) {
+void btree_print(btree_t *index) {
 	print_traversal(index, index->root);
 }
 #endif

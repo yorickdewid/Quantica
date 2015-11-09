@@ -71,6 +71,6 @@ int db_list_update(char *quid, const char *name);
 char *db_list_all();
 void *db_table_get(char *name, size_t *len, bool descent);
 
-int db_create_index(char *quid, const char *idxkey);
+int db_create_index(char *group_quid, char *index_quid, int *items, const char *idxkey);
 
 #endif // CORE_H_INCLUDED

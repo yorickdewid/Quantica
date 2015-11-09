@@ -31,14 +31,14 @@ typedef struct {
 	long int freelist;
 	node_t rootnode;
 	FILE *fp;
-} index_t;
+} btree_t;
 
-status_t btree_insert(index_t *index, char *key, size_t key_size, long long int offset);
-status_t btree_get(index_t *index, char *key);
-status_t btree_delete(index_t *index, char *key);
+status_t btree_insert(btree_t *index, char *key, size_t key_size, long long int offset);
+status_t btree_get(btree_t *index, char *key);
+status_t btree_delete(btree_t *index, char *key);
 void btree_print();
-void btree_init(index_t *index, char *name);
-void btree_close(index_t *index);
+void btree_init(btree_t *index, char *name);
+void btree_close(btree_t *index);
 
 #endif // INDEX_H_INCLUDED
 

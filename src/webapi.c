@@ -613,7 +613,9 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 		char *param_element = (char *)hashtable_get(req->data, "element");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_element && param_quid) {
-			if (db_create_index(param_quid, param_element) < 0) {
+			char squid[QUID_LENGTH + 1];
+			int items = 0;
+			if (db_create_index(param_quid, squid, &items, param_element) < 0) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 				return HTTP_OK;
 			}
@@ -630,7 +632,7 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 					return HTTP_OK;
 				}
 			}*/
-			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}");
+			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}", squid, items);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects element to be given\",\"status\":\"EMPTY_KEY\",\"success\":false}", RESPONSE_SIZE);

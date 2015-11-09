@@ -516,13 +516,15 @@ void *db_table_get(char *name, size_t *len, bool descent) {
 	return buf;
 }
 
-int db_create_index(char *quid, const char *idxkey) {
+int db_create_index(char *group_quid, char *index_quid, int *items, const char *idxkey) {
 	if (!ready)
 		return -1;
 
 	quid_t key;
-	strtoquid(quid, &key);
+	index_result_t nrs;
+	strtoquid(group_quid, &key);
 	size_t _len;
+	memset(&nrs, 0, sizeof(index_result_t));
 
 	void *data = engine_get(&btx, &key, &_len);
 	if (!data)
@@ -534,10 +536,17 @@ int db_create_index(char *quid, const char *idxkey) {
 
 	schema_t group = slay_get_schema(data);
 
-	index_create_btree(idxkey, dataobj, group);
+	index_create_btree(idxkey, dataobj, group, &nrs);
 
 	marshall_free(dataobj);
 	zfree(data);
+
+	quidtostr(index_quid, &nrs.index);
+	*items = nrs.index_elements;
+
+	// TODO insert in db
+	// Set metadata to index
+	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
 
 	return 0;
 }
