@@ -8,12 +8,16 @@
 #include <log.h>
 #include <error.h>
 #include "btree.h"
+#include "vector.h"
 #include "zmalloc.h"
+
+#define DEFAULT_RESULT_SIZE		10
 
 //TODO needs bitflip
 struct root_super {
 	long int root;
 	long int freelist;
+	bool unique_keys;
 };
 
 static void get_node(btree_t *index, long int offset, node_t *pnode) {
@@ -84,6 +88,7 @@ static void storage_read(btree_t *index) {
 	get_node(index, super.root, &index->rootnode);
 	index->root = super.root;
 	index->freelist = super.freelist;
+	index->unique_keys = super.unique_keys;
 }
 
 static void storage_write(btree_t *index) {
@@ -92,6 +97,7 @@ static void storage_write(btree_t *index) {
 
 	super.root = index->root;
 	super.freelist = index->freelist;
+	super.unique_keys = index->unique_keys;
 	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to write disk\n");
 		return;
@@ -102,10 +108,15 @@ static void storage_write(btree_t *index) {
 		flush_node(index, super.root, &index->rootnode);
 }
 
+void btree_set_unique(btree_t *index, bool unique) {
+	index->unique_keys = unique;
+}
+
 void btree_init(btree_t *index, char *name) {
 	memset(index, 0, sizeof(btree_t));
 	index->root = -1;
 	index->freelist = -1;
+	index->unique_keys = TRUE;
 	index->fp = fopen(name, "r+b");
 	if (index->fp == NULL) {
 		// TODO set RW flag
@@ -143,22 +154,30 @@ static int get(char *key, item_t *kv, int n) {
 	return right;
 }
 
-status_t index_get(btree_t *index, char *key) {
+status_t btree_get(btree_t *index, char *key, vector_t **result) {
 	int i, n;
 	item_t *kv = NULL;
 	node_t node;
 	long int offset = index->root;
+
+	*result = alloc_vector(DEFAULT_RESULT_SIZE);
 
 	while (offset != -1) {
 		get_node(index, offset, &node);
 		kv = node.items;
 		n = node.cnt;
 		i = get(key, kv, n);
-		if (i < n && !strcmp(key, kv[i].key)) {
-			return SUCCESS;
+		for (int x = i; x < n; ++x) {
+			if (!strcmp(key, kv[x].key)) {
+				vector_append(*result, zlludup(&kv[x].valset, 1));
+			}
+
 		}
+		if ((*result)->size > 0)
+			return SUCCESS;
 		offset = node.ptr[i];
 	}
+
 	return NOTFOUND;
 }
 
@@ -193,11 +212,11 @@ static status_t insert(btree_t *index, char *key, size_t key_size, long long int
 
 	/*  Select pointer p[i] and try to insert key in the subtree of whichp[i] is the root:  */
 	i = get(key, kv, *count);
-	if (i < *count && !strcmp(key, kv[i].key))
+	if (i < *count && !strcmp(key, kv[i].key) && index->unique_keys) {
 		return DUPLICATEKEY;
+	}
 	code = insert(index, key, key_size, valset, p[i], &keynew_r, &keynew_r_size, &valsetnew_r, &offsetnew_r);
 	if (code != INSERTNOTCOMPLETE) {
-		zfree(keynew_r);
 		return code;
 	}
 	/* Insertion in subtree did not completely succeed; try to insert keynew_r and offsetnew_r in the current node:  */
@@ -232,6 +251,7 @@ static status_t insert(btree_t *index, char *key, size_t key_size, long long int
 		s_final = keynew_r_size;
 		p_final = offsetnew_r;
 		v_final = valsetnew_r;
+		keynew_r = NULL;
 	} else {
 		k_final = zstrdup(kv[INDEX_SIZE - 1].key);
 		s_final = kv[INDEX_SIZE - 1].key_size;
@@ -262,7 +282,8 @@ static status_t insert(btree_t *index, char *key, size_t key_size, long long int
 	newnode.items[INDEX_MSIZE - 1].valset = v_final;
 	newnode.ptr[INDEX_MSIZE] = p_final;
 	zfree(k_final);
-	zfree(keynew_r);
+	if (keynew_r)
+		zfree(keynew_r);
 	flush_node(index, offset, &node);
 	flush_node(index, *offsetnew, &newnode);
 	return INSERTNOTCOMPLETE;
@@ -291,7 +312,7 @@ status_t btree_insert(btree_t *index, char *key, size_t key_size, long long int 
 	return code;
 }
 
-static status_t delete(btree_t *index, char *key, long int t) {
+static status_t delete(btree_t *index, char *key, long int offset) {
 	int i, j, *n, *nleft, *nright, borrowleft = 0, nq;
 	status_t code;
 	item_t *kv;
@@ -305,15 +326,15 @@ static status_t delete(btree_t *index, char *key, long int t) {
 	memset(&nod1, 0, sizeof(node_t));
 	memset(&nod2, 0, sizeof(node_t));
 
-	if (t == -1)
+	if (offset == -1)
 		return NOTFOUND;
-	get_node(index, t, &nod);
+	get_node(index, offset, &nod);
 	n = &nod.cnt;
 	kv = nod.items;
 	p = nod.ptr;
 	i = get(key, kv, *n);
 
-	/* *t is a leaf */
+	/* *offset is a leaf */
 	if (p[0] == -1) {
 		if (i == *n || strcmp(key, kv[i].key) < 0)
 			return NOTFOUND;
@@ -323,11 +344,11 @@ static status_t delete(btree_t *index, char *key, long int t) {
 			p[j] = p[j + 1];
 		}
 		--*n;
-		flush_node(index, t, &nod);
-		return *n >= (t == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+		flush_node(index, offset, &nod);
+		return *n >= (offset == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 	}
 
-	/*  t is an interior node (not a leaf): */
+	/*  offset is an interior node (not a leaf): */
 	item = kv + i;
 	left = p[i];
 	get_node(index, left, &nod1);
@@ -350,7 +371,7 @@ static status_t delete(btree_t *index, char *key, long int t) {
 		addr = nod1.items + nq - 1;
 		*item = *addr;
 		strlcpy(addr->key, key, key_size + 1);
-		flush_node(index, t, &nod);
+		flush_node(index, offset, &nod);
 		flush_node(index, q, &nod1);
 	}
 
@@ -399,7 +420,7 @@ static status_t delete(btree_t *index, char *key, long int t) {
 		rptr[0] = lptr[*nleft];
 		*item = lkey[*nleft - 1];
 		if (--*nleft >= INDEX_MSIZE) {
-			flush_node(index, t, &nod);
+			flush_node(index, offset, &nod);
 			flush_node(index, left, &nod1);
 			flush_node(index, right, &nod2);
 			return SUCCESS;
@@ -417,7 +438,7 @@ static status_t delete(btree_t *index, char *key, long int t) {
 				rkey[j] = rkey[j + 1];
 			}
 			rptr[*nright] = rptr[*nright + 1];
-			flush_node(index, t, &nod);
+			flush_node(index, offset, &nod);
 			flush_node(index, left, &nod1);
 			flush_node(index, right, &nod2);
 			return SUCCESS;
@@ -438,10 +459,10 @@ static status_t delete(btree_t *index, char *key, long int t) {
 		p[j] = p[j + 1];
 	}
 	--*n;
-	flush_node(index, t, &nod);
+	flush_node(index, offset, &nod);
 	flush_node(index, left, &nod1);
 
-	return *n >= (t == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
+	return *n >= (offset == index->root ? 1 : INDEX_MSIZE) ? SUCCESS : UNDERFLOW;
 }
 
 status_t btree_delete(btree_t *index, char *key) {
