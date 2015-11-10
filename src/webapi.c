@@ -318,7 +318,7 @@ http_status_t api_hmac_sha512(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_sqlquery(char **response, http_request_t *req) {
+http_status_t api_sql_query(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_data = (char *)hashtable_get(req->data, "query");
 		if (param_data) {
@@ -608,7 +608,7 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_db_index(char **response, http_request_t *req) {
+http_status_t api_index_create(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_element = (char *)hashtable_get(req->data, "element");
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
@@ -642,7 +642,7 @@ http_status_t api_db_index(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_rec_meta(char **response, http_request_t *req) {
+http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		struct record_status status;
@@ -710,23 +710,23 @@ http_status_t api_rec_meta(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_db_listget(char **response, http_request_t *req) {
+http_status_t api_alias_name(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 			char *param_name = (char *)hashtable_get(req->data, "name");
 			if (param_name && param_quid) {
-				if (db_list_update(param_quid, param_name) < 0) {
+				if (db_alias_update(param_quid, param_name) < 0) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
 					return HTTP_OK;
 				}
-				snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Table renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
+				snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
 				return HTTP_OK;
 			}
 			strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
 			return HTTP_OK;
 		} else {
-			char *name = db_list_get(param_quid);
+			char *name = db_alias_get_name(param_quid);
 			if (!name) {
 				if (IFERROR(ETBL_NOTFOUND)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
@@ -745,7 +745,7 @@ http_status_t api_db_listget(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_table_get(char **response, http_request_t *req) {
+http_status_t api_alias_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 	bool resolve = TRUE;
 	if (req->querystring) {
@@ -754,7 +754,7 @@ http_status_t api_table_get(char **response, http_request_t *req) {
 			resolve = FALSE;
 		}
 	}
-	char *data = db_table_get(req->uri, &len, resolve);
+	char *data = db_alias_get_data(req->uri, &len, resolve);
 	if (!data) {
 		if (IFERROR(EREC_NOTFOUND)) {
 			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
@@ -777,11 +777,11 @@ http_status_t api_table_get(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_listall(char **response, http_request_t *req) {
+http_status_t api_alias_all(char **response, http_request_t *req) {
 	unused(req);
 	size_t len = 0, resplen;
 
-	char *table = db_list_all();
+	char *table = db_alias_all();
 	if (!table) {
 		snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Server not ready\",\"status\":\"NOT_READY\",\"success\":false}", ENOT_READY);
 		return HTTP_OK;
@@ -793,11 +793,14 @@ http_status_t api_listall(char **response, http_request_t *req) {
 		resplen = RESPONSE_SIZE + len;
 		*response = zrealloc(*response, resplen);
 	}
-	snprintf(*response, resplen, "{\"table\":%s,\"description\":\"Listening tables\",\"status\":\"COMMAND_OK\",\"success\":true}", table);
+	snprintf(*response, resplen, "{\"alias\":%s,\"description\":\"Listening aliasses\",\"status\":\"COMMAND_OK\",\"success\":true}", table);
 	zfree(table);
 	return HTTP_OK;
 }
 
+/*
+ * Webrequest router
+ */
 static const struct webroute route[] = {
 	/* URL				callback			QUID*/
 	{"/",				api_root,			FALSE},
@@ -805,37 +808,49 @@ static const struct webroute route[] = {
 	{"/help",			api_help,			FALSE},
 	{"/api",			api_help,			FALSE},
 #endif
+
+	/* Daemon related operations				*/
+	{"/sync",			api_sync,			FALSE},
+	{"/vacuum",			api_vacuum,			FALSE},
 	{"/instance",		api_instance,		FALSE},
+	{"/shutdown",		api_shutdown,		FALSE},
+	{"/vars",			api_variables,		FALSE},
+
+	/* Encryption and encoding operations		*/
 	{"/sha1",			api_sha1,			FALSE},
 	{"/md5",			api_md5,			FALSE},
 	{"/sha256",			api_sha256,			FALSE},
 	{"/sha512",			api_sha512,			FALSE},
-	{"/hmac/sha256",	api_hmac_sha256,	FALSE},
-	{"/hmac/sha512",	api_hmac_sha512,	FALSE},
-	{"/sql",			api_sqlquery,		FALSE},
-	{"/vacuum",			api_vacuum,			FALSE},
-	{"/sync",			api_sync,			FALSE},
-	{"/vars",			api_variables,		FALSE},
 	{"/quid",			api_gen_quid,		FALSE},
-	{"/shutdown",		api_shutdown,		FALSE},
 	{"/base64/enc",		api_base64_enc,		FALSE},
 	{"/base64/dec",		api_base64_dec,		FALSE},
+	{"/hmac/sha256",	api_hmac_sha256,	FALSE},
+	{"/hmac/sha512",	api_hmac_sha512,	FALSE},
+
+	/* SQL interface							*/
+	{"/sql",			api_sql_query,		FALSE},
+
+	/* Database operations						*/
 	{"/put",			api_db_put,			FALSE},
 	{"/store",			api_db_put,			FALSE},
 	{"/insert",			api_db_put,			FALSE},
-	{"/table/*",		api_table_get,		FALSE},
-	{"/tablelist",		api_listall,		FALSE},
 	{"/get",			api_db_get,			TRUE},
 	{"/retrieve",		api_db_get,			TRUE},
-	{"/type",			api_db_get_type,	TRUE},
-	{"/schema",			api_db_get_schema,	TRUE},
+	{"/update",			api_db_update,		TRUE},
 	{"/delete",			api_db_delete,		TRUE},
 	{"/remove",			api_db_delete,		TRUE},
 	{"/purge",			api_db_purge,		TRUE},
-	{"/update",			api_db_update,		TRUE},
-	{"/index",			api_db_index,		TRUE},
-	{"/meta",			api_rec_meta,		TRUE},
-	{"/name",			api_db_listget,		TRUE},
+	{"/meta",			api_db_get_meta,	TRUE},
+	{"/type",			api_db_get_type,	TRUE},
+	{"/schema",			api_db_get_schema,	TRUE},
+
+	/* Alias operations							*/
+	{"/alias/*",		api_alias_get,		FALSE},
+	{"/alias",			api_alias_all,		FALSE},
+	{"/alias",			api_alias_name,		TRUE},
+
+	/* Database index operations				*/
+	{"/index",			api_index_create,	TRUE},
 };
 
 void handle_request(int sd, fd_set *set) {

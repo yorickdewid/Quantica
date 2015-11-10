@@ -462,7 +462,7 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	return 0;
 }
 
-char *db_list_get(char *quid) {
+char *db_alias_get_name(char *quid) {
 	if (!ready)
 		return NULL;
 	quid_t key;
@@ -470,7 +470,7 @@ char *db_list_get(char *quid) {
 	return engine_list_get_val(&btx, &key);
 }
 
-int db_list_update(char *quid, const char *name) {
+int db_alias_update(char *quid, const char *name) {
 	if (!ready)
 		return -1;
 	quid_t key;
@@ -478,7 +478,7 @@ int db_list_update(char *quid, const char *name) {
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
 
-char *db_list_all() {
+char *db_alias_all() {
 	if (!ready)
 		return NULL;
 
@@ -492,7 +492,7 @@ char *db_list_all() {
 	return buf;
 }
 
-void *db_table_get(char *name, size_t *len, bool descent) {
+void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 

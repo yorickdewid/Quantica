@@ -422,11 +422,11 @@ sqlresult_t *parse(qstack_t *stack, size_t *len) {
 		if (rs.data)
 			return &rs;
 select_alias:
-		rs.data = db_table_get(tok->string, len, TRUE);
+		rs.data = db_alias_get_data(tok->string, len, TRUE);
 		if (rs.data)
 			return &rs;
 select_tablelist:
-		rs.data = db_list_all();
+		rs.data = db_alias_all();
 		if (rs.data)
 			return &rs;
 	} else if (tok->token == T_INSERT) {

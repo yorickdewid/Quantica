@@ -66,10 +66,10 @@ int db_vacuum();
 int db_record_get_meta(char *quid, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
 
-char *db_list_get(char *quid);
-int db_list_update(char *quid, const char *name);
-char *db_list_all();
-void *db_table_get(char *name, size_t *len, bool descent);
+char *db_alias_get_name(char *quid);
+int db_alias_update(char *quid, const char *name);
+char *db_alias_all();
+void *db_alias_get_data(char *name, size_t *len, bool descent);
 
 int db_create_index(char *group_quid, char *index_quid, int *items, const char *idxkey);
 

@@ -9,6 +9,9 @@
 #include "btree.h"
 #include "index.h"
 
+/*
+ * Create btree index
+ */
 int index_create_btree(const char *element, marshall_t *marshall, schema_t schema, index_result_t *result) {
 	char squid[QUID_LENGTH + 1];
 	btree_t index;
@@ -34,7 +37,6 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 			marshall_free(rowobj);
 		}
 
-		btree_print(&index);
 		btree_close(&index);
 	} else if (schema == SCHEMA_SET) {
 		if (!strisdigit((char *)element)) {
@@ -43,6 +45,7 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 		}
 
 		btree_init(&index, squid);
+		btree_set_unique(&index, FALSE);
 
 		long int array_index = atol(element);
 
@@ -50,10 +53,7 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 			marshall_t *rowobj = raw_db_get(marshall->child[i]->data, NULL);
 			uint64_t offset = db_get_offset(marshall->child[i]->data);
 
-			if (array_index > (rowobj->size - 1))
-				//TODO note skipped keys
-				puts("Warn: element out of array bounds");
-			else {
+			if (array_index <= (rowobj->size - 1)) {
 				size_t value_len;
 				char *value = marshall_strdata(rowobj->child[array_index], &value_len);
 				btree_insert(&index, value, value_len, offset);
@@ -62,7 +62,6 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 			marshall_free(rowobj);
 		}
 
-		btree_print(&index);
 		btree_close(&index);
 	} else {
 		//TODO throw err
