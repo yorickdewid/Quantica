@@ -38,7 +38,7 @@
 
 int main(int argc, const char *argv[]) {
 	char buf[256];
-	char tmpfile[1024];
+	char _tmpfile[1024];
 	FILE *fd = NULL;
 	FILE *fd2 = NULL;
 	int line_found = 0;
@@ -54,10 +54,10 @@ int main(int argc, const char *argv[]) {
 	}
 
 	// create temp file
-	strcpy(tmpfile, argv[1]);
-	strcat(tmpfile, ".tmp");
+	strcpy(_tmpfile, argv[1]);
+	strcat(_tmpfile, ".tmp");
 
-	if ((fd2 = fopen(tmpfile, "w+")) == NULL) {
+	if ((fd2 = fopen(_tmpfile, "w+")) == NULL) {
 		perror("Cannot open file\n");
 		return 1;
 	}
@@ -104,7 +104,7 @@ replace:
 
 	// switch temp for original
 	unlink(argv[1]);
-	rename(tmpfile, argv[1]);
+	rename(_tmpfile, argv[1]);
 
 	return 0;
 }

@@ -27,7 +27,7 @@ static void free_index_chunk(struct engine *e, uint64_t offset);
 static void free_dbchunk(struct engine *e, uint64_t offset);
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid);
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid);
-static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid);
+static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata);
 static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, const void *data, size_t len);
 static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
@@ -612,6 +612,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	uint64_t left_child = from_be64(table->items[i].child);
 	uint64_t right_child = 0; /* after insertion */
 	uint64_t ret = 0;
+	bool nodata = 0;
 	if (left_child != 0) {
 		/* recursion */
 		ret = insert_table(e, left_child, quid, data, len);
@@ -629,7 +630,11 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 		/* flush just in case changes happened */
 		flush_table(e, child, left_child);
 	} else {
-		ret = offset = insert_data(e, data, len);
+		if (data && len > 0) {
+			ret = offset = insert_data(e, data, len);
+		} else {
+			nodata = 1;
+		}
 	}
 
 	table->size++;
@@ -637,6 +642,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
 	memset(&table->items[i].meta, 0, sizeof(struct metadata));
+	table->items[i].meta.nodata = nodata;
 	table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
@@ -703,6 +709,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	uint64_t offset = 0;
 	uint64_t ret = 0;
 	uint64_t right_child = 0;
+	bool nodata = 0;
 	if (*table_offset != 0) {
 		ret = insert_table(e, *table_offset, quid, data, len);
 
@@ -716,7 +723,11 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 		right_child = split_table(e, table, quid, &offset);
 		flush_table(e, table, *table_offset);
 	} else {
-		ret = offset = insert_data(e, data, len);
+		if (data && len > 0) {
+			ret = offset = insert_data(e, data, len);
+		} else {
+			nodata = 1;
+		}
 	}
 
 	/* create new top level table */
@@ -724,6 +735,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->size = 1;
 	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);
+	new_table->items[0].meta.nodata = nodata;
 	new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
@@ -735,7 +747,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	return ret;
 }
 
-int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len) {
+int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t len) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
@@ -751,11 +763,27 @@ int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len) 
 	return 0;
 }
 
+int engine_insert(struct engine *e, quid_t *quid) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	insert_toplevel(e, &e->top, quid, NULL, 0);
+	flush_super(e, TRUE);
+	if (ISERROR())
+		return -1;
+
+	e->stats.keys++;
+	return 0;
+}
+
 /*
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid) {
+static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size;
@@ -771,6 +799,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 					return 0;
 				}
 				uint64_t ret = from_be64(table->items[i].offset);
+				*nodata = table->items[i].meta.nodata;
 				put_table(e, table, table_offset);
 				return ret;
 			}
@@ -794,8 +823,12 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return NULL;
 	}
-	uint64_t offset = lookup_key(e, e->top, quid);
+	bool nodata = 0;
+	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
 	if (ISERROR())
+		return NULL;
+
+	if (nodata)
 		return NULL;
 
 	struct blob_info info;
@@ -834,7 +867,8 @@ uint64_t engine_get_offset(struct engine *e, const quid_t *quid) {
 		ERROR(EDB_LOCKED, EL_WARN);
 		return 0;
 	}
-	uint64_t offset = lookup_key(e, e->top, quid);
+	bool nodata = 0;
+	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
 	if (ISERROR())
 		return 0;
 
@@ -953,13 +987,13 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 		return -1;
 	}
 
-	struct metadata nmd;
-	get_meta(e, e->top, quid, &nmd);
+	struct metadata meta;
+	get_meta(e, e->top, quid, &meta);
 	if (ISERROR())
 		return -1;
 
-	nmd.lifecycle = MD_LIFECYCLE_RECYCLE;
-	set_meta(e, e->top, quid, &nmd);
+	meta.lifecycle = MD_LIFECYCLE_RECYCLE;
+	set_meta(e, e->top, quid, &meta);
 	if (ISERROR())
 		return -1;
 
@@ -1080,7 +1114,7 @@ int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 	return 0;
 }
 
-int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len) {
+int engine_update_data(struct engine *e, const quid_t *quid, const void *data, size_t len) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
@@ -1398,8 +1432,8 @@ char *get_str_type(enum key_type key_type) {
 		case MD_TYPE_RAW:
 			strlcpy(buf, "RAW", STATUS_TYPE_SIZE);
 			break;
-		case MD_TYPE_POINTER:
-			strlcpy(buf, "POINTER", STATUS_TYPE_SIZE);
+		case MD_TYPE_INDEX:
+			strlcpy(buf, "INDEX", STATUS_TYPE_SIZE);
 			break;
 		case MD_TYPE_RECORD:
 		default:
@@ -1429,8 +1463,8 @@ enum key_type get_meta_type(char *key_type) {
 		return MD_TYPE_GROUP;
 	else if (!strcmp(key_type, "RAW"))
 		return MD_TYPE_RAW;
-	else if (!strcmp(key_type, "POINTER"))
-		return MD_TYPE_POINTER;
+	else if (!strcmp(key_type, "INDEX"))
+		return MD_TYPE_INDEX;
 	else
 		return MD_TYPE_RECORD;
 }

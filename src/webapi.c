@@ -643,9 +643,6 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 					return HTTP_OK;
 				}
 			}
-			char *param_error = (char *)hashtable_get(req->data, "error");
-			if (param_error)
-				status.error = atoi(param_error);
 			char *param_exec = (char *)hashtable_get(req->data, "executable");
 			if (param_exec)
 				status.exec = atoi(param_exec);
@@ -661,9 +658,6 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 			char *param_lock = (char *)hashtable_get(req->data, "system_lock");
 			if (param_lock)
 				status.syslock = atoi(param_lock);
-			char *param_type = (char *)hashtable_get(req->data, "type");
-			if (param_type)
-				strlcpy(status.type, param_type, STATUS_TYPE_SIZE);
 			if (db_record_set_meta(param_quid, &status) < 0) {
 				if (IFERROR(EREC_LOCKED)) {
 					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
@@ -687,7 +681,7 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 			}
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"metadata\":{\"error\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\"},\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":true}", str_bool(status.error), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
+		snprintf(*response, RESPONSE_SIZE, "{\"metadata\":{\"nodata\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\"},\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":true}", str_bool(status.nodata), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
 		return HTTP_OK;
 	}
 	strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);

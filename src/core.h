@@ -16,7 +16,7 @@ struct record_status {
 	uint8_t syslock;
 	uint8_t exec;
 	uint8_t freeze;
-	uint8_t error;
+	uint8_t nodata;
 	char type[STATUS_TYPE_SIZE];
 };
 

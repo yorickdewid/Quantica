@@ -34,7 +34,7 @@ static void test_engine_crud(){
 
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 	engine_close(&e);
 
@@ -68,7 +68,7 @@ static void test_engine_meta(){
 
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 
 	const struct metadata md = {
@@ -77,7 +77,7 @@ static void test_engine_meta(){
 		.syslock = 0,
 		.exec = 1,
 		.freeze = 1,
-		.error = 0,
+		.nodata = 0,
 		.type = MD_TYPE_RAW,
 	};
 	int r2 = engine_setmeta(&e, &quid, &md);

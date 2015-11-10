@@ -91,7 +91,7 @@ static void db_write_test() {
 		quid_create(&key);
 		quidtostr(squid, &key);
 		memcpy(&quidr[i], &key, sizeof(quid_t));
-		if (engine_insert(&e, &key, val, v_len)<0)
+		if (engine_insert_data(&e, &key, val, v_len)<0)
 			FATAL("engine_insert");
 
 		if(!(i%10000))

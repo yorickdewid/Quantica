@@ -60,6 +60,7 @@ void start_core() {
 void detach_core() {
 	if (!ready)
 		return;
+
 	/* CLose all databases */
 	engine_close(&btx);
 	base_close(&control);
@@ -206,10 +207,11 @@ void filesync() {
 int raw_db_put(char *quid, void *dataslay, size_t len) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	quid_create(&key);
 
-	if (engine_insert(&btx, &key, dataslay, len) < 0) {
+	if (engine_insert_data(&btx, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		return -1;
 	}
@@ -222,6 +224,7 @@ int raw_db_put(char *quid, void *dataslay, size_t len) {
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	size_t len = 0;
 	quid_create(&key);
@@ -234,7 +237,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 	void *dataslay = slay_put(dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_insert(&btx, &key, dataslay, len) < 0) {
+	if (engine_insert_data(&btx, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
@@ -278,16 +281,27 @@ void *db_get(char *quid, size_t *len, bool descent) {
 		return NULL;
 
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
 	size_t _len;
 
 	void *data = engine_get(&btx, &key, &_len);
-	if (!data)
+	if (!data) {
+		if (engine_getmeta(&btx, &key, &meta) < 0)
+			return NULL;
+
+		if (meta.type == MD_TYPE_INDEX) {
+			//TODO read index
+		}
+
 		return NULL;
+	}
 
 	marshall_t *dataobj = slay_get(data, NULL, descent);
-	if (!dataobj)
+	if (!dataobj) {
+		zfree(data);
 		return NULL;
+	}
 
 	char *buf = marshall_serialize(dataobj);
 	*len = strlen(buf);
@@ -300,6 +314,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	strtoquid(quid, &key);
 
@@ -316,6 +331,7 @@ char *db_get_type(char *quid) {
 char *db_get_schema(char *quid) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	strtoquid(quid, &key);
 
@@ -342,10 +358,11 @@ uint64_t db_get_offset(char *quid) {
 int raw_db_update(char *quid, void *slay, size_t len) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	strtoquid(quid, &key);
 
-	if (engine_update(&btx, &key, slay, len) < 0) {
+	if (engine_update_data(&btx, &key, slay, len) < 0) {
 		zfree(slay);
 		return -1;
 	}
@@ -356,6 +373,7 @@ int raw_db_update(char *quid, void *slay, size_t len) {
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	size_t len = 0;
 	slay_result_t nrs;
@@ -368,7 +386,7 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 
 	void *dataslay = slay_put(dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update(&btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
@@ -381,6 +399,7 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 int db_delete(char *quid) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -396,6 +415,7 @@ int db_delete(char *quid) {
 int db_purge(char *quid) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -411,6 +431,7 @@ int db_purge(char *quid) {
 int db_vacuum() {
 	if (!ready)
 		return -1;
+
 	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
 	quid_create(&key);
@@ -427,15 +448,17 @@ int db_vacuum() {
 int db_record_get_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
 	if (engine_getmeta(&btx, &key, &meta) < 0)
 		return -1;
+
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
 	status->freeze = meta.freeze;
-	status->error = meta.error;
+	status->nodata = meta.nodata;
 	status->importance = meta.importance;
 	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), STATUS_LIFECYCLE_SIZE);
 	strlcpy(status->type, get_str_type(meta.type), STATUS_TYPE_SIZE);
@@ -445,6 +468,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 int db_record_set_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -453,18 +477,18 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	meta.syslock = status->syslock;
 	meta.exec = status->exec;
 	meta.freeze = status->freeze;
-	meta.error = status->error;
 	meta.importance = status->importance;
 	meta.lifecycle = get_meta_lifecycle(status->lifecycle);
-	meta.type = get_meta_type(status->type);
 	if (engine_setmeta(&btx, &key, &meta) < 0)
 		return -1;
+
 	return 0;
 }
 
 char *db_alias_get_name(char *quid) {
 	if (!ready)
 		return NULL;
+
 	quid_t key;
 	strtoquid(quid, &key);
 	return engine_list_get_val(&btx, &key);
@@ -473,6 +497,7 @@ char *db_alias_get_name(char *quid) {
 int db_alias_update(char *quid, const char *name) {
 	if (!ready)
 		return -1;
+
 	quid_t key;
 	strtoquid(quid, &key);
 	return engine_list_update(&btx, &key, name, strlen(name));;
@@ -535,7 +560,6 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 		return -1;
 
 	schema_t group = slay_get_schema(data);
-
 	index_create_btree(idxkey, dataobj, group, &nrs);
 
 	marshall_free(dataobj);
@@ -544,8 +568,15 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	quidtostr(index_quid, &nrs.index);
 	*items = nrs.index_elements;
 
-	// TODO insert in db
-	// Set metadata to index
+	engine_insert(&btx, &nrs.index);
+
+	struct metadata meta;
+	memset(&meta, 0, sizeof(struct metadata));
+	meta.nodata = 1;
+	meta.type = MD_TYPE_INDEX;
+	if (engine_setmeta(&btx, &nrs.index, &meta) < 0)
+		return -1;
+
 	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
 
 	return 0;

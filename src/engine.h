@@ -43,17 +43,17 @@ enum key_importance {
 enum key_type {
 	MD_TYPE_RECORD = 0,		/* Key maps to record */
 	MD_TYPE_GROUP,			/* Key represents a table or set */
-	MD_TYPE_POINTER,		/* Key points to key */
-	MD_TYPE_RAW				/* Key points to key */
+	MD_TYPE_INDEX,			/* Key points to index */
+	MD_TYPE_RAW				/* Key for internal strucuture */
 };
 
 struct metadata {
 	unsigned int lifecycle	: 5;	/* Record lifecycle */
 	unsigned int importance	: 4;	/* Relative importance */
 	unsigned int syslock	: 1;	/* System lock */
-	unsigned int exec		: 1;	/* Is executable */
+	unsigned int exec		: 1;	/* Is executable UNUSED */
 	unsigned int freeze		: 1;	/* Management lock */
-	unsigned int error		: 1;	/* Indicates eror */
+	unsigned int nodata		: 1;	/* Indicates if the key contains data */
 	unsigned int type		: 3;	/* Additional flags */
 	unsigned int _res		: 16;	/* Reserved */
 };
@@ -150,7 +150,8 @@ void engine_close(struct engine *e);
  * Insert a new item with key 'quid' with the contents in 'data' to the
  * database file.
  */
-int engine_insert(struct engine *e, quid_t *quid, const void *data, size_t len);
+int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t len);
+int engine_insert(struct engine *e, quid_t *quid);
 
 /*
  * Look up item with the given key 'quid' in the database file. Length of the
@@ -176,7 +177,7 @@ int engine_delete(struct engine *e, const quid_t *quid);
 
 int engine_recover_storage(struct engine *e);
 int engine_vacuum(struct engine *e, const char *fname, const char *nfname);
-int engine_update(struct engine *e, const quid_t *quid, const void *data, size_t len);
+int engine_update_data(struct engine *e, const quid_t *quid, const void *data, size_t len);
 
 int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 char *engine_list_get_val(struct engine *e, const quid_t *c_quid);
