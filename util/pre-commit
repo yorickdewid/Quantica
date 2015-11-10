@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+#
+# Increase version number in given file 
+util/verminor include/config.h
