@@ -109,6 +109,9 @@ fixeof:
 genquid:
 	$(CC) -O3 $(WFLAGS) -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
 
+verminor:
+	$(CC) -O3 $(WFLAGS) $(UTILDIR)/verminor.c -o $(UTILDIR)/verminor
+
 genlookup3:
 	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 

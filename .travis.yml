@@ -16,6 +16,7 @@ script:
   - make fixeof
   - make genquid
   - make genlookup3
+  - make verminor
   - make debug
   - make test
   - make qcli
