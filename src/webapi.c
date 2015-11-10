@@ -80,7 +80,10 @@ struct webroute {
 	char uri[32];
 	http_status_t (*api_handler)(char **response, http_request_t *req);
 	unsigned char require_quid;
+	char description[32];
 };
+
+http_status_t api_help(char **response, http_request_t *req);
 
 void *get_in_addr(struct sockaddr *sa) {
 	if (sa->sa_family == AF_INET)
@@ -189,12 +192,6 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-http_status_t api_help(char **response, http_request_t *req) {
-	unused(req);
-	strlcpy(*response, "{\"api_options\":[\"/\",\"/help\",\"/license\",\"/stats\"],\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
-	return HTTP_OK;
-}
-
 http_status_t api_instance(char **response, http_request_t *req) {
 	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 		char *param_name = (char *)hashtable_get(req->data, "name");
@@ -221,7 +218,7 @@ http_status_t api_sha1(char **response, http_request_t *req) {
 				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
 				return HTTP_OK;
 			}
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA-1\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha);
+			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA1\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha);
 			return HTTP_OK;
 		}
 		strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
@@ -802,56 +799,88 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
  * Webrequest router
  */
 static const struct webroute route[] = {
-	/* URL				callback			QUID*/
-	{"/",				api_root,			FALSE},
-#if 0
-	{"/help",			api_help,			FALSE},
-	{"/api",			api_help,			FALSE},
-#endif
+	/* URL				callback			QUID	Description */
+	{"/",				api_root,			FALSE,	"WebAPI endpoint"},
 
 	/* Daemon related operations				*/
-	{"/sync",			api_sync,			FALSE},
-	{"/vacuum",			api_vacuum,			FALSE},
-	{"/instance",		api_instance,		FALSE},
-	{"/shutdown",		api_shutdown,		FALSE},
-	{"/vars",			api_variables,		FALSE},
+	{"/sync",			api_sync,			FALSE,	"Flush datastorage to disk"},
+	{"/vacuum",			api_vacuum,			FALSE,	"Vacuum the datastorage"},
+	{"/instance",		api_instance,		FALSE,	"Get/set daemon instance name"},
+	{"/shutdown",		api_shutdown,		FALSE,	"Shutting down the daemon"},
+	{"/vars",			api_variables,		FALSE, 	"List current config and settings"},
+	{"/help",			api_help,			FALSE,	"Show all API calls"},
 
 	/* Encryption and encoding operations		*/
-	{"/sha1",			api_sha1,			FALSE},
-	{"/md5",			api_md5,			FALSE},
-	{"/sha256",			api_sha256,			FALSE},
-	{"/sha512",			api_sha512,			FALSE},
-	{"/quid",			api_gen_quid,		FALSE},
-	{"/base64/enc",		api_base64_enc,		FALSE},
-	{"/base64/dec",		api_base64_dec,		FALSE},
-	{"/hmac/sha256",	api_hmac_sha256,	FALSE},
-	{"/hmac/sha512",	api_hmac_sha512,	FALSE},
+	{"/sha1",			api_sha1,			FALSE, 	"SHA1 hash function"},
+	{"/md5",			api_md5,			FALSE,	"MD5 hash function"},
+	{"/sha256",			api_sha256,			FALSE, 	"SHA256 hash function"},
+	{"/sha512",			api_sha512,			FALSE, 	"SHA512 hash function"},
+	{"/quid",			api_gen_quid,		FALSE,	"Generate random QUID"},
+	{"/base64/enc",		api_base64_enc,		FALSE,	"Base64 encode function"},
+	{"/base64/dec",		api_base64_dec,		FALSE, 	"Base64 decode function"},
+	{"/hmac/sha256",	api_hmac_sha256,	FALSE,	"Generate HMAC-SHA256 signature"},
+	{"/hmac/sha512",	api_hmac_sha512,	FALSE,	"Generate HMAC-SHA512 signature"},
 
 	/* SQL interface							*/
-	{"/sql",			api_sql_query,		FALSE},
+	{"/sql",			api_sql_query,		FALSE,	"SQL interface endpoint"},
 
 	/* Database operations						*/
-	{"/put",			api_db_put,			FALSE},
-	{"/store",			api_db_put,			FALSE},
-	{"/insert",			api_db_put,			FALSE},
-	{"/get",			api_db_get,			TRUE},
-	{"/retrieve",		api_db_get,			TRUE},
-	{"/update",			api_db_update,		TRUE},
-	{"/delete",			api_db_delete,		TRUE},
-	{"/remove",			api_db_delete,		TRUE},
-	{"/purge",			api_db_purge,		TRUE},
-	{"/meta",			api_db_get_meta,	TRUE},
-	{"/type",			api_db_get_type,	TRUE},
-	{"/schema",			api_db_get_schema,	TRUE},
+	{"/put",			api_db_put,			FALSE, 	"Insert new dataset"},
+	{"/store",			api_db_put,			FALSE,	"Insert new dataset"},
+	{"/insert",			api_db_put,			FALSE,	"Insert new dataset"},
+	{"/get",			api_db_get,			TRUE,	"Retrieve dataset by key"},
+	{"/retrieve",		api_db_get,			TRUE,	"Retrieve dataset by key"},
+	{"/update",			api_db_update,		TRUE,	"Update dataset by key"},
+	{"/delete",			api_db_delete,		TRUE,	"Delete dataset by key"},
+	{"/remove",			api_db_delete,		TRUE,	"Delete dataset by key"},
+	{"/purge",			api_db_purge,		TRUE,	"Purge dataset and key"},
+	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
+	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
+	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
 
 	/* Alias operations							*/
-	{"/alias/*",		api_alias_get,		FALSE},
-	{"/alias",			api_alias_all,		FALSE},
-	{"/alias",			api_alias_name,		TRUE},
+	{"/alias/*",		api_alias_get,		FALSE,	"Get dataset by alias name"},
+	{"/alias",			api_alias_all,		FALSE,	"Show all aliasses and origins"},
+	{"/alias",			api_alias_name,		TRUE,	"Show alias name by key"},
 
 	/* Database index operations				*/
-	{"/index",			api_index_create,	TRUE},
+	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
 };
+
+http_status_t api_help(char **response, http_request_t *req) {
+	unused(req);
+	size_t nsz = RSIZE(route);
+
+	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+	memset(marshall, 0, sizeof(marshall_t)); //TODO this should be another
+	marshall->child = (marshall_t **)tree_zmalloc(nsz * sizeof(marshall_t *), marshall);
+	memset(marshall->child, 0, nsz * sizeof(marshall_t *));
+	marshall->type = MTYPE_OBJECT;
+
+	for (unsigned int i = 0; i < nsz; ++i) {
+		marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
+		memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+		marshall->child[marshall->size]->type = MTYPE_STRING;
+		marshall->child[marshall->size]->name = tree_zstrdup(route[i].uri, marshall);
+		marshall->child[marshall->size]->name_len = strlen(route[i].uri);
+		marshall->child[marshall->size]->data = tree_zstrdup(route[i].description, marshall);
+		marshall->child[marshall->size]->data_len = strlen(route[i].description);
+		marshall->size++;
+	}
+
+	char *data = marshall_serialize(marshall);
+	size_t len = strlen(data);
+	size_t resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE / 2)) {
+		resplen = RESPONSE_SIZE + len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"api\":%s,\"description\":\"Available API calls\",\"status\":\"COMMAND_OK\",\"success\":true}", data);
+	zfree(data);
+	marshall_free(marshall);
+
+	return HTTP_OK;
+}
 
 void handle_request(int sd, fd_set *set) {
 	FILE *socket_stream = fdopen(sd, "r+");
