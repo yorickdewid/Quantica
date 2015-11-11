@@ -605,14 +605,11 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	quidtostr(index_quid, &nrs.index);
 	*items = nrs.index_elements;
 
-	engine_insert(&btx, &nrs.index);
-
 	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
-	if (engine_setmeta(&btx, &nrs.index, &meta) < 0)
-		return -1;
+	engine_insert_meta(&btx, &nrs.index, &meta);
 
 	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
 

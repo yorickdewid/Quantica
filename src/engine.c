@@ -28,7 +28,7 @@ static void free_dbchunk(struct engine *e, uint64_t offset);
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid);
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid);
 static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata);
-static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, const void *data, size_t len);
+static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len);
 static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
@@ -585,7 +585,7 @@ static uint64_t remove_table(struct engine *e, struct engine_table *table, size_
 
 /* Insert a new item with key 'quid' with the contents in 'data' to the given table.
    Returns offset to the new item. */
-static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *quid, const void *data, size_t len) {
+static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
 	struct engine_table *table = get_table(e, table_offset);
 	zassert(table->size < TABLE_SIZE - 1);
 
@@ -612,10 +612,10 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	uint64_t left_child = from_be64(table->items[i].child);
 	uint64_t right_child = 0; /* after insertion */
 	uint64_t ret = 0;
-	bool nodata = 0;
+	//bool nodata = 0;
 	if (left_child != 0) {
 		/* recursion */
-		ret = insert_table(e, left_child, quid, data, len);
+		ret = insert_table(e, left_child, quid, meta, data, len);
 
 		/* check if we need to split */
 		struct engine_table *child = get_table(e, left_child);
@@ -633,7 +633,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 		if (data && len > 0) {
 			ret = offset = insert_data(e, data, len);
 		} else {
-			nodata = 1;
+			//nodata = 1;
 		}
 	}
 
@@ -641,9 +641,10 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	memmove(&table->items[i + 1], &table->items[i], (table->size - i) * sizeof(struct engine_item));
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
-	memset(&table->items[i].meta, 0, sizeof(struct metadata));
-	table->items[i].meta.nodata = nodata;
-	table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
+	//memset(&table->items[i].meta, 0, sizeof(struct metadata));
+	//table->items[i].meta.nodata = nodata;
+	//table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
+	memcpy(&table->items[i].meta, meta, sizeof(struct metadata));
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
 
@@ -705,13 +706,13 @@ static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	return ret;
 }
 
-static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, const void *data, size_t len) {
+static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
 	uint64_t offset = 0;
 	uint64_t ret = 0;
 	uint64_t right_child = 0;
-	bool nodata = 0;
+	//bool nodata = 0;
 	if (*table_offset != 0) {
-		ret = insert_table(e, *table_offset, quid, data, len);
+		ret = insert_table(e, *table_offset, quid, meta, data, len);
 
 		/* check if we need to split */
 		struct engine_table *table = get_table(e, *table_offset);
@@ -726,7 +727,7 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 		if (data && len > 0) {
 			ret = offset = insert_data(e, data, len);
 		} else {
-			nodata = 1;
+			//nodata = 1;
 		}
 	}
 
@@ -735,8 +736,9 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->size = 1;
 	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);
-	new_table->items[0].meta.nodata = nodata;
-	new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
+	//new_table->items[0].meta.nodata = nodata;
+	//new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
+	memcpy(&new_table->items[0].meta, meta, sizeof(struct metadata));
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
@@ -754,7 +756,27 @@ int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t 
 		return -1;
 	}
 
-	insert_toplevel(e, &e->top, quid, data, len);
+	struct metadata meta;
+	memset(&meta, 0, sizeof(struct metadata));
+	meta.importance = MD_IMPORTANT_NORMAL;
+
+	insert_toplevel(e, &e->top, quid, &meta, data, len);
+	flush_super(e, TRUE);
+	if (ISERROR())
+		return -1;
+
+	e->stats.keys++;
+	return 0;
+}
+
+int engine_insert_meta_data(struct engine *e, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	insert_toplevel(e, &e->top, quid, meta, data, len);
 	flush_super(e, TRUE);
 	if (ISERROR())
 		return -1;
@@ -770,7 +792,28 @@ int engine_insert(struct engine *e, quid_t *quid) {
 		return -1;
 	}
 
-	insert_toplevel(e, &e->top, quid, NULL, 0);
+	struct metadata meta;
+	memset(&meta, 0, sizeof(struct metadata));
+	meta.nodata = TRUE;
+	meta.importance = MD_IMPORTANT_NORMAL;
+
+	insert_toplevel(e, &e->top, quid, &meta, NULL, 0);
+	flush_super(e, TRUE);
+	if (ISERROR())
+		return -1;
+
+	e->stats.keys++;
+	return 0;
+}
+
+int engine_insert_meta(struct engine *e, quid_t *quid, struct metadata *meta) {
+	ERRORZEOR();
+	if (e->lock == LOCK) {
+		ERROR(EDB_LOCKED, EL_WARN);
+		return -1;
+	}
+
+	insert_toplevel(e, &e->top, quid, meta, NULL, 0);
 	flush_super(e, TRUE);
 	if (ISERROR())
 		return -1;
@@ -1027,6 +1070,7 @@ int engine_recover_storage(struct engine *e) {
 	return 0;
 }
 
+//TODO use get_data, check and copy metadata
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
 	struct engine_table *table = get_table(e, table_offset);
@@ -1067,7 +1111,7 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 		}
 
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
-			insert_toplevel(ce, &ce->top, &table->items[i].quid, data, len);
+			insert_toplevel(ce, &ce->top, &table->items[i].quid, &table->items[i].meta, data, len);
 			ce->stats.keys++;
 			flush_super(ce, TRUE);
 		}

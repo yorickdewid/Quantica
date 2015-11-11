@@ -151,6 +151,8 @@ void engine_close(struct engine *e);
  * database file.
  */
 int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t len);
+int engine_insert_meta_data(struct engine *e, quid_t *quid, struct metadata *meta, const void *data, size_t len);
+int engine_insert_meta(struct engine *e, quid_t *quid, struct metadata *meta);
 int engine_insert(struct engine *e, quid_t *quid);
 
 /*

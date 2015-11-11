@@ -22,6 +22,7 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 	if (schema == SCHEMA_TABLE) {
 
 		btree_init(&index, squid);
+		btree_set_unique(&index, FALSE);
 
 		for (unsigned int i = 0; i < marshall->size; ++i) {
 			marshall_t *rowobj = raw_db_get(marshall->child[i]->data, NULL);
