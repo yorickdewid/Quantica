@@ -9,6 +9,7 @@
 #include <error.h>
 #include "btree.h"
 #include "vector.h"
+#include "index.h"
 #include "zmalloc.h"
 
 #define DEFAULT_RESULT_SIZE		10
@@ -478,6 +479,34 @@ status_t btree_delete(btree_t *index, char *key) {
 		code = SUCCESS;
 	}
 	return code;  /* Return value:  SUCCESS  or NOTFOUND   */
+}
+
+static void traverse_node(btree_t *index, long int offset, vector_t *result) {
+	int i, n;
+	item_t *kv = NULL;
+	node_t node;
+
+	if (offset != -1) {
+		get_node(index, offset, &node);
+		kv = node.items;
+		n = node.cnt;
+		for (i = 0; i < n; ++i) {
+			index_keyval_t *rskv = zmalloc(sizeof(index_keyval_t));
+			rskv->key = zstrndup(kv[i].key, kv[i].key_size);
+			rskv->key_len = kv[i].key_size;
+			rskv->value = kv[i].valset;
+			vector_append(result, rskv);
+		}
+		for (i = 0; i <= n; i++)
+			traverse_node(index, node.ptr[i], result);
+	}
+}
+
+vector_t *btree_get_all(btree_t *index) {
+	vector_t *result = alloc_vector(DEFAULT_RESULT_SIZE * 10);
+	traverse_node(index, index->root, result);
+
+	return result;
 }
 
 #if 1

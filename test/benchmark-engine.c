@@ -117,7 +117,8 @@ static void db_read_seq_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -150,7 +151,8 @@ static void db_read_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -182,7 +184,8 @@ static void db_read_bounds_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data!=NULL) {
 			all++;
 		} else {
@@ -221,7 +224,8 @@ static void db_delete_test() {
 			LOGF("Cannot delete key %s[%d]\n", squid, i);
 			FATAL("engine_delete");
 		}
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data==NULL) {
 			all++;
 		} else {
@@ -259,7 +263,8 @@ static void db_delete_random_test() {
 			quidtostr(squid, &key);
 			FATAL("engine_delete");
 		}
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data==NULL) {
 			all++;
 		} else {
@@ -288,7 +293,8 @@ static void db_read_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		void *data = engine_get(&e, &key, &len);
+		uint64_t offset = engine_get(&e, &key);
+		void *data = get_data(&e, offset, &len);
 		if(data!=NULL) {
 			all++;
 		}

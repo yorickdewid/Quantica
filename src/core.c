@@ -267,7 +267,11 @@ marshall_t *raw_db_get(char *quid, void *parent) {
 	strtoquid(quid, &key);
 
 	size_t len;
-	void *data = engine_get(&btx, &key, &len);
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset)
+		return NULL;
+
+	void *data = get_data(&btx, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -285,17 +289,25 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	strtoquid(quid, &key);
 	size_t _len;
 
-	void *data = engine_get(&btx, &key, &_len);
-	if (!data) {
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset) {
 		if (engine_getmeta(&btx, &key, &meta) < 0)
 			return NULL;
 
 		if (meta.type == MD_TYPE_INDEX) {
-			//TODO read index
-		}
+			marshall_t *dataobj = index_btree_all(&key);
 
-		return NULL;
+			char *buf = marshall_serialize(dataobj);
+			*len = strlen(buf);
+			marshall_free(dataobj);
+
+			return buf;
+		}
 	}
+
+	void *data = get_data(&btx, offset, &_len);
+	if (!data)
+		return NULL;
 
 	marshall_t *dataobj = slay_get(data, NULL, descent);
 	if (!dataobj) {
@@ -319,7 +331,11 @@ char *db_get_type(char *quid) {
 	strtoquid(quid, &key);
 
 	size_t len;
-	void *data = engine_get(&btx, &key, &len);
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset)
+		return NULL;
+
+	void *data = get_data(&btx, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -336,7 +352,11 @@ char *db_get_schema(char *quid) {
 	strtoquid(quid, &key);
 
 	size_t len;
-	void *data = engine_get(&btx, &key, &len);
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset)
+		return NULL;
+
+	void *data = get_data(&btx, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -352,7 +372,14 @@ uint64_t db_get_offset(char *quid) {
 	quid_t key;
 	strtoquid(quid, &key);
 
-	return engine_get_offset(&btx, &key);
+	return engine_get(&btx, &key);
+}
+
+char *db_get_data(uint64_t offset, size_t *len) {
+	if (!ready)
+		return 0;
+
+	return get_data(&btx, offset, len);
 }
 
 int raw_db_update(char *quid, void *slay, size_t len) {
@@ -526,7 +553,13 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 		return NULL;
 
 	size_t _len;
-	void *data = engine_get(&btx, &key, &_len);
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset) {
+		//TODO check for index
+		return NULL;
+	}
+
+	void *data = get_data(&btx, offset, &_len);
 	if (!data)
 		return NULL;
 
@@ -551,7 +584,11 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	size_t _len;
 	memset(&nrs, 0, sizeof(index_result_t));
 
-	void *data = engine_get(&btx, &key, &_len);
+	uint64_t offset = engine_get(&btx, &key);
+	if (!offset)
+		return -1;
+
+	void *data = get_data(&btx, offset, &_len);
 	if (!data)
 		return -1;
 
@@ -560,7 +597,7 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 		return -1;
 
 	schema_t group = slay_get_schema(data);
-	index_create_btree(idxkey, dataobj, group, &nrs);
+	index_btree_create(idxkey, dataobj, group, &nrs);
 
 	marshall_free(dataobj);
 	zfree(data);

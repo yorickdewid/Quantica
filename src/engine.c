@@ -817,20 +817,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 	return 0;
 }
 
-void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
-	ERRORZEOR();
-	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
-		return NULL;
-	}
-	bool nodata = 0;
-	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
-	if (ISERROR())
-		return NULL;
-
-	if (nodata)
-		return NULL;
-
+void *get_data(struct engine *e, uint64_t offset, size_t *len) {
 	struct blob_info info;
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
 		lprint("[erro] Failed to read disk\n");
@@ -842,8 +829,10 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 		ERROR(EIO_READ, EL_FATAL);
 		return NULL;
 	}
+
 	*len = from_be32(info.len);
-	zassert(*len > 0);
+	if (!*len)
+		return NULL;
 
 	void *data = zmalloc(*len);
 	if (!data) {
@@ -861,7 +850,7 @@ void *engine_get(struct engine *e, const quid_t *quid, size_t *len) {
 	return data;
 }
 
-uint64_t engine_get_offset(struct engine *e, const quid_t *quid) {
+uint64_t engine_get(struct engine *e, const quid_t *quid) {
 	ERRORZEOR();
 	if (e->lock == LOCK) {
 		ERROR(EDB_LOCKED, EL_WARN);
@@ -870,6 +859,9 @@ uint64_t engine_get_offset(struct engine *e, const quid_t *quid) {
 	bool nodata = 0;
 	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
 	if (ISERROR())
+		return 0;
+
+	if (nodata)
 		return 0;
 
 	return offset;
@@ -1360,7 +1352,7 @@ marshall_t *engine_list_all(struct engine *e) {
 	}
 
 	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-	memset(marshall, 0, sizeof(marshall_t));
+	memset(marshall, 0, sizeof(marshall_t)); //TODO this should be possible with tree_zcalloc()
 	marshall->child = (marshall_t **)tree_zmalloc(e->stats.list_size * sizeof(marshall_t *), marshall);
 	memset(marshall->child, 0, e->stats.list_size * sizeof(marshall_t *));
 	marshall->type = MTYPE_OBJECT;

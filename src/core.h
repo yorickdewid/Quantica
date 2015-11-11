@@ -57,6 +57,7 @@ void *db_get(char *quid, size_t *len, bool descent);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
 uint64_t db_get_offset(char *quid);
+char *db_get_data(uint64_t offset, size_t *len);
 int raw_db_update(char *quid, void *slay, size_t len);
 int db_update(char *quid, int *items, const void *data, size_t data_len);
 int db_delete(char *quid);

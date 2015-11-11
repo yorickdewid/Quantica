@@ -40,7 +40,8 @@ static void test_engine_crud(){
 
 	engine_init(&e, fname, dbname);
 	size_t len;
-	void *rdata = engine_get(&e, &quid, &len);
+	uint64_t offset = engine_get(&e, &quid);
+	void *rdata = get_data(&e, offset, &len);
 	ASSERT(rdata);
 	zfree(rdata);
 	engine_close(&e);
@@ -52,7 +53,8 @@ static void test_engine_crud(){
 
 	engine_init(&e, fname, dbname);
 	size_t len2;
-	void *r2data = engine_get(&e, &quid, &len2);
+	uint64_t offset2 = engine_get(&e, &quid);
+	void *r2data = get_data(&e, offset2, &len2);
 	ASSERT(!r2data);
 	engine_close(&e);
 	unlink(fname);

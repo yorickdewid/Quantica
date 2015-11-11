@@ -12,7 +12,7 @@
 /*
  * Create btree index
  */
-int index_create_btree(const char *element, marshall_t *marshall, schema_t schema, index_result_t *result) {
+int index_btree_create(const char *element, marshall_t *marshall, schema_t schema, index_result_t *result) {
 	char squid[QUID_LENGTH + 1];
 	btree_t index;
 
@@ -29,7 +29,7 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 			for (unsigned int j = 0; j < rowobj->size; ++j) {
 				if (!strcmp(rowobj->child[j]->name, element)) {
 					size_t value_len;
-					char *value = marshall_strdata(rowobj->child[j]->data, &value_len);
+					char *value = marshall_strdata(rowobj->child[j], &value_len);
 					btree_insert(&index, value, value_len, offset);
 					result->index_elements++;
 				}
@@ -69,4 +69,53 @@ int index_create_btree(const char *element, marshall_t *marshall, schema_t schem
 	}
 
 	return 0;
+}
+
+marshall_t *index_btree_all(quid_t *key) {
+	char squid[QUID_LENGTH + 1];
+	btree_t index;
+
+	quidtostr(squid, key);
+
+	btree_init(&index, squid);
+
+	vector_t *rskv = btree_get_all(&index);
+
+	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
+	memset(marshall, 0, sizeof(marshall_t));
+	marshall->child = (marshall_t **)tree_zmalloc(rskv->size * sizeof(marshall_t *), marshall);
+	memset(marshall->child, 0, rskv->size * sizeof(marshall_t *));
+	marshall->type = MTYPE_OBJECT;
+
+	for (unsigned int i = 0; i < rskv->size; ++i) {
+		index_keyval_t *kv = (index_keyval_t *)(vector_at(rskv, i));
+
+		size_t len;
+		char *data = db_get_data(kv->value, &len);
+		if (!data) {
+			zfree(kv->key);
+			zfree(kv);
+			continue;
+		}
+
+		marshall_t *dataobj = slay_get(data, marshall, TRUE);
+		if (!dataobj) {
+			zfree(data);
+			return NULL;
+		}
+
+		marshall->child[marshall->size] = dataobj;
+		marshall->child[marshall->size]->name = tree_zstrdup(kv->key, marshall);
+		marshall->child[marshall->size]->name_len = kv->key_len;
+		marshall->size++;
+
+		zfree(data);
+		zfree(kv->key);
+		zfree(kv);
+	}
+
+	vector_free(rskv);
+	btree_close(&index);
+
+	return marshall;
 }

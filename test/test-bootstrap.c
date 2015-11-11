@@ -19,7 +19,8 @@ static void bootstrap_zero(){
 	bootstrap(&e);
 
 	size_t len;
-	void *data = engine_get(&e, &quid, &len);
+	uint64_t offset = engine_get(&e, &quid);
+	void *data = get_data(&e, offset, &len);
 	ASSERT(data);
 	ASSERT(!strncmp(data, BS_MAGIC, len));
 
@@ -41,7 +42,8 @@ static void bootstrap_init(){
 	bootstrap(&e);
 
 	size_t len;
-	void *rdata = engine_get(&e, &quid, &len);
+	uint64_t offset = engine_get(&e, &quid);
+	void *rdata = get_data(&e, offset, &len);
 	ASSERT(rdata);
 	ASSERT(!strncmp(rdata, data, len));
 

@@ -158,7 +158,8 @@ int engine_insert(struct engine *e, quid_t *quid);
  * item is stored in 'len'. Returns a pointer to the contents of the item.
  * The returned pointer should be released with free() after use.
  */
-void *engine_get(struct engine *e, const quid_t *quid, size_t *len);
+uint64_t engine_get(struct engine *e, const quid_t *quid);
+void *get_data(struct engine *e, uint64_t offset, size_t *len);
 
 /*
  * Remove item with the given key 'quid' from the database file.
@@ -167,7 +168,7 @@ int engine_purge(struct engine *e, quid_t *quid);
 
 void engine_sync(struct engine *e);
 
-uint64_t engine_get_offset(struct engine *e, const quid_t *quid);
+//uint64_t engine_get_data_offset(struct engine *e, const quid_t *quid);
 
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md);
 

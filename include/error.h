@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+//TODO this should be a stack
+
 enum error_level {
 	EL_DEBUG = 1,
 	EL_WARN,

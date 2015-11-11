@@ -39,6 +39,7 @@ typedef struct {
 status_t btree_insert(btree_t *index, char *key, size_t key_size, long long int offset);
 status_t btree_get(btree_t *index, char *key, vector_t **result);
 status_t btree_delete(btree_t *index, char *key);
+vector_t *btree_get_all(btree_t *index);
 void btree_print();
 void btree_set_unique(btree_t *index, bool unique);
 void btree_init(btree_t *index, char *name);
