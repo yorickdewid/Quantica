@@ -6,6 +6,7 @@
 #define zmalloc(sz) malloc(sz)
 #define zcalloc(n, sz) calloc(n, sz)
 #define zstrdup(str) strdup(str)
+#define zstrndup(str, sz) strndup(str, sz)
 #define zfree(sz) free(sz)
 
 void *tree_zmalloc(size_t size, void *parent);

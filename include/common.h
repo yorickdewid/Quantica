@@ -62,6 +62,7 @@ char *str_null();
 int antoi(const char *str, size_t num);
 char *itoa(long i);
 char *strdup(const char *str);
+char *strndup(const char *str, size_t n);
 char *stresc(char *src);
 char *strsep(char ** stringp, const char *delim);
 
