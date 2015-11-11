@@ -44,6 +44,12 @@ size_t strlcat(char *dst, const char *src, size_t siz);
   #define LITTLE_ENDIAN_HOST 1
 #endif
 
+#define zassert(e)  \
+	((void) ((e) ? (void)0 : __zassert (#e, __FILE__, __LINE__)))
+
+#define __zassert(e, file, line) \
+	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
+
 typedef uint8_t bool;
 
 char from_hex(char ch);

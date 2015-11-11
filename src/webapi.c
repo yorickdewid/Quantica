@@ -188,7 +188,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char buf2[TIMENAME_SIZE + 1];
 	buf2[TIMENAME_SIZE] = '\0';
 	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
-	snprintf(*response, RESPONSE_SIZE, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"dataheap\":\"" BINDATA "\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"release\":%d,\"major\":%d,\"minor\":%d},\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
+	snprintf(*response, RESPONSE_SIZE, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"dataheap\":\"" BINDATA "\",\"default_key\":\"{" DEFAULT_PREFIX "-000000000000}\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"release\":%d,\"major\":%d,\"minor\":%d},\"description\":\"Database statistics\",\"status\":\"COMMAND_OK\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
 	return HTTP_OK;
 }
 
