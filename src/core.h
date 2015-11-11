@@ -45,6 +45,7 @@ unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 unsigned long int stat_tablesize();
 void quid_generate(char *quid);
+void quid_generate_short(char *quid);
 void filesync();
 
 /*

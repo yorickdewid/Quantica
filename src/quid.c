@@ -49,7 +49,7 @@ void quid_create(quid_t *uid) {
  * Format QUID from the timestamp, clocksequence, and node ID
  * Structure succeeds version 3
  */
-static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t timestamp){
+static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t timestamp) {
 	uid->time_low = (unsigned long)(timestamp & 0xffffffff);
 	uid->time_mid = (unsigned short)((timestamp >> 32) & 0xffff);
 
@@ -62,7 +62,7 @@ static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t time
 	uid->clock_seq_hi_and_reserved |= 0x80;
 
 	int i;
-	for(i=0; i<4; ++i)
+	for (i = 0; i < 4; ++i)
 		uid->node[i] = arc4random();
 	uid->node[4] = (arc4random() & 0xf0);
 	uid->node[5] = (arc4random() & 0xff);
@@ -81,7 +81,7 @@ static void get_current_time(cuuid_time_t *timestamp) {
 		inited = 1;
 	}
 
-	for(;;) {
+	for (;;) {
 		get_system_time(&time_now);
 
 		if (time_last != time_now) {
@@ -106,18 +106,29 @@ int quidcmp(const quid_t *a, const quid_t *b) {
 
 /* Print QUID to string */
 void quidtostr(char *s, quid_t *u) {
-	snprintf(s, 39, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
-			, (unsigned int)u->time_low
-			, u->time_mid
-			, u->time_hi_and_version
-			, u->clock_seq_hi_and_reserved
-			, u->clock_seq_low
-			, u->node[0]
-			, u->node[1]
-			, u->node[2]
-			, u->node[3]
-			, u->node[4]
-			, u->node[5]);
+	snprintf(s, QUID_LENGTH + 1, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"
+	         , (unsigned int)u->time_low
+	         , u->time_mid
+	         , u->time_hi_and_version
+	         , u->clock_seq_hi_and_reserved
+	         , u->clock_seq_low
+	         , u->node[0]
+	         , u->node[1]
+	         , u->node[2]
+	         , u->node[3]
+	         , u->node[4]
+	         , u->node[5]);
+}
+
+/* Print QUID to short string */
+void quidtoshortstr(char *s, quid_t *u) {
+	snprintf(s, SHORT_QUID_LENGTH + 1, "{%.2x%.2x%.2x%.2x%.2x%.2x}"
+	         , u->node[0]
+	         , u->node[1]
+	         , u->node[2]
+	         , u->node[3]
+	         , u->node[4]
+	         , u->node[5]);
 }
 
 /* Convert string into QUID */
@@ -125,30 +136,30 @@ void strtoquid(const char *s, quid_t *u) {
 	size_t ssz = strlen(s);
 	if (ssz == QUID_LENGTH) {
 		sscanf(s, "{%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x}"
-				, &u->time_low
-				, &u->time_mid
-				, &u->time_hi_and_version
-				, (unsigned short int *)&u->clock_seq_hi_and_reserved
-				, (unsigned short int *)&u->clock_seq_low
-				, (unsigned int *)&u->node[0]
-				, (unsigned int *)&u->node[1]
-				, (unsigned int *)&u->node[2]
-				, (unsigned int *)&u->node[3]
-				, (unsigned int *)&u->node[4]
-				, (unsigned int *)&u->node[5]);
+		       , &u->time_low
+		       , &u->time_mid
+		       , &u->time_hi_and_version
+		       , (unsigned short int *)&u->clock_seq_hi_and_reserved
+		       , (unsigned short int *)&u->clock_seq_low
+		       , (unsigned int *)&u->node[0]
+		       , (unsigned int *)&u->node[1]
+		       , (unsigned int *)&u->node[2]
+		       , (unsigned int *)&u->node[3]
+		       , (unsigned int *)&u->node[4]
+		       , (unsigned int *)&u->node[5]);
 	} else if (ssz == QUID_SHORT_LENGTH) {
 		sscanf(s, "%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x"
-				, &u->time_low
-				, &u->time_mid
-				, &u->time_hi_and_version
-				, (unsigned short int *)&u->clock_seq_hi_and_reserved
-				, (unsigned short int *)&u->clock_seq_low
-				, (unsigned int *)&u->node[0]
-				, (unsigned int *)&u->node[1]
-				, (unsigned int *)&u->node[2]
-				, (unsigned int *)&u->node[3]
-				, (unsigned int *)&u->node[4]
-				, (unsigned int *)&u->node[5]);
+		       , &u->time_low
+		       , &u->time_mid
+		       , &u->time_hi_and_version
+		       , (unsigned short int *)&u->clock_seq_hi_and_reserved
+		       , (unsigned short int *)&u->clock_seq_low
+		       , (unsigned int *)&u->node[0]
+		       , (unsigned int *)&u->node[1]
+		       , (unsigned int *)&u->node[2]
+		       , (unsigned int *)&u->node[3]
+		       , (unsigned int *)&u->node[4]
+		       , (unsigned int *)&u->node[5]);
 
 	}
 }
@@ -158,7 +169,7 @@ uint8_t strquid_format(const char *s) {
 	size_t ssz = strlen(s);
 	int phyp, nhyp = 0;
 	if (ssz == QUID_LENGTH) {
-		if (s[0] != '{' || s[QUID_LENGTH-1] != '}')
+		if (s[0] != '{' || s[QUID_LENGTH - 1] != '}')
 			return 0;
 		if (s[strspn(s, "{}-0123456789abcdefABCDEF")])
 			return 0;
@@ -166,12 +177,12 @@ uint8_t strquid_format(const char *s) {
 		char *pch = strchr(s, '-');
 		while (pch != NULL) {
 			nhyp++;
-			phyp = pch-s;
-			if (phyp!=9&&phyp!=14&&phyp!=19&&phyp!=24)
+			phyp = pch - s;
+			if (phyp != 9 && phyp != 14 && phyp != 19 && phyp != 24)
 				return 0;
-			pch = strchr(pch+1, '-');
+			pch = strchr(pch + 1, '-');
 		}
-		if (nhyp!=4)
+		if (nhyp != 4)
 			return 0;
 
 		return 1;
@@ -182,12 +193,12 @@ uint8_t strquid_format(const char *s) {
 		char *pch = strchr(s, '-');
 		while (pch != NULL) {
 			nhyp++;
-			phyp = pch-s;
-			if (phyp!=8&&phyp!=13&&phyp!=18&&phyp!=23)
+			phyp = pch - s;
+			if (phyp != 8 && phyp != 13 && phyp != 18 && phyp != 23)
 				return 0;
-			pch = strchr(pch+1, '-');
+			pch = strchr(pch + 1, '-');
 		}
-		if (nhyp!=4)
+		if (nhyp != 4)
 			return 0;
 
 		return 2;

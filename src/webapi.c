@@ -394,10 +394,23 @@ http_status_t api_sync(char **response, http_request_t *req) {
 }
 
 http_status_t api_gen_quid(char **response, http_request_t *req) {
-	unused(req);
-	char squid[QUID_LENGTH + 1];
-	quid_generate(squid);
+	bool qshort = FALSE;
+	char *squid = NULL;
+	if (req->querystring) {
+		char *quidshort = (char *)hashtable_get(req->querystring, "short");
+		if (quidshort && !strcmp(quidshort, "true")) {
+			qshort = TRUE;
+		}
+	}
+	if (qshort) {
+		squid = (char *)zmalloc(SHORT_QUID_LENGTH + 1);
+		quid_generate_short(squid);
+	} else {
+		squid = (char *)zmalloc(QUID_LENGTH + 1);
+		quid_generate(squid);
+	}
 	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"COMMAND_OK\",\"success\":true}", squid);
+	zfree(squid);
 	return HTTP_OK;
 }
 

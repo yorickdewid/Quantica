@@ -199,6 +199,12 @@ void quid_generate(char *quid) {
 	quidtostr(quid, &key);
 }
 
+void quid_generate_short(char *quid) {
+	quid_t key;
+	quid_create(&key);
+	quidtoshortstr(quid, &key);
+}
+
 void filesync() {
 	engine_sync(&btx);
 	base_sync(&control);
