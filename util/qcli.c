@@ -238,10 +238,8 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 	if (o < 1)
 		return NULL;
 
-	dict_object_t *rtobj = (dict_object_t *)tree_zmalloc(sizeof(dict_object_t), parent);
-	memset(rtobj, 0, sizeof(dict_object_t));
-	rtobj->child = (struct dict_object **)tree_zmalloc(o * sizeof(struct dict_object *), rtobj);
-	memset(rtobj->child, 0, o * sizeof(struct dict_object *));
+	dict_object_t *rtobj = (dict_object_t *)tree_zcalloc(1, sizeof(dict_object_t), parent);
+	rtobj->child = (struct dict_object **)tree_zcalloc(o, sizeof(struct dict_object *), rtobj);
 	if (name)
 		rtobj->name = name;
 
@@ -253,8 +251,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
 						if (dict_cmp(data, &t[i], "null")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 							rtobj->child[rtobj->sz]->type = DICT_NULL;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -262,8 +259,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else if (dict_cmp(data, &t[i], "true")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 							rtobj->child[rtobj->sz]->type = DICT_TRUE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -271,8 +267,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else if (dict_cmp(data, &t[i], "false")) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 							rtobj->child[rtobj->sz]->type = DICT_FALSE;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -280,8 +275,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 							rtobj->child[rtobj->sz]->data = NULL;
 							rtobj->sz++;
 						} else {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 							rtobj->child[rtobj->sz]->type = DICT_INT;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;
@@ -291,8 +285,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 						}
 						break;
 					case DICT_STRING:
-						rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-						memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+						rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 						rtobj->child[rtobj->sz]->type = DICT_STR;
 						rtobj->child[rtobj->sz]->child = NULL;
 						rtobj->child[rtobj->sz]->sz = 0;
@@ -355,8 +348,7 @@ static dict_object_t *parse_object(char *data, size_t data_len, char *name, void
 						break;
 					case DICT_STRING:
 						if (!setname) {
-							rtobj->child[rtobj->sz] = tree_zmalloc(sizeof(dict_object_t), rtobj);
-							memset(rtobj->child[rtobj->sz], 0, sizeof(dict_object_t));
+							rtobj->child[rtobj->sz] = tree_zcalloc(1, sizeof(dict_object_t), rtobj);
 							rtobj->child[rtobj->sz]->type = DICT_STR;
 							rtobj->child[rtobj->sz]->child = NULL;
 							rtobj->child[rtobj->sz]->sz = 0;

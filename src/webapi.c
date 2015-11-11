@@ -832,15 +832,12 @@ http_status_t api_help(char **response, http_request_t *req) {
 	unused(req);
 	size_t nsz = RSIZE(route);
 
-	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-	memset(marshall, 0, sizeof(marshall_t)); //TODO this should be another
-	marshall->child = (marshall_t **)tree_zmalloc(nsz * sizeof(marshall_t *), marshall);
-	memset(marshall->child, 0, nsz * sizeof(marshall_t *));
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(nsz, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_OBJECT;
 
 	for (unsigned int i = 0; i < nsz; ++i) {
-		marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-		memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+		marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 		marshall->child[marshall->size]->type = MTYPE_STRING;
 		marshall->child[marshall->size]->name = tree_zstrdup(route[i].uri, marshall);
 		marshall->child[marshall->size]->name_len = strlen(route[i].uri);

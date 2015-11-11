@@ -1351,10 +1351,8 @@ marshall_t *engine_list_all(struct engine *e) {
 		return NULL;
 	}
 
-	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-	memset(marshall, 0, sizeof(marshall_t)); //TODO this should be possible with tree_zcalloc()
-	marshall->child = (marshall_t **)tree_zmalloc(e->stats.list_size * sizeof(marshall_t *), marshall);
-	memset(marshall->child, 0, e->stats.list_size * sizeof(marshall_t *));
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(e->stats.list_size, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_OBJECT;
 
 	uint64_t offset = e->list_top;
@@ -1370,8 +1368,7 @@ marshall_t *engine_list_all(struct engine *e) {
 				continue;
 			tablelist->items[i].name[len] = '\0';
 
-			marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-			memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 			marshall->child[marshall->size]->type = MTYPE_QUID;
 			marshall->child[marshall->size]->name = tree_zstrdup(squid, marshall);
 			marshall->child[marshall->size]->name_len = QUID_LENGTH;

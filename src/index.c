@@ -81,10 +81,8 @@ marshall_t *index_btree_all(quid_t *key) {
 
 	vector_t *rskv = btree_get_all(&index);
 
-	marshall_t *marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-	memset(marshall, 0, sizeof(marshall_t));
-	marshall->child = (marshall_t **)tree_zmalloc(rskv->size * sizeof(marshall_t *), marshall);
-	memset(marshall->child, 0, rskv->size * sizeof(marshall_t *));
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(rskv->size, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_OBJECT;
 
 	for (unsigned int i = 0; i < rskv->size; ++i) {

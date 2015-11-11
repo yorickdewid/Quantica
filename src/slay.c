@@ -179,8 +179,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			if (val_dt == MTYPE_QUID && descent) {
 				marshall = raw_db_get(val_data, NULL);
 				if (!marshall) {
-					marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-					memset(marshall, 0, sizeof(marshall_t));
+					marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
 					marshall->type = MTYPE_NULL;
 					marshall->size = 1;
 				}
@@ -188,9 +187,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				return marshall;
 			}
 
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-			memset(marshall, 0, sizeof(marshall_t));
-
+			marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
 			marshall->type = val_dt;
 			if (val_dt == MTYPE_STRING) {
 				char *_tmp = stresc(val_data);
@@ -206,10 +203,8 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			break;
 		}
 		case SCHEMA_ARRAY: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
-			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+			marshall->child = (marshall_t **)tree_zcalloc(elements, sizeof(marshall_t *), marshall);
 			marshall->type = MTYPE_ARRAY;
 
 			for (unsigned int i = 0; i < elements; ++i) {
@@ -225,8 +220,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				if (val_dt == MTYPE_QUID && descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
-						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-						memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+						marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 						marshall->child[marshall->size]->type = MTYPE_NULL;
 						marshall->child[marshall->size]->size = 1;
 					}
@@ -235,9 +229,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					continue;
 				}
 
-				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
-
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 				marshall->child[marshall->size]->type = val_dt;
 				if (val_dt == MTYPE_STRING) {
 					char *_tmp = stresc(val_data);
@@ -254,10 +246,8 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			break;
 		}
 		case SCHEMA_OBJECT: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
-			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+			marshall->child = (marshall_t **)tree_zcalloc(elements, sizeof(marshall_t *), marshall);
 			marshall->type = MTYPE_OBJECT;
 
 			for (unsigned int i = 0; i < elements; ++i) {
@@ -273,8 +263,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				if (val_dt == MTYPE_QUID && descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 					if (!marshall->child[marshall->size]) {
-						marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-						memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+						marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 						marshall->child[marshall->size]->type = MTYPE_NULL;
 						marshall->child[marshall->size]->size = 1;
 					}
@@ -286,8 +275,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					continue;
 				}
 
-				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
 				marshall->child[marshall->size]->name_len = namelen;
 
@@ -308,18 +296,15 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			break;
 		}
 		case SCHEMA_TABLE: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
-			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+			marshall->child = (marshall_t **)tree_zcalloc(elements, sizeof(marshall_t *), marshall);
 			marshall->type = MTYPE_ARRAY;
 
 			for (unsigned int i = 0; i < elements; ++i) {
 				void *val_data = slay_unwrap(next, NULL, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
-				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 
 				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
@@ -328,8 +313,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				if (descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 				} else {
-					marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-					memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 					marshall->child[marshall->size]->type = val_dt;
 					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 					marshall->child[marshall->size]->data_len = val_len;
@@ -341,18 +325,15 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			break;
 		}
 		case SCHEMA_SET: {
-			marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-			memset(marshall, 0, sizeof(marshall_t));
-			marshall->child = (marshall_t **)tree_zmalloc(elements * sizeof(marshall_t *), marshall);
-			memset(marshall->child, 0, elements * sizeof(marshall_t *));
+			marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+			marshall->child = (marshall_t **)tree_zcalloc(elements, sizeof(marshall_t *), marshall);
 			marshall->type = MTYPE_OBJECT;
 
 			for (unsigned int i = 0; i < elements; ++i) {
 				void *val_data = slay_unwrap(next, &name, &namelen, &val_len, &val_dt);
 				next = next_row(next);
 
-				marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-				memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 
 				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
@@ -361,8 +342,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				if (descent) {
 					marshall->child[marshall->size] = raw_db_get(val_data, marshall);
 				} else {
-					marshall->child[marshall->size] = tree_zmalloc(sizeof(marshall_t), marshall);
-					memset(marshall->child[marshall->size], 0, sizeof(marshall_t));
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 					marshall->child[marshall->size]->type = val_dt;
 					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 					marshall->child[marshall->size]->data_len = val_len;

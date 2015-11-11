@@ -16,7 +16,7 @@ hashtable_t *alloc_hashtable(int size) {
 	zassert(d != 0);
 	d->size = size;
 	d->n = 0;
-	d->table = (struct item **)tree_zmalloc(sizeof(struct item *) * d->size, d);
+	d->table = (struct item **)tree_zcalloc(d->size, sizeof(struct item *), d);
 	zassert(d->table != 0);
 
 	for (i = 0; i < d->size; ++i)

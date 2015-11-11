@@ -5,7 +5,7 @@
 
 vector_t *alloc_vector(size_t sz) {
 	vector_t *v = (vector_t *)tree_zmalloc(sizeof(vector_t), NULL);
-	v->buffer = (void **)tree_zmalloc(sz * sizeof(void *), v);
+	v->buffer = (void **)tree_zcalloc(sz, sizeof(void *), v);
 	v->size = 0;
 	v->alloc_size = sz;
 

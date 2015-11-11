@@ -66,10 +66,8 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 	if (o < 1)
 		return NULL;
 
-	marshall_t *obj = (marshall_t *)tree_zmalloc(sizeof(marshall_t), parent);
-	memset(obj, 0, sizeof(marshall_t));
-	obj->child = (marshall_t **)tree_zmalloc(o * sizeof(marshall_t *), obj);
-	memset(obj->child, 0, o * sizeof(marshall_t *));
+	marshall_t *obj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+	obj->child = (marshall_t **)tree_zcalloc(o, sizeof(marshall_t *), obj);
 
 	if (name && name_len) {
 		obj->name = name;
@@ -83,8 +81,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 			for (i = 1; i < o; ++i) {
 				switch (t[i].type) {
 					case DICT_PRIMITIVE:
-						obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
-						memset(obj->child[obj->size], 0, sizeof(marshall_t));
+						obj->child[obj->size] = tree_zcalloc(1, sizeof(marshall_t), obj);
 						if (dict_cmp(data, &t[i], "null")) {
 							obj->child[obj->size]->type = MTYPE_NULL;
 						} else if (dict_cmp(data, &t[i], "true")) {
@@ -101,8 +98,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						obj->size++;
 						break;
 					case DICT_STRING:
-						obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
-						memset(obj->child[obj->size], 0, sizeof(marshall_t));
+						obj->child[obj->size] = tree_zcalloc(1, sizeof(marshall_t), obj);
 						obj->child[obj->size]->type = MTYPE_STRING;
 						obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
 						obj->child[obj->size]->data_len = t[i].end - t[i].start;
@@ -162,8 +158,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						break;
 					case DICT_STRING:
 						if (!setname) {
-							obj->child[obj->size] = tree_zmalloc(sizeof(marshall_t), obj);
-							memset(obj->child[obj->size], 0, sizeof(marshall_t));
+							obj->child[obj->size] = tree_zcalloc(1, sizeof(marshall_t), obj);
 							obj->child[obj->size]->type = MTYPE_STRING;
 							obj->child[obj->size]->name = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
 							obj->child[obj->size]->name_len = t[i].end - t[i].start;
@@ -282,16 +277,14 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
 
 	/* Create marshall object based on scalar */
 	if (marshall_type_hasdata(type)) {
-		marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-		memset(marshall, 0, sizeof(marshall_t));
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 		marshall->data = tree_zstrndup(data, data_len, marshall);
 		marshall->data_len = data_len;
 		marshall->type = type;
 	} else if (marshall_type_hasdescent(type)) {
 		marshall = marshall_dict_decode(data, data_len, NULL, 0, NULL);
 	} else {
-		marshall = (marshall_t *)tree_zmalloc(sizeof(marshall_t), NULL);
-		memset(marshall, 0, sizeof(marshall_t));
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 		marshall->type = type;
 	}
 
