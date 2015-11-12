@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <error.h>
 #include "zmalloc.h"
 #include "quid.h"
 #include "core.h"
@@ -41,7 +42,7 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 		btree_close(&index);
 	} else if (schema == SCHEMA_SET) {
 		if (!strisdigit((char *)element)) {
-			//TODO throw err
+			error_throw("888d28dff048", "Operation expexts an index given");
 			return -1;
 		}
 
@@ -65,7 +66,7 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 
 		btree_close(&index);
 	} else {
-		//TODO throw err
+		error_throw("ece28bc980db", "Invalid schema");
 		return -1;
 	}
 

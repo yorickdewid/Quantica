@@ -155,4 +155,10 @@ void bootstrap(struct engine *e) {
 
 	if (register_error(e, E_WARN, "dcb796d620d1", "Unknown datastructure") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "888d28dff048", "Operation expexts an index given") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "ece28bc980db", "Invalid schema") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
 }
