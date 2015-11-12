@@ -5,6 +5,7 @@
 #include <common.h>
 #include <log.h>
 #include "zmalloc.h"
+#include "error.h"
 #include "quid.h"
 #include "slay.h"
 #include "engine.h"
@@ -12,16 +13,30 @@
 
 #define BS_MAGIC "__zero()__"
 
-static int register_error(struct engine *e, char *error_code, char *error_message) {
+#define E_FATAL	0x1
+#define E_WARN	0x2
+
+static int register_error(struct engine *e, int level, char *error_code, char *error_message) {
 	quid_t key;
 	size_t len;
 	slay_result_t nrs;
 
 	char skey[QUID_LENGTH + 1];
-	sprintf(skey, "{" DEFAULT_PREFIX "-%s}", error_code);
+	shortquidtoquidstr(skey, error_code);
 	strtoquid(skey, &key);
 
-	marshall_t *dataobj = marshall_convert(error_message, strlen(error_message));
+	char errobj[256];
+	memset(&errobj, 0, sizeof(errobj));
+
+	if (level == E_FATAL) {
+		snprintf(errobj, 256, "{\"level\":\"Fatal\", \"description\":\"%s\"}", error_message);
+	} else if (level == E_WARN) {
+		snprintf(errobj, 256, "{\"level\":\"Warning\", \"description\":\"%s\"}", error_message);
+	} else {
+		snprintf(errobj, 256, "{\"level\":\"Unknown\", \"description\":\"%s\"}", error_message);
+	}
+
+	marshall_t *dataobj = marshall_convert(errobj, strlen(errobj));
 	if (!dataobj)
 		lprint("[erro] bootstrap: Conversion failed\n");
 
@@ -54,13 +69,16 @@ void bootstrap(struct engine *e) {
 	/* Verify bootstrap signature */
 	size_t len;
 	uint64_t offset = engine_get(e, &key);
-	if (offset) {
+	if (offset && !iserror()) {
 		void *rdata = get_data(e, offset, &len);
 		if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
 			zfree(rdata);
 			return;
 		}
 	}
+
+	/* No errors from this point on */
+	error_clear();
 
 	/* Add bootstrap signature to empty database */
 	const char data0[] = BS_MAGIC;
@@ -105,15 +123,36 @@ void bootstrap(struct engine *e) {
 	/*
 	 * Register error messages
 	 */
-	if (register_error(e, "de65321630e4", "Server is not ready") < 0)
+	if (register_error(e, E_FATAL, "7b8a6ac440e2", "Failed to request memory") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
-	if (register_error(e, "caa73770706e", "Error reading from disk") < 0)
+	if (register_error(e, E_FATAL, "a7df40ba3075", "Failed to read disk") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
-	if (register_error(e, "777007517053", "Error writing to disk") < 0)
+	if (register_error(e, E_FATAL, "1fd531fa70c1", "Failed to write disk") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
-	if (register_error(e, "6fc7a048300a", "No record found") < 0)
+	if (register_error(e, E_WARN, "de65321630e4", "Server is not ready") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "e8880046e019", "No data provided") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "a475446c70e8", "Key exists") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "986154f80058", "Database locked") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "4987a3310049", "Record locked") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "6ef42da7901f", "Record not found") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "2836444cd009", "Alias not found") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "dcb796d620d1", "Unknown datastructure") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 }

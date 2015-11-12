@@ -41,7 +41,7 @@ char *get_zero_key() {
 void start_core() {
 	/* Start the logger */
 	start_log();
-	ERRORZEOR();
+	error_clear();
 
 	quid_create(&sessionid);
 	base_init(&control);

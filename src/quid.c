@@ -164,6 +164,10 @@ void strtoquid(const char *s, quid_t *u) {
 	}
 }
 
+void shortquidtoquidstr(char *squid, char *error_code) {
+	sprintf(squid, "{" DEFAULT_PREFIX "-%s}", error_code);
+}
+
 /* Determine QUID format or return -1 if invalid */
 uint8_t strquid_format(const char *s) {
 	size_t ssz = strlen(s);

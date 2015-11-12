@@ -35,8 +35,7 @@ static struct engine_table *alloc_table() {
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		zfree(table);
-		lprint("[erro] Failed to request memory\n");
-		ERROR(EM_ALLOC, EL_FATAL);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return NULL;
 	}
 	memset(table, 0, sizeof(struct engine_table));
@@ -47,8 +46,7 @@ static struct engine_tablelist *alloc_tablelist() {
 	struct engine_tablelist *tablelist = zcalloc(1, sizeof(struct engine_tablelist));
 	if (!tablelist) {
 		zfree(tablelist);
-		lprint("[erro] Failed to request memory\n");
-		ERROR(EM_ALLOC, EL_FATAL);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return NULL;
 	}
 	return tablelist;
@@ -67,21 +65,18 @@ static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {
 		zfree(table);
-		lprint("[erro] Failed to request memory\n");
-		ERROR(EM_ALLOC, EL_FATAL);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return NULL;
 	}
 
 	if (lseek(e->fd, offset, SEEK_SET) < 0) {
 		zfree(table);
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 	if (read(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
 		zfree(table);
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 	return table;
@@ -93,21 +88,18 @@ static struct engine_tablelist *get_tablelist(struct engine *e, uint64_t offset)
 	struct engine_tablelist *tablelist = zmalloc(sizeof(struct engine_tablelist));
 	if (!tablelist) {
 		zfree(tablelist);
-		lprint("[erro] Failed to request memory\n");
-		ERROR(EM_ALLOC, EL_FATAL);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return NULL;
 	}
 
 	if (lseek(e->fd, offset, SEEK_SET) < 0) {
 		zfree(tablelist);
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 	if (read(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
 		zfree(tablelist);
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 	return tablelist;
@@ -131,13 +123,11 @@ static void flush_table(struct engine *e, struct engine_table *table, uint64_t o
 	zassert(offset != 0);
 
 	if (lseek(e->fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	if (write(e->fd, table, sizeof(struct engine_table)) != sizeof(struct engine_table)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	put_table(e, table, offset);
@@ -148,13 +138,11 @@ static void flush_tablelist(struct engine *e, struct engine_tablelist *tablelist
 	zassert(offset != 0);
 
 	if (lseek(e->fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	if (write(e->fd, tablelist, sizeof(struct engine_tablelist)) != sizeof(struct engine_tablelist)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	zfree(tablelist);
@@ -169,8 +157,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 
 	struct engine_super super;
 	if (read(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
 	e->top = from_be64(super.top);
@@ -192,8 +179,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 
 	struct engine_dbsuper dbsuper;
 	if (read(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
 	zassert(from_be64(dbsuper.version) == VERSION_RELESE);
@@ -203,8 +189,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	long _db_alloc = lseek(e->db_fd, 0, SEEK_END);
 
 	if (_alloc < 0 || _db_alloc < 0) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
 
@@ -348,13 +333,11 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 	struct blob_info info;
 
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return;
 	}
 	if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return;
 	}
 
@@ -379,13 +362,11 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 	}
 
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
@@ -416,13 +397,11 @@ static void flush_super(struct engine *e, bool fast_flush) {
 
 flush_disk:
 	if (lseek(e->fd, 0, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	if (write(e->fd, &super, sizeof(struct engine_super)) != sizeof(struct engine_super)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
@@ -434,20 +413,18 @@ static void flush_dbsuper(struct engine *e) {
 	dbsuper.last = to_be64(last_blob);
 
 	if (lseek(e->db_fd, 0, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	if (write(e->db_fd, &dbsuper, sizeof(struct engine_dbsuper)) != sizeof(struct engine_dbsuper)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
 
 static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	if (data == NULL || len == 0) {
-		ERROR(ENO_DATA, EL_WARN);
+		error_throw("e8880046e019", "No data provided");
 		return len;
 	}
 
@@ -461,18 +438,15 @@ static uint64_t insert_data(struct engine *e, const void *data, size_t len) {
 	last_blob = offset;
 
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
 	if (write(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
 	if (write(e->db_fd, data, len) != (ssize_t)len) {
-		lprint("[erro] Failed to write disk\n");
-		ERROR(EIO_WRITE, EL_FATAL);
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
 
@@ -597,7 +571,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 			/* already in the table */
 			uint64_t ret = from_be64(table->items[i].offset);
 			put_table(e, table, table_offset);
-			ERROR(EQUID_EXIST, EL_WARN);
+			error_throw("a475446c70e8", "Key exists");
 			return ret;
 		}
 		if (cmp < 0) {
@@ -612,7 +586,6 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	uint64_t left_child = from_be64(table->items[i].child);
 	uint64_t right_child = 0; /* after insertion */
 	uint64_t ret = 0;
-	//bool nodata = 0;
 	if (left_child != 0) {
 		/* recursion */
 		ret = insert_table(e, left_child, quid, meta, data, len);
@@ -632,8 +605,6 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	} else {
 		if (data && len > 0) {
 			ret = offset = insert_data(e, data, len);
-		} else {
-			//nodata = 1;
 		}
 	}
 
@@ -641,9 +612,6 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
 	memmove(&table->items[i + 1], &table->items[i], (table->size - i) * sizeof(struct engine_item));
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
-	//memset(&table->items[i].meta, 0, sizeof(struct metadata));
-	//table->items[i].meta.nodata = nodata;
-	//table->items[i].meta.importance = MD_IMPORTANT_NORMAL;
 	memcpy(&table->items[i].meta, meta, sizeof(struct metadata));
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
@@ -659,7 +627,7 @@ static uint64_t insert_table(struct engine *e, uint64_t table_offset, quid_t *qu
  */
 static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid) {
 	if (!table_offset) {
-		ERROR(EREC_NOTFOUND, EL_WARN);
+		error_throw("6ef42da7901f", "Record not found");
 		return 0;
 	}
 	struct engine_table *table = get_table(e, table_offset);
@@ -671,7 +639,7 @@ static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *qu
 		if (cmp == 0) {
 			/* found */
 			if (table->items[i].meta.syslock || table->items[i].meta.freeze) {
-				ERROR(EREC_LOCKED, EL_WARN);
+				error_throw("4987a3310049", "Record locked");
 				put_table(e, table, table_offset);
 				return 0;
 			}
@@ -710,7 +678,6 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	uint64_t offset = 0;
 	uint64_t ret = 0;
 	uint64_t right_child = 0;
-	//bool nodata = 0;
 	if (*table_offset != 0) {
 		ret = insert_table(e, *table_offset, quid, meta, data, len);
 
@@ -726,8 +693,6 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	} else {
 		if (data && len > 0) {
 			ret = offset = insert_data(e, data, len);
-		} else {
-			//nodata = 1;
 		}
 	}
 
@@ -736,8 +701,6 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 	new_table->size = 1;
 	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);
-	//new_table->items[0].meta.nodata = nodata;
-	//new_table->items[0].meta.importance = MD_IMPORTANT_NORMAL;
 	memcpy(&new_table->items[0].meta, meta, sizeof(struct metadata));
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
@@ -750,9 +713,8 @@ static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t
 }
 
 int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -762,7 +724,7 @@ int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t 
 
 	insert_toplevel(e, &e->top, quid, &meta, data, len);
 	flush_super(e, TRUE);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	e->stats.keys++;
@@ -770,15 +732,14 @@ int engine_insert_data(struct engine *e, quid_t *quid, const void *data, size_t 
 }
 
 int engine_insert_meta_data(struct engine *e, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
 	insert_toplevel(e, &e->top, quid, meta, data, len);
 	flush_super(e, TRUE);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	e->stats.keys++;
@@ -786,9 +747,8 @@ int engine_insert_meta_data(struct engine *e, quid_t *quid, struct metadata *met
 }
 
 int engine_insert(struct engine *e, quid_t *quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -799,7 +759,7 @@ int engine_insert(struct engine *e, quid_t *quid) {
 
 	insert_toplevel(e, &e->top, quid, &meta, NULL, 0);
 	flush_super(e, TRUE);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	e->stats.keys++;
@@ -807,15 +767,14 @@ int engine_insert(struct engine *e, quid_t *quid) {
 }
 
 int engine_insert_meta(struct engine *e, quid_t *quid, struct metadata *meta) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
 	insert_toplevel(e, &e->top, quid, meta, NULL, 0);
 	flush_super(e, TRUE);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	e->stats.keys++;
@@ -837,7 +796,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 			if (cmp == 0) {
 				/* found */
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
-					ERROR(EREC_NOTFOUND, EL_WARN);
+					error_throw("6ef42da7901f", "Record not found");
 					put_table(e, table, table_offset);
 					return 0;
 				}
@@ -856,20 +815,24 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 		put_table(e, table, table_offset);
 		table_offset = child;
 	}
-	ERROR(EREC_NOTFOUND, EL_WARN);
+	error_throw("6ef42da7901f", "Record not found");
 	return 0;
 }
 
 void *get_data(struct engine *e, uint64_t offset, size_t *len) {
 	struct blob_info info;
+
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return NULL;
+	}
+
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 	if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t)sizeof(struct blob_info)) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
 
@@ -879,29 +842,28 @@ void *get_data(struct engine *e, uint64_t offset, size_t *len) {
 
 	void *data = zmalloc(*len);
 	if (!data) {
-		lprint("[erro] Failed to request memory\n");
-		ERROR(EM_ALLOC, EL_FATAL);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return NULL;
 	}
+
 	if (read(e->db_fd, data, *len) != (ssize_t) *len) {
-		lprint("[erro] Failed to read disk\n");
-		ERROR(EIO_READ, EL_FATAL);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		zfree(data);
 		data = NULL;
 		return NULL;
 	}
+
 	return data;
 }
 
 uint64_t engine_get(struct engine *e, const quid_t *quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return 0;
 	}
 	bool nodata = 0;
 	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
-	if (ISERROR())
+	if (iserror())
 		return 0;
 
 	if (nodata)
@@ -911,14 +873,13 @@ uint64_t engine_get(struct engine *e, const quid_t *quid) {
 }
 
 int engine_purge(struct engine *e, quid_t *quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
 	uint64_t offset = delete_table(e, e->top, quid);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	e->top = table_join(e, e->top);
@@ -938,7 +899,7 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
-					ERROR(EREC_NOTFOUND, EL_WARN);
+					error_throw("6ef42da7901f", "Record not found");
 					put_table(e, table, table_offset);
 					return 0;
 				}
@@ -956,18 +917,17 @@ static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const 
 		put_table(e, table, table_offset);
 		table_offset = child;
 	}
-	ERROR(EREC_NOTFOUND, EL_WARN);
+	error_throw("6ef42da7901f", "Record not found");
 	return 0;
 }
 
 int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 	get_meta(e, e->top, quid, md);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 	return 0;
 }
@@ -981,7 +941,7 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
-					ERROR(EREC_LOCKED, EL_WARN);
+					error_throw("4987a3310049", "Record locked");
 					put_table(e, table, table_offset);
 					return -1;
 				}
@@ -999,37 +959,35 @@ static int set_meta(struct engine *e, uint64_t table_offset, const quid_t *quid,
 		put_table(e, table, table_offset);
 		table_offset = child;
 	}
-	ERROR(EREC_NOTFOUND, EL_WARN);
+	error_throw("6ef42da7901f", "Record not found");
 	return -1;
 }
 
 int engine_setmeta(struct engine *e, const quid_t *quid, const struct metadata *data) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 	set_meta(e, e->top, quid, data);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 	return 0;
 }
 
 int engine_delete(struct engine *e, const quid_t *quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
 	struct metadata meta;
 	get_meta(e, e->top, quid, &meta);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	meta.lifecycle = MD_LIFECYCLE_RECYCLE;
 	set_meta(e, e->top, quid, &meta);
-	if (ISERROR())
+	if (iserror())
 		return -1;
 
 	flush_super(e, TRUE);
@@ -1041,6 +999,11 @@ int engine_recover_storage(struct engine *e) {
 	struct blob_info info;
 	int cnt = 0;
 
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return -1;
+	}
+
 	lprint("[info] Start recovery process\n");
 	if (!offset) {
 		lprint("[erro] Metadata lost\n");
@@ -1050,11 +1013,11 @@ int engine_recover_storage(struct engine *e) {
 	while (TRUE) {
 		cnt++;
 		if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
-			lprint("[erro] Failed to read disk\n");
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return -1;
 		}
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != (ssize_t) sizeof(struct blob_info)) {
-			lprint("[erro] Failed to read disk\n");
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return -1;
 		}
 
@@ -1082,28 +1045,24 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 
 		struct blob_info info;
 		if (lseek(e->db_fd, dboffset, SEEK_SET) < 0) {
-			lprint("[erro] Failed to read disk\n");
-			ERROR(EIO_READ, EL_FATAL);
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			put_table(e, table, table_offset);
 			return;
 		}
 		if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-			lprint("[erro] Failed to read disk\n");
-			ERROR(EIO_READ, EL_FATAL);
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			put_table(e, table, table_offset);
 			return;
 		}
 		size_t len = from_be32(info.len);
 		void *data = zmalloc(len);
 		if (!data) {
-			lprint("[erro] Failed to request memory\n");
-			ERROR(EM_ALLOC, EL_FATAL);
+			error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 			put_table(e, table, table_offset);
 			return;
 		}
 		if (read(e->db_fd, data, len) != (ssize_t) len) {
-			lprint("[erro] Failed to read disk\n");
-			ERROR(EIO_READ, EL_FATAL);
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			zfree(data);
 			data = NULL;
 			put_table(e, table, table_offset);
@@ -1129,9 +1088,8 @@ int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 	struct engine ce;
 	struct engine tmp;
 
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1151,9 +1109,8 @@ int engine_vacuum(struct engine *e, const char *fname, const char *dbname) {
 }
 
 int engine_update_data(struct engine *e, const quid_t *quid, const void *data, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1167,7 +1124,7 @@ int engine_update_data(struct engine *e, const quid_t *quid, const void *data, s
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				if (table->items[i].meta.syslock) {
-					ERROR(EREC_LOCKED, EL_WARN);
+					error_throw("4987a3310049", "Record locked");
 					put_table(e, table, table_offset);
 					return -1;
 				}
@@ -1189,14 +1146,13 @@ int engine_update_data(struct engine *e, const quid_t *quid, const void *data, s
 		put_table(e, table, table_offset);
 		table_offset = child;
 	}
-	ERROR(EREC_NOTFOUND, EL_WARN);
+	error_throw("6ef42da7901f", "Record not found");
 	return -1;
 }
 
 int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1253,9 +1209,8 @@ int engine_list_insert(struct engine *e, const quid_t *c_quid, const char *name,
 }
 
 char *engine_list_get_val(struct engine *e, const quid_t *c_quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return NULL;
 	}
 
@@ -1283,14 +1238,13 @@ char *engine_list_get_val(struct engine *e, const quid_t *c_quid) {
 		zfree(tablelist);
 	}
 
-	ERROR(ETBL_NOTFOUND, EL_WARN);
+	error_throw("2836444cd009", "Alias not found");
 	return NULL;
 }
 
 int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1315,14 +1269,13 @@ int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t 
 		zfree(tablelist);
 	}
 
-	ERROR(ETBL_NOTFOUND, EL_WARN);
+	error_throw("2836444cd009", "Alias not found");
 	return -1;
 }
 
 int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1350,14 +1303,13 @@ int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name,
 		zfree(tablelist);
 	}
 
-	ERROR(ETBL_NOTFOUND, EL_WARN);
+	error_throw("2836444cd009", "Alias not found");
 	return -1;
 }
 
 int engine_list_delete(struct engine *e, const quid_t *c_quid) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
@@ -1384,14 +1336,13 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 		zfree(tablelist);
 	}
 
-	ERROR(ETBL_NOTFOUND, EL_WARN);
+	error_throw("2836444cd009", "Alias not found");
 	return -1;
 }
 
 marshall_t *engine_list_all(struct engine *e) {
-	ERRORZEOR();
 	if (e->lock == LOCK) {
-		ERROR(EDB_LOCKED, EL_WARN);
+		error_throw("986154f80058", "Database locked");
 		return NULL;
 	}
 

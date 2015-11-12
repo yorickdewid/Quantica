@@ -67,12 +67,10 @@ void base_sync(struct base *base) {
 
 	if (lseek(base->fd, 0, SEEK_SET) < 0) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
-		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
-		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
 }
@@ -80,6 +78,7 @@ void base_sync(struct base *base) {
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
 	if (file_exists(BASECONTROL)) {
+
 		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
@@ -89,7 +88,6 @@ void base_init(struct base *base) {
 		memset(&super, 0, sizeof(struct base_super));
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
-			ERROR(EIO_READ, EL_FATAL);
 			return;
 		}
 		base->zero_key = super.zero_key;
@@ -112,6 +110,7 @@ void base_init(struct base *base) {
 		}
 		exit_status = EXSTAT_CHECKPOINT;
 	} else {
+
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);

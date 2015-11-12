@@ -13,6 +13,7 @@ LDFLAGS= -lm
 SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/time.c \
 		$(SRCDIR)/log.c \
+		$(SRCDIR)/error.c \
 		$(SRCDIR)/zmalloc.c \
 		$(SRCDIR)/arc4random.c \
 		$(SRCDIR)/strlcpy.c \

@@ -43,6 +43,8 @@ int quidcmp(const quid_t *a, const quid_t *b);
  */
 void quidtostr(char *s, quid_t *u);
 
+void shortquidtoquidstr(char *squid, char *error_code);
+
 /*
  * Convert string to QUID key
  */

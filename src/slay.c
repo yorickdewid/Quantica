@@ -356,6 +356,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			break;
 		}
 		default:
+			error_throw("dcb796d620d1", "Unknown datastructure");
 			break;
 	}
 

@@ -88,23 +88,23 @@ static uint8_t get_sbox_invert(uint8_t num) {
 }
 
 static uint8_t xtime(uint8_t x) {
-	return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
+	return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
 
 static void key_expansion() {
 	uint32_t i, j, k;
 	uint8_t tempa[4];
 
-	for(i=0; i<NK; ++i) {
+	for (i = 0; i < NK; ++i) {
 		roundkey[(i * 4) + 0] = _key[(i * 4) + 0];
 		roundkey[(i * 4) + 1] = _key[(i * 4) + 1];
 		roundkey[(i * 4) + 2] = _key[(i * 4) + 2];
 		roundkey[(i * 4) + 3] = _key[(i * 4) + 3];
 	}
 
-	for(;(i<(NB * (NR + 1))); ++i) {
+	for (; (i < (NB * (NR + 1))); ++i) {
 		for (j = 0; j < 4; ++j) {
-			tempa[j]=roundkey[(i-1) * 4 + j];
+			tempa[j] = roundkey[(i - 1) * 4 + j];
 		}
 		if (i % NK == 0) {
 			k = tempa[0];
@@ -118,7 +118,7 @@ static void key_expansion() {
 			tempa[2] = get_sbox_value(tempa[2]);
 			tempa[3] = get_sbox_value(tempa[3]);
 
-			tempa[0] =  tempa[0] ^ rcon[i/NK];
+			tempa[0] =  tempa[0] ^ rcon[i / NK];
 		} else if (NK > 6 && i % NK == 4) {
 			tempa[0] = get_sbox_value(tempa[0]);
 			tempa[1] = get_sbox_value(tempa[1]);
@@ -134,8 +134,8 @@ static void key_expansion() {
 
 static void add_roundkey(uint8_t round) {
 	uint8_t i, j;
-	for (i=0; i<4; ++i) {
-		for (j=0; j<4; ++j) {
+	for (i = 0; i < 4; ++i) {
+		for (j = 0; j < 4; ++j) {
 			(*state)[i][j] ^= roundkey[round * NB * 4 + i * NB + j];
 		}
 	}
@@ -143,8 +143,8 @@ static void add_roundkey(uint8_t round) {
 
 static void subbytes() {
 	uint8_t i, j;
-	for (i=0; i<4; ++i) {
-		for (j=0; j<4; ++j) {
+	for (i = 0; i < 4; ++i) {
+		for (j = 0; j < 4; ++j) {
 			(*state)[j][i] = get_sbox_value((*state)[j][i]);
 		}
 	}
@@ -177,7 +177,7 @@ static void shift_rows() {
 static void mix_columns() {
 	uint8_t i;
 	uint8_t tmp, tm, t;
-	for (i=0; i<4; ++i) {
+	for (i = 0; i < 4; ++i) {
 		t = (*state)[i][0];
 		tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3];
 		tm = (*state)[i][0] ^ (*state)[i][1];
@@ -198,7 +198,7 @@ static void mix_columns() {
 static void inv_mix_columns() {
 	int i;
 	uint8_t a, b, c, d;
-	for (i=0; i<4; ++i) {
+	for (i = 0; i < 4; ++i) {
 		a = (*state)[i][0];
 		b = (*state)[i][1];
 		c = (*state)[i][2];
@@ -212,9 +212,9 @@ static void inv_mix_columns() {
 }
 
 static void inv_subbytes() {
-	uint8_t i,j;
-	for (i=0; i<4; ++i) {
-		for (j=0; j<4; ++j) {
+	uint8_t i, j;
+	for (i = 0; i < 4; ++i) {
+		for (j = 0; j < 4; ++j) {
 			(*state)[j][i] = get_sbox_invert((*state)[j][i]);
 		}
 	}
@@ -224,7 +224,7 @@ static void inv_shift_rows() {
 	uint8_t temp;
 
 	temp = (*state)[3][1];
-	(*state)[3][1] = ( *state)[2][1];
+	(*state)[3][1] = (*state)[2][1];
 	(*state)[2][1] = (*state)[1][1];
 	(*state)[1][1] = (*state)[0][1];
 	(*state)[0][1] = temp;
@@ -248,7 +248,7 @@ static void cipher() {
 	uint8_t round = 0;
 
 	add_roundkey(0);
-	for (round=1; round<NR; ++round) {
+	for (round = 1; round < NR; ++round) {
 		subbytes();
 		shift_rows();
 		mix_columns();
@@ -264,7 +264,7 @@ static void inv_cipher() {
 	uint8_t round = 0;
 
 	add_roundkey(NR);
-	for (round=NR-1; round>0; round--) {
+	for (round = NR - 1; round > 0; round--) {
 		inv_shift_rows();
 		inv_subbytes();
 		add_roundkey(round);
@@ -278,14 +278,14 @@ static void inv_cipher() {
 
 static void block_copy(uint8_t *output, uint8_t *input) {
 	uint8_t i;
-	for (i=0; i<KEYLEN; ++i) {
+	for (i = 0; i < KEYLEN; ++i) {
 		output[i] = input[i];
 	}
 }
 
 static void cor_with_iv(uint8_t *buf) {
 	uint8_t i;
-	for (i=0; i<KEYLEN; ++i) {
+	for (i = 0; i < KEYLEN; ++i) {
 		buf[i] ^= _iv[i];
 	}
 }
@@ -326,7 +326,7 @@ void aes128_cbc_encrypt_buffer(uint8_t *output, uint8_t *input, uint32_t length,
 		_iv = (uint8_t*)iv;
 	}
 
-	for (i=0; i<length; i+=KEYLEN) {
+	for (i = 0; i < length; i += KEYLEN) {
 		cor_with_iv(input);
 		block_copy(output, input);
 		state = (state_t*)output;
@@ -372,7 +372,7 @@ void aes128_cbc_decrypt_buffer(uint8_t *output, uint8_t *input, uint32_t length,
 
 	if (remainders) {
 		block_copy(output, input);
-		memset(output+remainders, 0, KEYLEN - remainders);
+		memset(output + remainders, 0, KEYLEN - remainders);
 		state = (state_t*)output;
 		inv_cipher();
 	}

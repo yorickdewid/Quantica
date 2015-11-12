@@ -170,6 +170,13 @@ char *get_http_status(http_status_t status) {
 	return buf;
 }
 
+http_status_t response_error(char **response) {
+	char squid[QUID_LENGTH + 1];
+	shortquidtoquidstr(squid, get_error_code());
+	snprintf(*response, RESPONSE_SIZE, "{\"error\":{\"code\":\"%s\",\"quid\":\"%s\",\"description\":\"%s\"},\"description\":\"An error occured\",\"status\":\"ERROR\",\"success\":false}", get_error_code(), squid, get_error_description());
+	return HTTP_OK;
+}
+
 http_status_t api_not_found(char **response, http_request_t *req) {
 	unused(req);
 	strlcpy(*response, "{\"description\":\"API URI does not exist\",\"status\":\"NOT_FOUND\",\"success\":false}", RESPONSE_SIZE);
@@ -213,10 +220,9 @@ http_status_t api_sha1(char **response, http_request_t *req) {
 		if (param_data) {
 			char strsha[SHA1_LENGTH + 1];
 			strsha[SHA1_LENGTH] = '\0';
-			if (crypto_sha1(strsha, param_data) < 0) {
-				strsha[SHA1_LENGTH] = '\0';
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
+			crypto_sha1(strsha, param_data);
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA1\",\"status\":\"COMMAND_OK\",\"success\":true}", strsha);
 			return HTTP_OK;
@@ -321,29 +327,8 @@ http_status_t api_sql_query(char **response, http_request_t *req) {
 		if (param_data) {
 			size_t len = 0, resplen;
 			sqlresult_t *data = exec_sqlquery(param_data, &len);
-			if (ISERROR()) {
-				if (IFERROR(EREC_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ESQL_TOKEN)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid token in query\",\"status\":\"SQL_TOKEN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ESQL_PARSE_END)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unexpected end of query\",\"status\":\"SQL_PARSE_END\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ESQL_PARSE_VAL)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Expecting value\",\"status\":\"SQL_PARSE_VAL\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ESQL_PARSE_TOK)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unexpected token\",\"status\":\"SQL_PARSE_TOK\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(ESQL_PARSE_STCT)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Invalid query construction\",\"status\":\"SQL_PARSE_STCT\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
+			if (iserror()) {
+				return response_error(response);
 			}
 			resplen = RESPONSE_SIZE;
 			if (len > RESPONSE_SIZE) {
@@ -372,14 +357,9 @@ http_status_t api_sql_query(char **response, http_request_t *req) {
 
 http_status_t api_vacuum(char **response, http_request_t *req) {
 	unused(req);
-	if (db_vacuum() < 0) {
-		if (IFERROR(EDB_LOCKED)) {
-			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Database is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-			return HTTP_OK;
-		} else {
-			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-			return HTTP_OK;
-		}
+	db_vacuum();
+	if (iserror()) {
+		return response_error(response);
 	} else {
 		strlcpy(*response, "{\"description\":\"Vacuum succeeded\",\"status\":\"COMMAND_OK\",\"success\":true}", RESPONSE_SIZE);
 	}
@@ -459,9 +439,9 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 		if (param_data) {
 			char squid[QUID_LENGTH + 1];
 			int items = 0;
-			if (db_put(squid, &items, param_data, strlen(param_data)) < 0) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
+			db_put(squid, &items, param_data, strlen(param_data));
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"COMMAND_OK\",\"success\":true}", squid, items);
 			return HTTP_OK;
@@ -483,14 +463,8 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 			resolve = FALSE;
 		}
 		char *data = db_get(param_quid, &len, resolve);
-		if (!data) {
-			if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			}
+		if (iserror()) {
+			return response_error(response);
 		}
 		len = strlen(data);
 		resplen = RESPONSE_SIZE;
@@ -510,14 +484,8 @@ http_status_t api_db_get_type(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		char *type = db_get_type(param_quid);
-		if (!type) {
-			if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			}
+		if (iserror()) {
+			return response_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"datatype\":\"%s\",\"description\":\"Datatype of record value\",\"status\":\"COMMAND_OK\",\"success\":true}", type);
 		return HTTP_OK;
@@ -530,14 +498,8 @@ http_status_t api_db_get_schema(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
 		char *schema = db_get_schema(param_quid);
-		if (!schema) {
-			if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			}
+		if (iserror()) {
+			return response_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"dataschema\":\"%s\",\"description\":\"Datatype of record value\",\"status\":\"COMMAND_OK\",\"success\":true}", schema);
 		return HTTP_OK;
@@ -549,17 +511,9 @@ http_status_t api_db_get_schema(char **response, http_request_t *req) {
 http_status_t api_db_delete(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
-		if (db_delete(param_quid) < 0) {
-			if (IFERROR(EREC_LOCKED)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			}
+		db_delete(param_quid);
+		if (iserror()) {
+			return response_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record deleted\",\"status\":\"COMMAND_OK\",\"success\":true}");
 		return HTTP_OK;
@@ -571,17 +525,9 @@ http_status_t api_db_delete(char **response, http_request_t *req) {
 http_status_t api_db_purge(char **response, http_request_t *req) {
 	char *param_quid = (char *)hashtable_get(req->data, "quid");
 	if (param_quid) {
-		if (db_purge(param_quid) < 0) {
-			if (IFERROR(EREC_LOCKED)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			}
+		db_purge(param_quid);
+		if (iserror()) {
+			return response_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record purged\",\"status\":\"COMMAND_OK\",\"success\":true}");
 		return HTTP_OK;
@@ -596,17 +542,9 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 		char *param_quid = (char *)hashtable_get(req->data, "quid");
 		if (param_data && param_quid) {
 			int items = 0;
-			if (db_update(param_quid, &items, param_data, strlen(param_data)) < 0) {
-				if (IFERROR(EREC_LOCKED)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(EREC_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
+			db_update(param_quid, &items, param_data, strlen(param_data));
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":true}");
 			return HTTP_OK;
@@ -625,9 +563,9 @@ http_status_t api_index_create(char **response, http_request_t *req) {
 		if (param_element && param_quid) {
 			char squid[QUID_LENGTH + 1];
 			int items = 0;
-			if (db_create_index(param_quid, squid, &items, param_element) < 0) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-				return HTTP_OK;
+			db_create_index(param_quid, squid, &items, param_element);
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"COMMAND_OK\",\"success\":true}", squid, items);
 			return HTTP_OK;
@@ -644,17 +582,9 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	if (param_quid) {
 		struct record_status status;
 		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-			if (db_record_get_meta(param_quid, &status) < 0) {
-				if (IFERROR(EREC_LOCKED)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(EREC_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
+			db_record_get_meta(param_quid, &status);
+			if (iserror()) {
+				return response_error(response);
 			}
 			char *param_exec = (char *)hashtable_get(req->data, "executable");
 			if (param_exec)
@@ -671,28 +601,16 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 			char *param_lock = (char *)hashtable_get(req->data, "system_lock");
 			if (param_lock)
 				status.syslock = atoi(param_lock);
-			if (db_record_set_meta(param_quid, &status) < 0) {
-				if (IFERROR(EREC_LOCKED)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Record is locked\",\"status\":\"REC_LOCKED\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else if (IFERROR(EREC_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
+			db_record_set_meta(param_quid, &status);
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"COMMAND_OK\",\"success\":true}");
 			return HTTP_OK;
 		}
-		if (db_record_get_meta(param_quid, &status) < 0) {
-			if (IFERROR(EREC_NOTFOUND)) {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-				return HTTP_OK;
-			} else {
-				snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-			}
+		db_record_get_meta(param_quid, &status);
+		if (iserror()) {
+			return response_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"metadata\":{\"nodata\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\"},\"description\":\"Record metadata queried\",\"status\":\"COMMAND_OK\",\"success\":true}", str_bool(status.nodata), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
 		return HTTP_OK;
@@ -707,9 +625,9 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
 			char *param_name = (char *)hashtable_get(req->data, "name");
 			if (param_name && param_quid) {
-				if (db_alias_update(param_quid, param_name) < 0) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", EREC_NOTFOUND);
-					return HTTP_OK;
+				db_alias_update(param_quid, param_name);
+				if (iserror()) {
+					return response_error(response);
 				}
 				snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias renamed\",\"status\":\"COMMAND_OK\",\"success\":true}");
 				return HTTP_OK;
@@ -718,14 +636,8 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 			return HTTP_OK;
 		} else {
 			char *name = db_alias_get_name(param_quid);
-			if (!name) {
-				if (IFERROR(ETBL_NOTFOUND)) {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				} else {
-					snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-					return HTTP_OK;
-				}
+			if (iserror()) {
+				return response_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"COMMAND_OK\",\"success\":true}", name);
 			zfree(name);
@@ -746,17 +658,8 @@ http_status_t api_alias_get(char **response, http_request_t *req) {
 		}
 	}
 	char *data = db_alias_get_data(req->uri, &len, resolve);
-	if (!data) {
-		if (IFERROR(EREC_NOTFOUND)) {
-			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record does not exist\",\"status\":\"REC_NOTFOUND\",\"success\":false}", GETERROR());
-			return HTTP_OK;
-		} else if (IFERROR(ETBL_NOTFOUND)) {
-			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"The requested record has no tablelist entry\",\"status\":\"TBL_NOTFOUND\",\"success\":false}", GETERROR());
-			return HTTP_OK;
-		} else {
-			snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Unknown error\",\"status\":\"ERROR_UNKNOWN\",\"success\":false}", GETERROR());
-			return HTTP_OK;
-		}
+	if (iserror()) {
+		return response_error(response);
 	}
 	resplen = RESPONSE_SIZE;
 	if (len > (RESPONSE_SIZE / 2)) {
@@ -773,9 +676,8 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 
 	char *table = db_alias_all();
-	if (!table) {
-		snprintf(*response, RESPONSE_SIZE, "{\"error_code\":%d,\"description\":\"Server not ready\",\"status\":\"NOT_READY\",\"success\":false}", ENOT_READY);
-		return HTTP_OK;
+	if (iserror()) {
+		return response_error(response);
 	}
 
 	len = strlen(table);
@@ -879,6 +781,9 @@ void handle_request(int sd, fd_set *set) {
 		lprint("[erro] Failed to get file descriptor\n");
 		goto disconnect;
 	};
+
+	/* No errors from this point on */
+	error_clear();
 
 	struct sockaddr_storage addr;
 	char str_addr[INET6_ADDRSTRLEN];
@@ -1319,10 +1224,15 @@ done:
 		free_hashtable(postdata);
 	}
 
-	if (keepalive)
+	if (keepalive) {
+		error_clear();
 		return;
+	}
 
 disconnect:
+	/* Erase any errors */
+	error_clear();
+
 	if (socket_stream) {
 		fclose(socket_stream);
 		socket_stream = NULL;

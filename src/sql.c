@@ -119,6 +119,9 @@ struct stoken {
 sqlresult_t *parse(qstack_t *stack, size_t *len) {
 	static sqlresult_t rs;
 	memset(&rs, '\0', sizeof(sqlresult_t));
+	unused(stack);
+	unused(len);
+#if 0
 	if (stack->size <= 0) {
 		ERROR(ESQL_PARSE_END, EL_WARN);
 		return &rs;
@@ -709,6 +712,7 @@ update_arr:
 	} else {
 		ERROR(ESQL_PARSE_TOK, EL_WARN);
 	}
+#endif
 	return &rs;
 }
 
@@ -990,7 +994,7 @@ int tokenize(qstack_t *stack, char sql[]) {
 			tok->length = strlen(_s);
 		} else {
 tok_err:
-			ERROR(ESQL_TOKEN, EL_WARN);
+			//ERROR(ESQL_TOKEN, EL_WARN); //TODO throw err
 			tree_zfree(tok);
 			zfree(_ustr);
 			return 0;
@@ -1004,7 +1008,7 @@ tok_err:
 
 sqlresult_t *sql_exec(const char *sql, size_t *len) {
 	sqlresult_t *rs = NULL;
-	ERRORZEOR();
+	//ERRORZEOR();
 	charcnt = 0;
 	cnt = 0;
 	qstack_t tokenstream;

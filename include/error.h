@@ -1,60 +1,22 @@
 #ifndef ERROR_H_INCLUDED
 #define ERROR_H_INCLUDED
 
-#include <stdint.h>
-
-//TODO this should be a stack
-
-enum error_level {
-	EL_DEBUG = 1,
-	EL_WARN,
-	EL_FATAL
-};
-
-enum error_code {
-	ENOT_READY = 8,
-	ENO_QUID,
-	ENO_DATA,
-	EIO_READ,
-	EIO_WRITE,
-	EM_ALLOC,
-	EQUID_EXIST,
-	EDB_LOCKED,
-	EREC_LOCKED,
-	EREC_NOTFOUND,
-	ETBL_NOTFOUND,
-	ESQL_TOKEN,
-	ESQL_PARSE_END,
-	ESQL_PARSE_VAL,
-	ESQL_PARSE_TOK,
-	ESQL_PARSE_STCT
-};
+#include <config.h>
+#include <common.h>
 
 /*
  * Trace error through global structure
  */
 struct error {
-	enum error_code code;
-	enum error_level level;
+	char error_squid[12 + 1];
+	char *description;
 };
 
-extern struct error _eglobal;
-
-#define ERROR(e, l)			\
-	_eglobal.code = e;		\
-	_eglobal.level = l;		\
-
-#define ISERROR()	\
-	_eglobal.code ? 1 : 0
-
-#define ERRORZEOR()			\
-	_eglobal.code = 0;		\
-	_eglobal.level = 0;		\
-
-#define IFERROR(e)	\
-	(_eglobal.code==e) ? 1 : 0
-
-#define GETERROR()	\
-	_eglobal.code
+void error_clear();
+bool iserror();
+void error_throw(char *error_code, char *error_message);
+void error_throw_fatal(char *error_code, char *error_message);
+char *get_error_code();
+char *get_error_description();
 
 #endif // ERROR_H_INCLUDED
