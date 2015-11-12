@@ -171,6 +171,21 @@ char *get_http_status(http_status_t status) {
 }
 
 /*
+ * Locate parameter or return NULL
+ */
+char *get_param(http_request_t *req, char *param_name) {
+	if (req->querystring) {
+		char *param = (char *)hashtable_get(req->querystring, param_name);
+		if (param)
+			return param;
+	}
+	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
+		return (char *)hashtable_get(req->data, param_name);
+	}
+	return NULL;
+}
+
+/*
  * Default methods
  */
 http_status_t response_internal_error(char **response) {
@@ -206,157 +221,157 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char buf[26];
 	char buf2[TIMENAME_SIZE + 1];
 	buf2[TIMENAME_SIZE] = '\0';
+
 	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
+	if (iserror()) {
+		return response_internal_error(response);
+	}
 	snprintf(*response, RESPONSE_SIZE, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"dataheap\":\"" BINDATA "\",\"default_key\":\"{" DEFAULT_PREFIX "-000000000000}\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"release\":%d,\"major\":%d,\"minor\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
 	return HTTP_OK;
 }
 
+
 http_status_t api_instance(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_name = (char *)hashtable_get(req->data, "name");
-		if (param_name) {
-			set_instance_name(param_name);
-			strlcpy(*response, "{\"description\":\"Instance name set\",\"status\":\"SUCCEEDED\",\"success\":true}", RESPONSE_SIZE);
-			return HTTP_OK;
+	char *name = get_param(req, "name");
+	if (name) {
+		set_instance_name(name);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		strlcpy(*response, "{\"description\":\"Instance name set\",\"status\":\"SUCCEEDED\",\"success\":true}", RESPONSE_SIZE);
+		return HTTP_OK;
 	}
 	snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"quid\":\"%s\",\"description\":\"Server instance name\",\"status\":\"SUCCEEDED\",\"success\":true}", get_instance_name(), get_instance_key());
 	return HTTP_OK;
 }
 
 http_status_t api_sha1(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char strsha[SHA1_LENGTH + 1];
-			strsha[SHA1_LENGTH] = '\0';
-			crypto_sha1(strsha, param_data);
-			if (iserror()) {
-				return response_internal_error(response);
-			}
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA1\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha);
-			return HTTP_OK;
+	char strsha[SHA1_LENGTH + 1];
+	strsha[SHA1_LENGTH] = '\0';
+
+	char *data = get_param(req, "data");
+	if (data) {
+		crypto_sha1(strsha, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA1\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_md5(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char strmd5[MD5_SIZE + 1];
-			strmd5[MD5_SIZE] = '\0';
-			crypto_md5(strmd5, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with MD5\",\"status\":\"SUCCEEDED\",\"success\":true}", strmd5);
-			return HTTP_OK;
+	char strmd5[MD5_SIZE + 1];
+	strmd5[MD5_SIZE] = '\0';
+
+	char *data = get_param(req, "data");
+	if (data) {
+		crypto_md5(strmd5, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with MD5\",\"status\":\"SUCCEEDED\",\"success\":true}", strmd5);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_sha256(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char strsha256[(2 * SHA256_DIGEST_SIZE) + 1];
-			strsha256[2 * SHA256_DIGEST_SIZE] = '\0';
-			crypto_sha256(strsha256, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha256);
-			return HTTP_OK;
+	char strsha256[(2 * SHA256_DIGEST_SIZE) + 1];
+	strsha256[2 * SHA256_DIGEST_SIZE] = '\0';
+
+	char *data = get_param(req, "data");
+	if (data) {
+		crypto_sha256(strsha256, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data hashed with SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha256);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_sha512(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char strsha512[(2 * SHA512_DIGEST_SIZE) + 1];
-			strsha512[(2 * SHA512_DIGEST_SIZE)] = '\0';
-			crypto_sha512(strsha512, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha512);
-			return HTTP_OK;
+	char strsha512[(2 * SHA512_DIGEST_SIZE) + 1];
+	strsha512[(2 * SHA512_DIGEST_SIZE)] = '\0';
+
+	char *data = get_param(req, "data");
+	if (data) {
+		crypto_sha512(strsha512, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data hashed with SHA512\",\"status\":\"SUCCEEDED\",\"success\":true}", strsha512);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_hmac_sha256(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		char *param_key = (char *)hashtable_get(req->data, "key");
-		if (param_data && param_key) {
-			char mac[SHA256_BLOCK_SIZE + 1];
-			mac[SHA256_BLOCK_SIZE] = '\0';
-			crypto_hmac_sha256(mac, param_key, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", mac);
-			return HTTP_OK;
+	char mac[SHA256_BLOCK_SIZE + 1];
+	mac[SHA256_BLOCK_SIZE] = '\0';
+
+	char *data = get_param(req, "data");
+	char *key = get_param(req, "data");
+	if (data && key) {
+		crypto_hmac_sha256(mac, key, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hmac\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", mac);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_hmac_sha512(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		char *param_key = (char *)hashtable_get(req->data, "key");
-		if (param_data && param_key) {
-			char mac[SHA512_BLOCK_SIZE + 1];
-			mac[SHA512_BLOCK_SIZE] = '\0';
-			crypto_hmac_sha512(mac, param_key, param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", mac);
-			return HTTP_OK;
+	char mac[SHA512_BLOCK_SIZE + 1];
+	mac[SHA512_BLOCK_SIZE] = '\0';
+
+	char *data = get_param(req, "data");
+	char *key = get_param(req, "data");
+	if (data && key) {
+		crypto_hmac_sha512(mac, key, data);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"hash\":\"%s\",\"description\":\"Data signed with HMAC-SHA256\",\"status\":\"SUCCEEDED\",\"success\":true}", mac);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_sql_query(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "query");
-		if (param_data) {
-			size_t len = 0, resplen;
-			sqlresult_t *data = exec_sqlquery(param_data, &len);
-			if (iserror()) {
-				return response_internal_error(response);
-			}
-			resplen = RESPONSE_SIZE;
-			if (len > RESPONSE_SIZE) {
-				resplen = RESPONSE_SIZE + len;
-				*response = zrealloc(*response, resplen);
-			}
-			if (data->quid[0] != '\0')
-				snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"SUCCEEDED\",\"success\":true}", data->quid, data->items);
-			else if (data->name) {
-				snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"SUCCEEDED\",\"success\":true}", data->name, (char *)data->data);
-				zfree(data->name);
-				zfree(data->data);
-			} else if (data->data) {
-				snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"SUCCEEDED\",\"success\":true}", (char *)data->data);
-				zfree(data->data);
-			} else
-				snprintf(*response, resplen, "{\"description\":\"Query executed\",\"status\":\"SUCCEEDED\",\"success\":true}");
-			return HTTP_OK;
+	char *query = get_param(req, "query");
+	if (query) {
+		size_t len = 0, resplen;
+		sqlresult_t *data = exec_sqlquery(query, &len);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+
+		resplen = RESPONSE_SIZE;
+		if (len > RESPONSE_SIZE) {
+			resplen = RESPONSE_SIZE + len;
+			*response = zrealloc(*response, resplen);
+		}
+
+		if (data->quid[0] != '\0')
+			snprintf(*response, resplen, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"SUCCEEDED\",\"success\":true}", data->quid, data->items);
+		else if (data->name) {
+			snprintf(*response, resplen, "{\"%s\":\"%s\",\"description\":\"Query executed\",\"status\":\"SUCCEEDED\",\"success\":true}", data->name, (char *)data->data);
+			zfree(data->name);
+			zfree(data->data);
+		} else if (data->data) {
+			snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve record by requested key\",\"status\":\"SUCCEEDED\",\"success\":true}", (char *)data->data);
+			zfree(data->data);
+		} else
+			snprintf(*response, resplen, "{\"description\":\"Query executed\",\"status\":\"SUCCEEDED\",\"success\":true}");
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_vacuum(char **response, http_request_t *req) {
@@ -364,15 +379,17 @@ http_status_t api_vacuum(char **response, http_request_t *req) {
 	db_vacuum();
 	if (iserror()) {
 		return response_internal_error(response);
-	} else {
-		strlcpy(*response, "{\"description\":\"Vacuum succeeded\",\"status\":\"SUCCEEDED\",\"success\":true}", RESPONSE_SIZE);
 	}
+	strlcpy(*response, "{\"description\":\"Vacuum succeeded\",\"status\":\"SUCCEEDED\",\"success\":true}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
 
 http_status_t api_sync(char **response, http_request_t *req) {
 	unused(req);
 	filesync();
+	if (iserror()) {
+		return response_internal_error(response);
+	}
 	strlcpy(*response, "{\"description\":\"Block synchronization succeeded\",\"status\":\"SUCCEEDED\",\"success\":true}", RESPONSE_SIZE);
 	return HTTP_OK;
 }
@@ -380,18 +397,23 @@ http_status_t api_sync(char **response, http_request_t *req) {
 http_status_t api_gen_quid(char **response, http_request_t *req) {
 	bool qshort = FALSE;
 	char *squid = NULL;
-	if (req->querystring) {
-		char *quidshort = (char *)hashtable_get(req->querystring, "short");
-		if (quidshort && !strcmp(quidshort, "true")) {
+	char *param_short = get_param(req, "short");
+	if (param_short) {
+		if (!strcmp(param_short, "true")) {
 			qshort = TRUE;
 		}
 	}
+
 	if (qshort) {
 		squid = (char *)zmalloc(SHORT_QUID_LENGTH + 1);
 		quid_generate_short(squid);
 	} else {
 		squid = (char *)zmalloc(QUID_LENGTH + 1);
 		quid_generate(squid);
+	}
+
+	if (iserror()) {
+		return response_internal_error(response);
 	}
 	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid);
 	zfree(squid);
@@ -406,67 +428,67 @@ http_status_t api_shutdown(char **response, http_request_t *req) {
 }
 
 http_status_t api_base64_enc(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char *enc = crypto_base64_enc(param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
-			zfree(enc);
-			return HTTP_OK;
-		}
-		return response_empty_error(response);
-	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
-}
-
-http_status_t api_base64_dec(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char *enc = crypto_base64_dec(param_data);
-			snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
-			zfree(enc);
-			return HTTP_OK;
-		}
-		return response_empty_error(response);
-	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
-}
-
-http_status_t api_db_put(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		if (param_data) {
-			char squid[QUID_LENGTH + 1];
-			int items = 0;
-			db_put(squid, &items, param_data, strlen(param_data));
-			if (iserror()) {
-				return response_internal_error(response);
-			}
-			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
-			return HTTP_OK;
-		}
-		return response_empty_error(response);
-	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
-}
-
-http_status_t api_db_get(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	char *noresolve = (char *)hashtable_get(req->data, "noresolve");
-	if (param_quid) {
-		size_t len = 0, resplen;
-		bool resolve = TRUE;
-		if (noresolve && !strcmp(noresolve, "true")) {
-			resolve = FALSE;
-		}
-		char *data = db_get(param_quid, &len, resolve);
+	char *data = get_param(req, "data");
+	if (data) {
+		char *enc = crypto_base64_enc(data);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
+		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
+		zfree(enc);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_base64_dec(char **response, http_request_t *req) {
+	char *data = get_param(req, "data");
+	if (data) {
+		char *enc = crypto_base64_dec(data);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
+		zfree(enc);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_put(char **response, http_request_t *req) {
+	char squid[QUID_LENGTH + 1];
+	int items = 0;
+
+	char *data = get_param(req, "data");
+	if (data) {
+		db_put(squid, &items, data, strlen(data));
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Data stored in record\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_get(char **response, http_request_t *req) {
+	size_t len = 0, resplen;
+	bool resolve = TRUE;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *noresolve = get_param(req, "noresolve");
+	if (quid) {
+		if (noresolve) {
+			if (!strcmp(noresolve, "true")) {
+				resolve = FALSE;
+			}
+		}
+
+		char *data = db_get(quid, &len, resolve);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+
 		len = strlen(data);
 		resplen = RESPONSE_SIZE;
 		if (len > (RESPONSE_SIZE / 2)) {
@@ -481,9 +503,9 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_get_type(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
-		char *type = db_get_type(param_quid);
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *type = db_get_type(quid);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -494,9 +516,9 @@ http_status_t api_db_get_type(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_get_schema(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
-		char *schema = db_get_schema(param_quid);
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *schema = db_get_schema(quid);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -507,9 +529,9 @@ http_status_t api_db_get_schema(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_delete(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
-		db_delete(param_quid);
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		db_delete(quid);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -520,9 +542,9 @@ http_status_t api_db_delete(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_purge(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
-		db_purge(param_quid);
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		db_purge(quid);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -533,76 +555,73 @@ http_status_t api_db_purge(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_update(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_data = (char *)hashtable_get(req->data, "data");
-		char *param_quid = (char *)hashtable_get(req->data, "quid");
-		if (param_data && param_quid) {
-			int items = 0;
-			db_update(param_quid, &items, param_data, strlen(param_data));
-			if (iserror()) {
-				return response_internal_error(response);
-			}
-			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
-			return HTTP_OK;
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *data = get_param(req, "data");
+	if (quid && data) {
+		db_update(quid, &items, data, strlen(data));
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_index_create(char **response, http_request_t *req) {
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-		char *param_element = (char *)hashtable_get(req->data, "element");
-		char *param_quid = (char *)hashtable_get(req->data, "quid");
-		if (param_element && param_quid) {
-			char squid[QUID_LENGTH + 1];
-			int items = 0;
-			db_create_index(param_quid, squid, &items, param_element);
-			if (iserror()) {
-				return response_internal_error(response);
-			}
-			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
-			return HTTP_OK;
+	char squid[QUID_LENGTH + 1];
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *element = get_param(req, "element");
+	if (quid && element) {
+		db_create_index(quid, squid, &items, element);
+		if (iserror()) {
+			return response_internal_error(response);
 		}
-		return response_empty_error(response);
+		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+		return HTTP_OK;
 	}
-	strlcpy(*response, "{\"description\":\"This call requires POST/PUT requests\",\"status\":\"WRONG_METHOD\",\"success\":false}", RESPONSE_SIZE);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_db_get_meta(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *executable = get_param(req, "executable");
+	char *freeze = get_param(req, "freeze");
+	char *importance = get_param(req, "importance");
+	char *lifecycle = get_param(req, "lifecycle");
+	char *system_lock = get_param(req, "system_lock");
+	if (quid) {
 		struct record_status status;
-		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-			db_record_get_meta(param_quid, &status);
+		if (executable || freeze || importance || lifecycle || system_lock) {
+			db_record_get_meta(quid, &status);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
-			char *param_exec = (char *)hashtable_get(req->data, "executable");
-			if (param_exec)
-				status.exec = atoi(param_exec);
-			char *param_freeze = (char *)hashtable_get(req->data, "freeze");
-			if (param_freeze)
-				status.freeze = atoi(param_freeze);
-			char *param_importance = (char *)hashtable_get(req->data, "importance");
-			if (param_importance)
-				status.importance = atoi(param_importance);
-			char *param_lifecycle = (char *)hashtable_get(req->data, "lifecycle");
-			if (param_lifecycle)
-				strlcpy(status.lifecycle, param_lifecycle, STATUS_LIFECYCLE_SIZE);
-			char *param_lock = (char *)hashtable_get(req->data, "system_lock");
-			if (param_lock)
-				status.syslock = atoi(param_lock);
-			db_record_set_meta(param_quid, &status);
+
+			/* Set record values if given */
+			if (executable)
+				status.exec = atoi(executable);
+			if (freeze)
+				status.freeze = atoi(freeze);
+			if (importance)
+				status.importance = atoi(importance);
+			if (lifecycle)
+				strlcpy(status.lifecycle, lifecycle, STATUS_LIFECYCLE_SIZE);
+			if (system_lock)
+				status.syslock = atoi(system_lock);
+
+			db_record_set_meta(quid, &status);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
-		db_record_get_meta(param_quid, &status);
+		db_record_get_meta(quid, &status);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -613,46 +632,42 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 }
 
 http_status_t api_alias_name(char **response, http_request_t *req) {
-	char *param_quid = (char *)hashtable_get(req->data, "quid");
-	if (param_quid) {
-		if (req->method == HTTP_POST || req->method == HTTP_PUT) {
-			char *param_name = (char *)hashtable_get(req->data, "name");
-			if (param_name && param_quid) {
-				db_alias_update(param_quid, param_name);
-				if (iserror()) {
-					return response_internal_error(response);
-				}
-				snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias renamed\",\"status\":\"SUCCEEDED\",\"success\":true}");
-				return HTTP_OK;
-			}
-			strlcpy(*response, "{\"description\":\"Request expects data\",\"status\":\"EMPTY_DATA\",\"success\":false}", RESPONSE_SIZE);
-			return HTTP_OK;
-		} else {
-			char *name = db_alias_get_name(param_quid);
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *name = get_param(req, "name");
+	if (quid) {
+		if (name) {
+			db_alias_update(quid, name);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
-			snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", name);
-			zfree(name);
+			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias renamed\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
 	}
-	return response_empty_error(response);
+	char *current_name = db_alias_get_name(quid);
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+	snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", current_name);
+	zfree(current_name);
+	return HTTP_OK;
 }
 
 http_status_t api_alias_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 	bool resolve = TRUE;
-	if (req->querystring) {
-		char *noresolve = (char *)hashtable_get(req->querystring, "noresolve");
-		if (noresolve && !strcmp(noresolve, "true")) {
+	char *noresolve = get_param(req, "noresolve");
+	if (noresolve) {
+		if (!strcmp(noresolve, "true")) {
 			resolve = FALSE;
 		}
 	}
+
 	char *data = db_alias_get_data(req->uri, &len, resolve);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
+
 	resplen = RESPONSE_SIZE;
 	if (len > (RESPONSE_SIZE / 2)) {
 		resplen = RESPONSE_SIZE + len;
