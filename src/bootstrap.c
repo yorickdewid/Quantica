@@ -54,10 +54,12 @@ void bootstrap(struct engine *e) {
 	/* Verify bootstrap signature */
 	size_t len;
 	uint64_t offset = engine_get(e, &key);
-	void *rdata = get_data(e, offset, &len);
-	if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
-		zfree(rdata);
-		return;
+	if (offset) {
+		void *rdata = get_data(e, offset, &len);
+		if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
+			zfree(rdata);
+			return;
+		}
 	}
 
 	/* Add bootstrap signature to empty database */

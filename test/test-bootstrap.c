@@ -13,7 +13,7 @@ static void bootstrap_zero(){
     const char dbname[] = "test_bootstrap.db";
 	quid_t quid;
 
-	const char squid[] = "{00000000-0000-0000-0000-000000000000}";
+	const char squid[] = "{" DEFAULT_PREFIX "-000000000000}";
 	strtoquid(squid, &quid);
 	engine_init(&e, fname, dbname);
 	bootstrap(&e);
@@ -35,7 +35,7 @@ static void bootstrap_init(){
 	const char dbname[] = "test_bootstrap2.db";
 	quid_t quid;
 
-	const char squid[] = "{00000000-00c1-a150-0000-000000000080}";
+	const char squid[] = "{" DEFAULT_PREFIX "-000000000080}";
 	const char data[] = "{\"pre\":\"_init\",\"description\":\"bootstrap\"}";
 	strtoquid(squid, &quid);
 	engine_init(&e, fname, dbname);
