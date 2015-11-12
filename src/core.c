@@ -95,6 +95,10 @@ char *get_session_key() {
 	return buf;
 }
 
+char *get_dataheap_name() {
+	return control.bindata;
+}
+
 char *get_uptime() {
 	static char buf[32];
 	long long passed = get_timestamp() - uptime;
@@ -288,6 +292,16 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
+/*
+ * Return data from given offset
+ */
+char *db_get_data(uint64_t offset, size_t *len) {
+	if (!ready)
+		return 0;
+
+	return get_data_block(&btx, offset, len);
+}
+
 marshall_t *raw_db_get(char *quid, void *parent) {
 	if (!ready)
 		return NULL;
@@ -300,7 +314,7 @@ marshall_t *raw_db_get(char *quid, void *parent) {
 	if (!offset)
 		return NULL;
 
-	void *data = get_data(&btx, offset, &len);
+	void *data = db_get_data(offset, &len);
 	if (!data)
 		return NULL;
 
@@ -322,7 +336,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 		return get_external_keytype(&key, len);
 	}
 
-	void *data = get_data(&btx, offset, &_len);
+	void *data = db_get_data(offset, &_len);
 	if (!data)
 		return NULL;
 
@@ -352,7 +366,7 @@ char *db_get_type(char *quid) {
 	if (!offset)
 		return NULL;
 
-	void *data = get_data(&btx, offset, &len);
+	void *data = db_get_data(offset, &len);
 	if (!data)
 		return NULL;
 
@@ -373,7 +387,7 @@ char *db_get_schema(char *quid) {
 	if (!offset)
 		return NULL;
 
-	void *data = get_data(&btx, offset, &len);
+	void *data = db_get_data(offset, &len);
 	if (!data)
 		return NULL;
 
@@ -390,13 +404,6 @@ uint64_t db_get_offset(char *quid) {
 	strtoquid(quid, &key);
 
 	return engine_get(&btx, &key);
-}
-
-char *db_get_data(uint64_t offset, size_t *len) {
-	if (!ready)
-		return 0;
-
-	return get_data(&btx, offset, len);
 }
 
 int raw_db_update(char *quid, void *slay, size_t len) {
@@ -575,7 +582,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 		return get_external_keytype(&key, len);
 	}
 
-	void *data = get_data(&btx, offset, &_len);
+	void *data = db_get_data(offset, &_len);
 	if (!data)
 		return NULL;
 
@@ -604,7 +611,7 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	if (!offset)
 		return -1;
 
-	void *data = get_data(&btx, offset, &_len);
+	void *data = db_get_data(offset, &_len);
 	if (!data)
 		return -1;
 
@@ -621,12 +628,14 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	quidtostr(index_quid, &nrs.index);
 	*items = nrs.index_elements;
 
+	/* Add index to database */
 	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
 	engine_insert_meta(&btx, &nrs.index, &meta);
 
+	/* Add index to alias list */
 	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
 
 	return 0;

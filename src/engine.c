@@ -819,13 +819,8 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 	return 0;
 }
 
-void *get_data(struct engine *e, uint64_t offset, size_t *len) {
+static void *get_data(struct engine *e, uint64_t offset, size_t *len) {
 	struct blob_info info;
-
-	if (e->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
-		return NULL;
-	}
 
 	if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
@@ -854,6 +849,15 @@ void *get_data(struct engine *e, uint64_t offset, size_t *len) {
 	}
 
 	return data;
+}
+
+void *get_data_block(struct engine *e, uint64_t offset, size_t *len) {
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return NULL;
+	}
+
+	return get_data(e, offset, len);
 }
 
 uint64_t engine_get(struct engine *e, const quid_t *quid) {
@@ -1010,7 +1014,7 @@ int engine_recover_storage(struct engine *e) {
 		return -1;
 	}
 
-	while (TRUE) {
+	while (1) {
 		cnt++;
 		if (lseek(e->db_fd, offset, SEEK_SET) < 0) {
 			error_throw_fatal("a7df40ba3075", "Failed to read disk");
@@ -1033,7 +1037,7 @@ int engine_recover_storage(struct engine *e) {
 	return 0;
 }
 
-//TODO use get_data, check and copy metadata
+//TODO Copy over other keytypes
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	int i;
 	struct engine_table *table = get_table(e, table_offset);
@@ -1043,32 +1047,10 @@ static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offs
 		uint64_t right = from_be64(table->items[i + 1].child);
 		uint64_t dboffset = from_be64(table->items[i].offset);
 
-		struct blob_info info;
-		if (lseek(e->db_fd, dboffset, SEEK_SET) < 0) {
-			error_throw_fatal("a7df40ba3075", "Failed to read disk");
-			put_table(e, table, table_offset);
-			return;
-		}
-		if (read(e->db_fd, &info, sizeof(struct blob_info)) != sizeof(struct blob_info)) {
-			error_throw_fatal("a7df40ba3075", "Failed to read disk");
-			put_table(e, table, table_offset);
-			return;
-		}
-		size_t len = from_be32(info.len);
-		void *data = zmalloc(len);
-		if (!data) {
-			error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
-			put_table(e, table, table_offset);
-			return;
-		}
-		if (read(e->db_fd, data, len) != (ssize_t) len) {
-			error_throw_fatal("a7df40ba3075", "Failed to read disk");
-			zfree(data);
-			data = NULL;
-			put_table(e, table, table_offset);
-			return;
-		}
+		size_t len;
+		void *data = get_data(e, dboffset, &len);
 
+		/* Only copy active keys */
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
 			insert_toplevel(ce, &ce->top, &table->items[i].quid, &table->items[i].meta, data, len);
 			ce->stats.keys++;

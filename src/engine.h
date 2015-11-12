@@ -161,7 +161,7 @@ int engine_insert(struct engine *e, quid_t *quid);
  * The returned pointer should be released with free() after use.
  */
 uint64_t engine_get(struct engine *e, const quid_t *quid);
-void *get_data(struct engine *e, uint64_t offset, size_t *len);
+void *get_data_block(struct engine *e, uint64_t offset, size_t *len);
 
 /*
  * Remove item with the given key 'quid' from the database file.

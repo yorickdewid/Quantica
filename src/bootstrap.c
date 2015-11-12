@@ -70,7 +70,7 @@ void bootstrap(struct engine *e) {
 	size_t len;
 	uint64_t offset = engine_get(e, &key);
 	if (offset && !iserror()) {
-		void *rdata = get_data(e, offset, &len);
+		void *rdata = get_data_block(e, offset, &len);
 		if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
 			zfree(rdata);
 			return;
@@ -161,4 +161,7 @@ void bootstrap(struct engine *e) {
 
 	if (register_error(e, E_WARN, "ece28bc980db", "Invalid schema") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
+
+	/* Clear any failed operations */
+	error_clear();
 }

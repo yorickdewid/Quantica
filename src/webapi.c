@@ -226,7 +226,9 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	if (iserror()) {
 		return response_internal_error(response);
 	}
-	snprintf(*response, RESPONSE_SIZE, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"dataheap\":\"" BINDATA "\",\"default_key\":\"{" DEFAULT_PREFIX "-000000000000}\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+
+	*response = zrealloc(*response, RESPONSE_SIZE * 2);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"core\":\"%s\",\"dataheap\":\"%s\",\"default_key\":\"{" DEFAULT_PREFIX "-000000000000}\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_zero_key(), get_dataheap_name(), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	return HTTP_OK;
 }
 
