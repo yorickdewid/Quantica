@@ -1,16 +1,18 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <error.h>
 #include "test.h"
 #include "../src/zmalloc.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-static void test_engine_create(){
+static void test_engine_create() {
 	struct engine e;
 	const char fname[] = "test_database1.idx";
 	const char dbname[] = "test_database1.db";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	ASSERT(e.fd);
 	ASSERT(e.db_fd);
@@ -23,15 +25,17 @@ static void test_engine_create(){
 	unlink(dbname);
 	ASSERT(!file_exists(fname));
 	ASSERT(!file_exists(dbname));
+	error_clear();
 }
 
-static void test_engine_crud(){
+static void test_engine_crud() {
 	struct engine e;
 	const char fname[] = "test_database2.idx";
 	const char dbname[] = "test_database2.db";
 	quid_t quid;
 	char data[] = ".....";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
 	int r = engine_insert_data(&e, &quid, data, strlen(data));
@@ -59,15 +63,17 @@ static void test_engine_crud(){
 	engine_close(&e);
 	unlink(fname);
 	unlink(dbname);
+	error_clear();
 }
 
-static void test_engine_meta(){
+static void test_engine_meta() {
 	struct engine e;
 	const char fname[] = "test_database4.idx";
 	const char dbname[] = "test_database4.db";
 	quid_t quid;
 	char data[] = ".....";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
 	int r = engine_insert_data(&e, &quid, data, strlen(data));
@@ -94,6 +100,7 @@ static void test_engine_meta(){
 	engine_close(&e);
 	unlink(fname);
 	unlink(dbname);
+	error_clear();
 }
 
 TEST_IMPL(engine) {
