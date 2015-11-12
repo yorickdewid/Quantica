@@ -44,7 +44,7 @@ unsigned int jen_hash(unsigned char *k, size_t length) {
 		case 11: c += ((unsigned int)k[10] << 24);
 		case 10: c += ((unsigned int)k[9] << 16);
 		case 9: c += ((unsigned int)k[8] << 8);
-			/* First byte of c reserved for length */
+		/* First byte of c reserved for length */
 		case 8: b += ((unsigned int)k[7] << 24);
 		case 7: b += ((unsigned int)k[6] << 16);
 		case 6: b += ((unsigned int)k[5] << 8);

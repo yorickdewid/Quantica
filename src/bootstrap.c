@@ -8,6 +8,7 @@
 #include "error.h"
 #include "quid.h"
 #include "slay.h"
+#include "core.h"
 #include "engine.h"
 #include "bootstrap.h"
 
@@ -21,8 +22,7 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 	size_t len;
 	slay_result_t nrs;
 
-	char skey[QUID_LENGTH + 1];
-	shortquidtoquidstr(skey, error_code);
+	char *skey = get_instance_prefix_key(error_code);
 	strtoquid(skey, &key);
 
 	char errobj[256];
@@ -63,7 +63,7 @@ void bootstrap(struct engine *e) {
 	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
 
-	const char skey[] = "{" DEFAULT_PREFIX "-000000000000}";
+	const char *skey = get_instance_prefix_key("000000000000");
 	strtoquid(skey, &key);
 
 	/* Verify bootstrap signature */
@@ -90,7 +90,7 @@ void bootstrap(struct engine *e) {
 		lprint("[erro] bootstrap: Insert failed\n");
 
 	/* Add database initial routine */
-	const char skey1[] = "{" DEFAULT_PREFIX "-000000000080}";
+	const char *skey1 = get_instance_prefix_key("000000000080");
 	strtoquid(skey1, &key);
 	const char data1[] = "{\"pre\":\"_init\",\"description\":\"bootstrap\"}";
 	meta.importance = MD_IMPORTANT_LEVEL2;
@@ -100,7 +100,7 @@ void bootstrap(struct engine *e) {
 		lprint("[erro] bootstrap: Insert failed\n");
 
 	/* Add database bootlog routine */
-	const char skey2[] = "{" DEFAULT_PREFIX "-00000000008a}";
+	const char *skey2 = get_instance_prefix_key("00000000008a");
 	strtoquid(skey2, &key);
 	const char data2[] = "_bootlog()";
 	meta.importance = MD_IMPORTANT_LEVEL3;
@@ -111,7 +111,7 @@ void bootstrap(struct engine *e) {
 		lprint("[erro] bootstrap: Insert failed\n");
 
 	/* Set backend inter process communication */
-	const char skey3[] = "{" DEFAULT_PREFIX "-00000000008b}";
+	const char *skey3 = get_instance_prefix_key("00000000008b");
 	strtoquid(skey3, &key);
 	const char data3[] = "SELECT IPC();SELECT SPNEGO()";
 	meta.importance = MD_IMPORTANT_LEVEL1;

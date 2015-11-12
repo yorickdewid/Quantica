@@ -59,20 +59,20 @@ static void print_header() {
 static void quid_generate() {
 	quid_t quid;
 	start_timer();
-	int all=0,i;
-	for(i=0; i<NUM; ++i) {
+	int all = 0, i;
+	for (i = 0; i < NUM; ++i) {
 		quid_create(&quid);
 
-		if((i%10000)==0)
-			LOGF("finished %d ops%30s\r",i,"");
+		if ((i % 10000) == 0)
+			LOGF("finished %d ops%30s\r", i, "");
 	}
 	LINE();
 	double cost = get_timer();
 	LOGF("|create		(generate:%d): %.6f sec/op; %.1f reads /sec(estimated); cost:%.6f(sec)\n"
-	       ,all
-	       ,(double)(cost/NUM)
-	       ,(double)(NUM/cost)
-	       ,cost);
+	     , all
+	     , (double)(cost / NUM)
+	     , (double)(NUM / cost)
+	     , cost);
 }
 
 BENCHMARK_IMPL(quid) {

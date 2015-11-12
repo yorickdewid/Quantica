@@ -87,7 +87,7 @@ replace:
 	// increase version number
 	int ver = atoi(vstr);
 	ver += VERSION_INCREMENT;
-	fprintf(stdout, "version %d => %d\n", ver-VERSION_INCREMENT, ver);
+	fprintf(stdout, VERSION_DEFINITION " %d => %d\n", ver - VERSION_INCREMENT, ver);
 
 	// write version to temp
 	int lcnt = 0;

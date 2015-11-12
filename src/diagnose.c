@@ -11,7 +11,7 @@
 #include "diagnose.h"
 
 bool diag_exerr(struct base *base) {
-	char tmp_key[QUID_LENGTH+1];
+	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
 	struct engine engine;
 
@@ -22,7 +22,7 @@ bool diag_exerr(struct base *base) {
 	char *bindata = generate_bindata_name(base);
 
 	engine_recover_storage(&engine);
-	if (engine_vacuum(&engine, tmp_key, bindata)<0) {
+	if (engine_vacuum(&engine, tmp_key, bindata) < 0) {
 		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
 	}

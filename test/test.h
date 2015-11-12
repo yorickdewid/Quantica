@@ -91,9 +91,9 @@
 
 /* Reserved test exit codes. */
 enum test_status {
-  TEST_OK = 0,
-  TEST_TODO,
-  TEST_SKIP
+	TEST_OK = 0,
+	TEST_TODO,
+	TEST_SKIP
 };
 
 #define RETURN_OK()                                                           \

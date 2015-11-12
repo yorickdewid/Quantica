@@ -38,12 +38,12 @@
 
 void gen_random(unsigned char *s, const int len) {
 	static const char alphanum[] =
-		"0123456789"
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz";
+	    "0123456789"
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	    "abcdefghijklmnopqrstuvwxyz";
 
 	int i;
-	for (i=0; i<len; ++i) {
+	for (i = 0; i < len; ++i) {
 		s[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
 	}
 
@@ -52,7 +52,7 @@ void gen_random(unsigned char *s, const int len) {
 
 int main(int argc, const char *argv[]) {
 	long int i;
-	unsigned char str[STR_LEN+1];
+	unsigned char str[STR_LEN + 1];
 
 	if (argc < 2) {
 		fprintf(stderr, "%s [COUNT]\n", argv[0]);
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[]) {
 	str[STR_LEN] = '\0';
 
 	long int n = atoi(argv[1]);
-	for (i=0; i<n; ++i) {
+	for (i = 0; i < n; ++i) {
 		gen_random(str, STR_LEN);
 		unsigned int hv = jen_hash(str, STR_LEN);
 		printf("%s: %010u\n", str, hv);

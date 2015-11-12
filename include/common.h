@@ -39,9 +39,9 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #if defined(__mc68000__) || defined (__sparc__) || defined (__PPC__) \
     || (defined(__mips__) && (defined(MIPSEB) || defined (__MIPSEB__)) ) \
     || defined(__hpux__)  /* should be replaced by the macro for the PA */
-  #define BIG_ENDIAN_HOST 1
+#define BIG_ENDIAN_HOST 1
 #else
-  #define LITTLE_ENDIAN_HOST 1
+#define LITTLE_ENDIAN_HOST 1
 #endif
 
 #define zassert(e)  \

@@ -7,10 +7,10 @@
 
 #define BS_MAGIC "__zero()__"
 
-static void bootstrap_zero(){
-    struct engine e;
-    const char fname[] = "test_bootstrap.idx";
-    const char dbname[] = "test_bootstrap.db";
+static void bootstrap_zero() {
+	struct engine e;
+	const char fname[] = "test_bootstrap.idx";
+	const char dbname[] = "test_bootstrap.db";
 	quid_t quid;
 
 	const char squid[] = "{" DEFAULT_PREFIX "-000000000000}";
@@ -29,7 +29,7 @@ static void bootstrap_zero(){
 	unlink(dbname);
 }
 
-static void bootstrap_init(){
+static void bootstrap_init() {
 	struct engine e;
 	const char fname[] = "test_bootstrap2.idx";
 	const char dbname[] = "test_bootstrap2.db";

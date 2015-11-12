@@ -49,7 +49,7 @@ int main(int argc, const char *argv[]) {
 	rewind(fd);
 
 	// allocate memory to contain the whole file:
-	char *buff = (char*)malloc(sizeof(char)*psz);
+	char *buff = (char*)malloc(sizeof(char) * psz);
 	if (!buff) {
 		fputs("Memory error", stderr);
 		fclose(fd);
@@ -58,7 +58,7 @@ int main(int argc, const char *argv[]) {
 
 	// check LF and add one if needed
 	fread(buff, 1, psz, fd);
-	if (buff[psz-1] != '\n') {
+	if (buff[psz - 1] != '\n') {
 		fflush(fd);
 		fwrite("\n", 1, 1, fd);
 	}

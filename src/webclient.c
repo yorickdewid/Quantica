@@ -371,9 +371,9 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	};
 
 	/* Take care of IPv6 adresses */
-	if (purl->host[0] == '[' && purl->host[strlen(purl->host)-1] == ']') {
+	if (purl->host[0] == '[' && purl->host[strlen(purl->host) - 1] == ']') {
 		purl->host++;
-		purl->host[strlen(purl->host)-1] = '\0';
+		purl->host[strlen(purl->host) - 1] = '\0';
 	}
 
 	struct addrinfo *servinfo;

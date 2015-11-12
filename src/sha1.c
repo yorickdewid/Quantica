@@ -44,7 +44,7 @@ void sha1_input(struct sha *ctx, const unsigned char *message_array, unsigned in
 		return;
 	}
 
-	while(length-- && !ctx->corrupted) {
+	while (length-- && !ctx->corrupted) {
 		ctx->message_block[ctx->message_block_idx++] = (*message_array & 0xFF);
 
 		ctx->szlow += 8;
@@ -76,15 +76,15 @@ void sha1_process_message_block(struct sha *ctx) {
 	unsigned int w[80];
 	unsigned int a, b, c, d, e;
 
-	for(t=0; t<16; ++t) {
+	for (t = 0; t < 16; ++t) {
 		w[t] = ((unsigned) ctx->message_block[t * 4]) << 24;
 		w[t] |= ((unsigned) ctx->message_block[t * 4 + 1]) << 16;
 		w[t] |= ((unsigned) ctx->message_block[t * 4 + 2]) << 8;
 		w[t] |= ((unsigned) ctx->message_block[t * 4 + 3]);
 	}
 
-	for(t=16; t<80; ++t) {
-	   w[t] = SHA1SHIFT(1, w[t-3] ^ w[t-8] ^ w[t-14] ^ w[t-16]);
+	for (t = 16; t < 80; ++t) {
+		w[t] = SHA1SHIFT(1, w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16]);
 	}
 
 	a = ctx->digest[0];
@@ -93,7 +93,7 @@ void sha1_process_message_block(struct sha *ctx) {
 	d = ctx->digest[3];
 	e = ctx->digest[4];
 
-	for(t=0; t<20; ++t) {
+	for (t = 0; t < 20; ++t) {
 		temp = SHA1SHIFT(5, a) + ((b & c) | ((~b) & d)) + e + w[t] + k[0];
 		temp &= 0xFFFFFFFF;
 		e = d;
@@ -103,7 +103,7 @@ void sha1_process_message_block(struct sha *ctx) {
 		a = temp;
 	}
 
-	for(t=20; t<40; ++t) {
+	for (t = 20; t < 40; ++t) {
 		temp = SHA1SHIFT(5, a) + (b ^ c ^ d) + e + w[t] + k[1];
 		temp &= 0xFFFFFFFF;
 		e = d;
@@ -113,7 +113,7 @@ void sha1_process_message_block(struct sha *ctx) {
 		a = temp;
 	}
 
-	for(t = 40; t < 60; ++t) {
+	for (t = 40; t < 60; ++t) {
 		temp = SHA1SHIFT(5, a) + ((b & c) | (b & d) | (c & d)) + e + w[t] + k[2];
 		temp &= 0xFFFFFFFF;
 		e = d;
@@ -123,7 +123,7 @@ void sha1_process_message_block(struct sha *ctx) {
 		a = temp;
 	}
 
-	for(t=60; t<80; ++t) {
+	for (t = 60; t < 80; ++t) {
 		temp = SHA1SHIFT(5, a) + (b ^ c ^ d) + e + w[t] + k[3];
 		temp &= 0xFFFFFFFF;
 		e = d;
@@ -145,18 +145,18 @@ void sha1_process_message_block(struct sha *ctx) {
 void sha1_padmessage(struct sha *ctx) {
 	if (ctx->message_block_idx > 55) {
 		ctx->message_block[ctx->message_block_idx++] = 0x80;
-		while(ctx->message_block_idx < 64) {
+		while (ctx->message_block_idx < 64) {
 			ctx->message_block[ctx->message_block_idx++] = 0;
 		}
 
 		sha1_process_message_block(ctx);
 
-		while(ctx->message_block_idx < 56) {
+		while (ctx->message_block_idx < 56) {
 			ctx->message_block[ctx->message_block_idx++] = 0;
 		}
 	} else {
 		ctx->message_block[ctx->message_block_idx++] = 0x80;
-		while(ctx->message_block_idx < 56) {
+		while (ctx->message_block_idx < 56) {
 			ctx->message_block[ctx->message_block_idx++] = 0;
 		}
 	}
@@ -174,10 +174,10 @@ void sha1_padmessage(struct sha *ctx) {
 }
 
 void sha1_strsum(char *s, struct sha *ctx) {
-	snprintf(s, SHA1_LENGTH+1, "%.8x%.8x%.8x%.8x%.8x"
-			, ctx->digest[0]
-			, ctx->digest[1]
-			, ctx->digest[2]
-			, ctx->digest[3]
-			, ctx->digest[4]);
+	snprintf(s, SHA1_LENGTH + 1, "%.8x%.8x%.8x%.8x%.8x"
+	         , ctx->digest[0]
+	         , ctx->digest[1]
+	         , ctx->digest[2]
+	         , ctx->digest[3]
+	         , ctx->digest[4]);
 }

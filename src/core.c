@@ -99,6 +99,16 @@ char *get_dataheap_name() {
 	return control.bindata;
 }
 
+/*
+ * Create instance key QUID from short QUID
+ */
+char *get_instance_prefix_key(char *short_quid) {
+	static char buf[QUID_LENGTH + 1];
+	quidtostr(buf, &control.instance_key);
+	memcpy(buf + 25, short_quid, SHORT_QUID_LENGTH - 2);
+	return buf;
+}
+
 char *get_uptime() {
 	static char buf[32];
 	long long passed = get_timestamp() - uptime;

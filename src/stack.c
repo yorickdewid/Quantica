@@ -15,7 +15,7 @@ void stack_init(qstack_t *stack, int max_size) {
 
 void stack_destroy(qstack_t *stack) {
 	int i;
-	for (i=0; i<stack->max_size; ++i) {
+	for (i = 0; i < stack->max_size; ++i) {
 		if (stack->contents[i])
 			tree_zfree(stack->contents[i]);
 	}
@@ -28,15 +28,15 @@ void stack_destroy(qstack_t *stack) {
 }
 
 void stack_push(qstack_t *stack, void *element) {
-	if (stack->top >= stack->max_size-1)
-		stack->contents = zrealloc(stack->contents, sizeof(void *) * (stack->max_size*=2));
+	if (stack->top >= stack->max_size - 1)
+		stack->contents = zrealloc(stack->contents, sizeof(void *) * (stack->max_size *= 2));
 
 	stack->size++;
 	stack->contents[++stack->top] = element;
 }
 
 void *stack_pop(qstack_t *stack) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
 	stack->size--;
@@ -44,35 +44,35 @@ void *stack_pop(qstack_t *stack) {
 }
 
 void *stack_offset_peek(qstack_t *stack, int offset) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
-	return stack->contents[stack->top-offset];
+	return stack->contents[stack->top - offset];
 }
 
 void *stack_offset_rpeek(qstack_t *stack, int offset) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
-	return stack->contents[stack->rtop+offset];
+	return stack->contents[stack->rtop + offset];
 }
 
 void *stack_peek(qstack_t *stack) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
 	return stack->contents[stack->top];
 }
 
 void *stack_rpeek(qstack_t *stack) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
 	return stack->contents[0];
 }
 
 void *stack_rpop(qstack_t *stack) {
-	if (stack->size<=0)
+	if (stack->size <= 0)
 		return NULL;
 
 	stack->size--;
