@@ -59,6 +59,7 @@ int main(int argc, const char *argv[]) {
 
 	if ((fd2 = fopen(_tmpfile, "w+")) == NULL) {
 		perror("Cannot open file\n");
+		fclose(fd);
 		return 1;
 	}
 

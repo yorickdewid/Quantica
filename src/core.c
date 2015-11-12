@@ -210,6 +210,29 @@ void filesync() {
 	base_sync(&control);
 }
 
+/*
+ * We found a key but it didn't contain data
+ * Check if the key represents other structure
+ */
+static char *get_external_keytype(quid_t *key, size_t *len) {
+	struct metadata meta;
+
+	if (engine_getmeta(&btx, key, &meta) < 0)
+		return NULL;
+
+	/* Check if key is an index */
+	if (meta.type == MD_TYPE_INDEX) {
+		marshall_t *dataobj = index_btree_all(key);
+
+		char *buf = marshall_serialize(dataobj);
+		*len = strlen(buf);
+		marshall_free(dataobj);
+
+		return buf;
+	}
+	return NULL;
+}
+
 int raw_db_put(char *quid, void *dataslay, size_t len) {
 	if (!ready)
 		return -1;
@@ -291,24 +314,12 @@ void *db_get(char *quid, size_t *len, bool descent) {
 		return NULL;
 
 	quid_t key;
-	struct metadata meta;
 	strtoquid(quid, &key);
 	size_t _len;
 
 	uint64_t offset = engine_get(&btx, &key);
 	if (!offset) {
-		if (engine_getmeta(&btx, &key, &meta) < 0)
-			return NULL;
-
-		if (meta.type == MD_TYPE_INDEX) {
-			marshall_t *dataobj = index_btree_all(&key);
-
-			char *buf = marshall_serialize(dataobj);
-			*len = strlen(buf);
-			marshall_free(dataobj);
-
-			return buf;
-		}
+		return get_external_keytype(&key, len);
 	}
 
 	void *data = get_data(&btx, offset, &_len);
@@ -561,8 +572,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	size_t _len;
 	uint64_t offset = engine_get(&btx, &key);
 	if (!offset) {
-		//TODO check for index
-		return NULL;
+		return get_external_keytype(&key, len);
 	}
 
 	void *data = get_data(&btx, offset, &_len);
