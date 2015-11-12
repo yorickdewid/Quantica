@@ -33,7 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VERSION_DEFINITION	"VERSION_MINOR"
+#define VERSION_DEFINITION	"VERSION_PATCH"
 #define VERSION_INCREMENT	1
 
 int main(int argc, const char *argv[]) {

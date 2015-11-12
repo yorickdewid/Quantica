@@ -166,7 +166,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.free_tables = from_be64(super.nfree_table);
 	e->stats.list_size = from_be64(super.list_size);
 	e->list_top = from_be64(super.list_top);
-	zassert(from_be64(super.version) == VERSION_RELESE);
+	zassert(from_be64(super.version) == VERSION_MAJOR);
 
 	uint64_t crc64sum;
 	if (!crc_file(e->fd, &crc64sum)) {
@@ -182,7 +182,7 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
-	zassert(from_be64(dbsuper.version) == VERSION_RELESE);
+	zassert(from_be64(dbsuper.version) == VERSION_MAJOR);
 	last_blob = from_be64(dbsuper.last);
 
 	long _alloc = lseek(e->fd, 0, SEEK_END);
@@ -375,7 +375,7 @@ static void flush_super(struct engine *e, bool fast_flush) {
 	uint64_t crc64sum;
 	struct engine_super super;
 	memset(&super, 0, sizeof(struct engine_super));
-	super.version = to_be64(VERSION_RELESE);
+	super.version = to_be64(VERSION_MAJOR);
 	super.top = to_be64(e->top);
 	super.free_top = to_be64(e->free_top);
 	super.nkey = to_be64(e->stats.keys);
@@ -409,7 +409,7 @@ flush_disk:
 static void flush_dbsuper(struct engine *e) {
 	struct engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct engine_dbsuper));
-	dbsuper.version = to_be64(VERSION_RELESE);
+	dbsuper.version = to_be64(VERSION_MAJOR);
 	dbsuper.last = to_be64(last_blob);
 
 	if (lseek(e->db_fd, 0, SEEK_SET) < 0) {

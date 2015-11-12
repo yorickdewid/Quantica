@@ -175,10 +175,10 @@ int file_exists(const char *path) {
 
 char *get_version_string() {
 	static char buf[16];
-	snprintf(buf, 16, "%d.%d.%d", VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
+	snprintf(buf, 16, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	return buf;
 }
 
 long get_version() {
-	return sizeof(int) * VERSION_RELESE + sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR;
+	return sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR + sizeof(int) * VERSION_PATCH;
 }
