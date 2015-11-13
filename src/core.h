@@ -32,6 +32,7 @@ char *get_instance_name();
 char *get_instance_key();
 char *get_session_key();
 char *get_dataheap_name();
+struct engine *get_current_engine();
 char *get_instance_prefix_key(char *short_quid);
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);
@@ -53,15 +54,10 @@ void filesync();
 /*
  * Database operations
  */
-int raw_db_put(char *quid, void *slay, size_t len);
 int db_put(char *quid, int *items, const void *data, size_t len);
-marshall_t *raw_db_get(char *quid, void *parent);
 void *db_get(char *quid, size_t *len, bool descent);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
-uint64_t db_get_offset(char *quid);
-char *db_get_data(uint64_t offset, size_t *len);
-int raw_db_update(char *quid, void *slay, size_t len);
 int db_update(char *quid, int *items, const void *data, size_t data_len);
 int db_delete(char *quid);
 int db_purge(char *quid);
@@ -75,6 +71,6 @@ int db_alias_update(char *quid, const char *name);
 char *db_alias_all();
 void *db_alias_get_data(char *name, size_t *len, bool descent);
 
-int db_create_index(char *group_quid, char *index_quid, int *items, const char *idxkey);
+int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey);
 
 #endif // CORE_H_INCLUDED

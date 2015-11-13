@@ -10,12 +10,32 @@
 #include "btree.h"
 #include "index.h"
 
+static marshall_t *get_record(quid_t *key) {
+	//quid_t key;
+	//strtoquid(quid, &key);
+	struct engine *engine = get_current_engine();
+
+	size_t len;
+	uint64_t offset = engine_get(engine, key);
+	if (!offset)
+		return NULL;
+
+	void *data = get_data_block(engine, offset, &len);
+	if (!data)
+		return NULL;
+
+	marshall_t *dataobj = slay_get(data, NULL, TRUE);
+	zfree(data);
+	return dataobj;
+}
+
 /*
  * Create btree index
  */
 int index_btree_create(const char *element, marshall_t *marshall, schema_t schema, index_result_t *result) {
 	char squid[QUID_LENGTH + 1];
 	btree_t index;
+	struct engine *engine = get_current_engine();
 
 	quid_create(&result->index);
 	quidtostr(squid, &result->index);
@@ -26,8 +46,12 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 		btree_set_unique(&index, FALSE);
 
 		for (unsigned int i = 0; i < marshall->size; ++i) {
-			marshall_t *rowobj = raw_db_get(marshall->child[i]->data, NULL);
-			uint64_t offset = db_get_offset(marshall->child[i]->data);
+			quid_t key;
+			strtoquid(marshall->child[i]->data, &key);
+
+			marshall_t *rowobj = get_record(&key);
+			uint64_t offset = engine_get(engine, &key);
+
 			for (unsigned int j = 0; j < rowobj->size; ++j) {
 				if (!strcmp(rowobj->child[j]->name, element)) {
 					size_t value_len;
@@ -52,8 +76,11 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 		long int array_index = atol(element);
 
 		for (unsigned int i = 0; i < marshall->size; ++i) {
-			marshall_t *rowobj = raw_db_get(marshall->child[i]->data, NULL);
-			uint64_t offset = db_get_offset(marshall->child[i]->data);
+			quid_t key;
+			strtoquid(marshall->child[i]->data, &key);
+
+			marshall_t *rowobj = get_record(&key);
+			uint64_t offset = engine_get(engine, &key);
 
 			if (array_index <= (rowobj->size - 1)) {
 				size_t value_len;
@@ -91,7 +118,7 @@ marshall_t *index_btree_all(quid_t *key) {
 		index_keyval_t *kv = (index_keyval_t *)(vector_at(rskv, i));
 
 		size_t len;
-		char *data = db_get_data(kv->value, &len);
+		char *data = get_data_block(get_current_engine(), kv->value, &len);
 		if (!data) {
 			zfree(kv->key);
 			zfree(kv);

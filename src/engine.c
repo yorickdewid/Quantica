@@ -860,6 +860,7 @@ void *get_data_block(struct engine *e, uint64_t offset, size_t *len) {
 	return get_data(e, offset, len);
 }
 
+//TODO we should always return metadata
 uint64_t engine_get(struct engine *e, const quid_t *quid) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");

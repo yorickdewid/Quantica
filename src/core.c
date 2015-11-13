@@ -99,6 +99,10 @@ char *get_dataheap_name() {
 	return control.bindata;
 }
 
+struct engine *get_current_engine() {
+	return &btx;
+}
+
 /*
  * Create instance key QUID from short QUID
  */
@@ -247,23 +251,6 @@ static char *get_external_keytype(quid_t *key, size_t *len) {
 	return NULL;
 }
 
-int raw_db_put(char *quid, void *dataslay, size_t len) {
-	if (!ready)
-		return -1;
-
-	quid_t key;
-	quid_create(&key);
-
-	if (engine_insert_data(&btx, &key, dataslay, len) < 0) {
-		zfree(dataslay);
-		return -1;
-	}
-	zfree(dataslay);
-
-	quidtostr(quid, &key);
-	return 0;
-}
-
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
@@ -302,37 +289,6 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
-/*
- * Return data from given offset
- */
-char *db_get_data(uint64_t offset, size_t *len) {
-	if (!ready)
-		return 0;
-
-	return get_data_block(&btx, offset, len);
-}
-
-marshall_t *raw_db_get(char *quid, void *parent) {
-	if (!ready)
-		return NULL;
-
-	quid_t key;
-	strtoquid(quid, &key);
-
-	size_t len;
-	uint64_t offset = engine_get(&btx, &key);
-	if (!offset)
-		return NULL;
-
-	void *data = db_get_data(offset, &len);
-	if (!data)
-		return NULL;
-
-	marshall_t *dataobj = slay_get(data, parent, TRUE);
-	zfree(data);
-	return dataobj;
-}
-
 void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
@@ -346,7 +302,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 		return get_external_keytype(&key, len);
 	}
 
-	void *data = db_get_data(offset, &_len);
+	void *data = get_data_block(&btx, offset, &_len);
 	if (!data)
 		return NULL;
 
@@ -364,6 +320,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	return buf;
 }
 
+//TODO real with non-records
 char *db_get_type(char *quid) {
 	if (!ready)
 		return NULL;
@@ -376,7 +333,7 @@ char *db_get_type(char *quid) {
 	if (!offset)
 		return NULL;
 
-	void *data = db_get_data(offset, &len);
+	void *data = get_data_block(&btx, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -385,6 +342,7 @@ char *db_get_type(char *quid) {
 	return marshall_get_strtype(type);
 }
 
+//TODO real with non-records
 char *db_get_schema(char *quid) {
 	if (!ready)
 		return NULL;
@@ -397,38 +355,13 @@ char *db_get_schema(char *quid) {
 	if (!offset)
 		return NULL;
 
-	void *data = db_get_data(offset, &len);
+	void *data = get_data_block(&btx, offset, &len);
 	if (!data)
 		return NULL;
 
 	char *buf = slay_get_strschema(data);
 	zfree(data);
 	return buf;
-}
-
-uint64_t db_get_offset(char *quid) {
-	if (!ready)
-		return 0;
-
-	quid_t key;
-	strtoquid(quid, &key);
-
-	return engine_get(&btx, &key);
-}
-
-int raw_db_update(char *quid, void *slay, size_t len) {
-	if (!ready)
-		return -1;
-
-	quid_t key;
-	strtoquid(quid, &key);
-
-	if (engine_update_data(&btx, &key, slay, len) < 0) {
-		zfree(slay);
-		return -1;
-	}
-	zfree(slay);
-	return 0;
 }
 
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
@@ -592,7 +525,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 		return get_external_keytype(&key, len);
 	}
 
-	void *data = db_get_data(offset, &_len);
+	void *data = get_data_block(&btx, offset, &_len);
 	if (!data)
 		return NULL;
 
@@ -607,7 +540,10 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	return buf;
 }
 
-int db_create_index(char *group_quid, char *index_quid, int *items, const char *idxkey) {
+/*
+ * Set index on group element
+ */
+int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey) {
 	if (!ready)
 		return -1;
 
@@ -621,7 +557,7 @@ int db_create_index(char *group_quid, char *index_quid, int *items, const char *
 	if (!offset)
 		return -1;
 
-	void *data = db_get_data(offset, &_len);
+	void *data = get_data_block(&btx, offset, &_len);
 	if (!data)
 		return -1;
 

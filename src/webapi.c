@@ -577,7 +577,7 @@ http_status_t api_index_create(char **response, http_request_t *req) {
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *element = get_param(req, "element");
 	if (quid && element) {
-		db_create_index(quid, squid, &items, element);
+		db_index_create(quid, squid, &items, element);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
