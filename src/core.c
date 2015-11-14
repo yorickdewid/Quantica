@@ -232,14 +232,9 @@ void filesync() {
  * We found a key but it didn't contain data
  * Check if the key represents other structure
  */
-static char *get_external_keytype(quid_t *key, size_t *len) {
-	struct metadata meta;
-
-	if (engine_getmeta(&btx, key, &meta) < 0)
-		return NULL;
-
+static char *get_external_keytype(quid_t *key, size_t *len, struct metadata *meta) {
 	/* Check if key is an index */
-	if (meta.type == MD_TYPE_INDEX) {
+	if (meta->type == MD_TYPE_INDEX) {
 		marshall_t *dataobj = index_btree_all(key);
 
 		char *buf = marshall_serialize(dataobj);
@@ -280,8 +275,8 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
 
 		struct metadata meta;
-		if (engine_getmeta(&btx, &key, &meta) < 0)
-			return -1;
+		engine_get(&btx, &key, &meta);
+
 		meta.type = MD_TYPE_GROUP;
 		if (engine_setmeta(&btx, &key, &meta) < 0)
 			return -1;
@@ -294,12 +289,13 @@ void *db_get(char *quid, size_t *len, bool descent) {
 		return NULL;
 
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
 	size_t _len;
 
-	uint64_t offset = engine_get(&btx, &key);
+	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!offset) {
-		return get_external_keytype(&key, len);
+		return get_external_keytype(&key, len, &meta);
 	}
 
 	void *data = get_data_block(&btx, offset, &_len);
@@ -326,10 +322,11 @@ char *db_get_type(char *quid) {
 		return NULL;
 
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
 
 	size_t len;
-	uint64_t offset = engine_get(&btx, &key);
+	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!offset)
 		return NULL;
 
@@ -348,10 +345,11 @@ char *db_get_schema(char *quid) {
 		return NULL;
 
 	quid_t key;
+	struct metadata meta;
 	strtoquid(quid, &key);
 
 	size_t len;
-	uint64_t offset = engine_get(&btx, &key);
+	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!offset)
 		return NULL;
 
@@ -385,6 +383,7 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 		marshall_free(dataobj);
 		return -1;
 	}
+
 	zfree(dataslay);
 	marshall_free(dataobj);
 	return 0;
@@ -397,12 +396,14 @@ int db_delete(char *quid) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	if (engine_getmeta(&btx, &key, &meta) < 0)
-		return -1;
+	engine_get(&btx, &key, &meta);
+
 	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
+
 	if (engine_delete(&btx, &key) < 0)
 		return -1;
+
 	return 0;
 }
 
@@ -413,12 +414,14 @@ int db_purge(char *quid) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	if (engine_getmeta(&btx, &key, &meta) < 0)
-		return -1;
+	engine_get(&btx, &key, &meta);
+
 	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
+
 	if (engine_purge(&btx, &key) < 0)
 		return -1;
+
 	return 0;
 }
 
@@ -434,6 +437,7 @@ int db_vacuum() {
 
 	if (engine_vacuum(&btx, tmp_key, bindata) < 0)
 		return -1;
+
 	memcpy(&control.zero_key, &key, sizeof(quid_t));
 	strcpy(control.bindata, bindata);
 	return 0;
@@ -446,8 +450,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	if (engine_getmeta(&btx, &key, &meta) < 0)
-		return -1;
+	engine_get(&btx, &key, &meta);
 
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
@@ -520,9 +523,10 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 		return NULL;
 
 	size_t _len;
-	uint64_t offset = engine_get(&btx, &key);
+	struct metadata meta;
+	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!offset) {
-		return get_external_keytype(&key, len);
+		return get_external_keytype(&key, len, &meta);
 	}
 
 	void *data = get_data_block(&btx, offset, &_len);
@@ -548,12 +552,13 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 		return -1;
 
 	quid_t key;
+	struct metadata meta;
 	index_result_t nrs;
 	strtoquid(group_quid, &key);
 	size_t _len;
 	memset(&nrs, 0, sizeof(index_result_t));
 
-	uint64_t offset = engine_get(&btx, &key);
+	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!offset)
 		return -1;
 
@@ -575,7 +580,6 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	*items = nrs.index_elements;
 
 	/* Add index to database */
-	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;

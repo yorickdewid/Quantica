@@ -61,14 +61,13 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 void bootstrap(struct engine *e) {
 	quid_t key;
 	struct metadata meta;
-	memset(&meta, 0, sizeof(struct metadata));
 
 	const char *skey = get_instance_prefix_key("000000000000");
 	strtoquid(skey, &key);
 
 	/* Verify bootstrap signature */
 	size_t len;
-	uint64_t offset = engine_get(e, &key);
+	uint64_t offset = engine_get(e, &key, &meta);
 	if (offset && !iserror()) {
 		void *rdata = get_data_block(e, offset, &len);
 		if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {
@@ -81,6 +80,7 @@ void bootstrap(struct engine *e) {
 	error_clear();
 
 	/* Add bootstrap signature to empty database */
+	memset(&meta, 0, sizeof(struct metadata));
 	const char data0[] = BS_MAGIC;
 	meta.importance = MD_IMPORTANT_CRITICAL;
 	meta.syslock = LOCK;

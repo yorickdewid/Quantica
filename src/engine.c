@@ -23,13 +23,7 @@ static uint64_t last_blob = 0;
 
 static void flush_super(struct engine *e, bool fast);
 static void flush_dbsuper(struct engine *e);
-static void free_index_chunk(struct engine *e, uint64_t offset);
-static void free_dbchunk(struct engine *e, uint64_t offset);
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid);
-static uint64_t delete_table(struct engine *e, uint64_t table_offset, quid_t *quid);
-static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata);
-static uint64_t insert_toplevel(struct engine *e, uint64_t *table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len);
-static uint64_t table_join(struct engine *e, uint64_t table_offset);
 
 static struct engine_table *alloc_table() {
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
@@ -785,7 +779,7 @@ int engine_insert_meta(struct engine *e, quid_t *quid, struct metadata *meta) {
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata) {
+static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t *quid, bool *nodata, struct metadata *meta) {
 	while (table_offset) {
 		struct engine_table *table = get_table(e, table_offset);
 		size_t left = 0, right = table->size;
@@ -802,6 +796,7 @@ static uint64_t lookup_key(struct engine *e, uint64_t table_offset, const quid_t
 				}
 				uint64_t ret = from_be64(table->items[i].offset);
 				*nodata = table->items[i].meta.nodata;
+				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
 				put_table(e, table, table_offset);
 				return ret;
 			}
@@ -860,14 +855,14 @@ void *get_data_block(struct engine *e, uint64_t offset, size_t *len) {
 	return get_data(e, offset, len);
 }
 
-//TODO we should always return metadata
-uint64_t engine_get(struct engine *e, const quid_t *quid) {
+uint64_t engine_get(struct engine *e, const quid_t *quid, struct metadata *meta) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return 0;
 	}
 	bool nodata = 0;
-	uint64_t offset = lookup_key(e, e->top, quid, &nodata);
+	memset(meta, 0, sizeof(struct metadata));
+	uint64_t offset = lookup_key(e, e->top, quid, &nodata, meta);
 	if (iserror())
 		return 0;
 
@@ -892,48 +887,6 @@ int engine_purge(struct engine *e, quid_t *quid) {
 
 	free_dbchunk(e, offset);
 	flush_super(e, TRUE);
-	return 0;
-}
-
-static struct metadata *get_meta(struct engine *e, uint64_t table_offset, const quid_t *quid, struct metadata *meta) {
-	while (table_offset) {
-		struct engine_table *table = get_table(e, table_offset);
-		size_t left = 0, right = table->size;
-		while (left < right) {
-			size_t i = (right - left) / 2 + left;
-			int cmp = quidcmp(quid, &table->items[i].quid);
-			if (cmp == 0) {
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
-					error_throw("6ef42da7901f", "Record not found");
-					put_table(e, table, table_offset);
-					return 0;
-				}
-				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
-				put_table(e, table, table_offset);
-				return meta;
-			}
-			if (cmp < 0) {
-				right = i;
-			} else {
-				left = i + 1;
-			}
-		}
-		uint64_t child = from_be64(table->items[left].child);
-		put_table(e, table, table_offset);
-		table_offset = child;
-	}
-	error_throw("6ef42da7901f", "Record not found");
-	return 0;
-}
-
-int engine_getmeta(struct engine *e, const quid_t *quid, struct metadata *md) {
-	if (e->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
-		return -1;
-	}
-	get_meta(e, e->top, quid, md);
-	if (iserror())
-		return -1;
 	return 0;
 }
 
@@ -985,8 +938,9 @@ int engine_delete(struct engine *e, const quid_t *quid) {
 		return -1;
 	}
 
+	bool nodata = 0;
 	struct metadata meta;
-	get_meta(e, e->top, quid, &meta);
+	lookup_key(e, e->top, quid, &nodata, &meta);
 	if (iserror())
 		return -1;
 

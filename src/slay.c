@@ -173,7 +173,8 @@ static marshall_t *get_child_record(char *quid, void *parent) {
 	struct engine *engine = get_current_engine();
 
 	size_t len;
-	uint64_t offset = engine_get(engine, &key);
+	struct metadata meta;
+	uint64_t offset = engine_get(engine, &key, &meta);
 	if (!offset)
 		return NULL;
 

@@ -11,12 +11,11 @@
 #include "index.h"
 
 static marshall_t *get_record(quid_t *key) {
-	//quid_t key;
-	//strtoquid(quid, &key);
 	struct engine *engine = get_current_engine();
 
 	size_t len;
-	uint64_t offset = engine_get(engine, key);
+	struct metadata meta;
+	uint64_t offset = engine_get(engine, key, &meta);
 	if (!offset)
 		return NULL;
 
@@ -47,10 +46,11 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 
 		for (unsigned int i = 0; i < marshall->size; ++i) {
 			quid_t key;
+			struct metadata meta;
 			strtoquid(marshall->child[i]->data, &key);
 
 			marshall_t *rowobj = get_record(&key);
-			uint64_t offset = engine_get(engine, &key);
+			uint64_t offset = engine_get(engine, &key, &meta);
 
 			for (unsigned int j = 0; j < rowobj->size; ++j) {
 				if (!strcmp(rowobj->child[j]->name, element)) {
@@ -77,10 +77,11 @@ int index_btree_create(const char *element, marshall_t *marshall, schema_t schem
 
 		for (unsigned int i = 0; i < marshall->size; ++i) {
 			quid_t key;
+			struct metadata meta;
 			strtoquid(marshall->child[i]->data, &key);
 
 			marshall_t *rowobj = get_record(&key);
-			uint64_t offset = engine_get(engine, &key);
+			uint64_t offset = engine_get(engine, &key, &meta);
 
 			if (array_index <= (rowobj->size - 1)) {
 				size_t value_len;

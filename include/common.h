@@ -50,7 +50,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #define __zassert(e, file, line) \
 	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
 
-typedef uint8_t bool;
+typedef _Bool bool;
 
 char from_hex(char ch);
 int8_t strisbool(char *str);
