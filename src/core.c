@@ -327,8 +327,10 @@ char *db_get_type(char *quid) {
 
 	size_t len;
 	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (!offset)
+	if (!engine_keytype_hasdata(meta.type)) {
+		error_throw("2f05699f70fa", "Key does not contain record");
 		return NULL;
+	}
 
 	void *data = get_data_block(&btx, offset, &len);
 	if (!data)
@@ -339,7 +341,6 @@ char *db_get_type(char *quid) {
 	return marshall_get_strtype(type);
 }
 
-//TODO real with non-records
 char *db_get_schema(char *quid) {
 	if (!ready)
 		return NULL;
@@ -350,8 +351,10 @@ char *db_get_schema(char *quid) {
 
 	size_t len;
 	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (!offset)
+	if (!engine_keytype_hasdata(meta.type)) {
+		error_throw("2f05699f70fa", "Key does not contain record");
 		return NULL;
+	}
 
 	void *data = get_data_block(&btx, offset, &len);
 	if (!data)

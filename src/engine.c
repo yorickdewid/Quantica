@@ -25,6 +25,31 @@ static void flush_super(struct engine *e, bool fast);
 static void flush_dbsuper(struct engine *e);
 static uint64_t remove_table(struct engine *e, struct engine_table *table, size_t i, quid_t *quid);
 
+struct {
+	enum key_type type;
+	bool dataheap;
+} keytype_info[] = {
+
+	/* No data */
+	{MD_TYPE_INDEX,		FALSE},
+	{MD_TYPE_RAW,		FALSE},
+
+	/* Containing data */
+	{MD_TYPE_RECORD,	TRUE},
+	{MD_TYPE_GROUP,		TRUE},
+};
+
+/*
+ * Does marshall type require additional data
+ */
+bool engine_keytype_hasdata(enum key_type type) {
+	for (unsigned int i = 0; i < RSIZE(keytype_info); ++i) {
+		if (keytype_info[i].type == type)
+			return keytype_info[i].dataheap;
+	}
+	return FALSE;
+}
+
 static struct engine_table *alloc_table() {
 	struct engine_table *table = zmalloc(sizeof(struct engine_table));
 	if (!table) {

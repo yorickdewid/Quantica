@@ -162,6 +162,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "ece28bc980db", "Invalid schema") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "2f05699f70fa", "Key does not contain record") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	/* Clear any failed operations */
 	error_clear();
 }

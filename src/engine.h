@@ -136,6 +136,8 @@ struct engine {
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];
 };
 
+bool engine_keytype_hasdata(enum key_type type);
+
 /*
  * Open or Creat an existing database file.
  */
