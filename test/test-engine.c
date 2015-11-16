@@ -33,6 +33,7 @@ static void test_engine_crud() {
 	const char fname[] = "test_database2.idx";
 	const char dbname[] = "test_database2.db";
 	quid_t quid;
+	struct metadata meta;
 	char data[] = ".....";
 
 	error_clear();
@@ -44,8 +45,8 @@ static void test_engine_crud() {
 
 	engine_init(&e, fname, dbname);
 	size_t len;
-	uint64_t offset = engine_get(&e, &quid);
-	void *rdata = get_data(&e, offset, &len);
+	uint64_t offset = engine_get(&e, &quid, &meta);
+	void *rdata = get_data_block(&e, offset, &len);
 	ASSERT(rdata);
 	zfree(rdata);
 	engine_close(&e);
@@ -57,8 +58,8 @@ static void test_engine_crud() {
 
 	engine_init(&e, fname, dbname);
 	size_t len2;
-	uint64_t offset2 = engine_get(&e, &quid);
-	void *r2data = get_data(&e, offset2, &len2);
+	uint64_t offset2 = engine_get(&e, &quid, &meta);
+	void *r2data = get_data_block(&e, offset2, &len2);
 	ASSERT(!r2data);
 	engine_close(&e);
 	unlink(fname);
@@ -94,8 +95,7 @@ static void test_engine_meta() {
 
 	engine_init(&e, fname, dbname);
 	struct metadata md2;
-	int r3 = engine_getmeta(&e, &quid, &md2);
-	ASSERT(!r3);
+	engine_get(&e, &quid, &md2);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct metadata)));
 	engine_close(&e);
 	unlink(fname);

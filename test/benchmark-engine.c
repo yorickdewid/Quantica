@@ -113,13 +113,14 @@ static void db_read_seq_test() {
 	int start = NUM / 2;
 	int end = start + R_NUM;
 	char squid[35] = {'\0'};
+	struct metadata meta;
 	start_timer();
 	for (i = start; i < end; ++i) {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -147,13 +148,14 @@ static void db_read_random_test() {
 	int start = NUM / 2;
 	int end = start + R_NUM;
 	char squid[35] = {'\0'};
+	struct metadata meta;
 	start_timer();
 	for (i = start; i < end; ++i) {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -180,13 +182,14 @@ static void db_read_bounds_test() {
 	int all = 0, i;
 	int end = NUM / 2000;
 	char squid[35] = {'\0'};
+	struct metadata meta;
 	start_timer();
 	for (i = 0; i < end; ++i) {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -213,6 +216,7 @@ static void db_delete_test() {
 	quid_t key;
 	int all = 0, i;
 	char squid[35] = {'\0'};
+	struct metadata meta;
 	start_timer();
 	for (i = 0; i < NUM; ++i) {
 		memset(&key, 0, sizeof(quid_t));
@@ -225,8 +229,8 @@ static void db_delete_test() {
 			LOGF("Cannot delete key %s[%d]\n", squid, i);
 			FATAL("engine_delete");
 		}
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data == NULL) {
 			all++;
 		} else {
@@ -253,6 +257,7 @@ static void db_delete_random_test() {
 	int start = NUM / 2;
 	int end = start + R_NUM;
 	char squid[35] = {'\0'};
+	struct metadata meta;
 	start_timer();
 	for (i = start; i < end; ++i) {
 		memset(&key, 0, sizeof(quid_t));
@@ -265,8 +270,8 @@ static void db_delete_random_test() {
 			printf(">>%s\n", squid);
 			FATAL("engine_delete");
 		}
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data == NULL) {
 			all++;
 		} else {
@@ -290,14 +295,15 @@ static void db_delete_random_test() {
 
 static void db_read_test() {
 	quid_t key;
+	struct metadata meta;
 	start_timer();
 	int all = 0, i;
 	for (i = 0; i < NUM; ++i) {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key);
-		void *data = get_data(&e, offset, &len);
+		uint64_t offset = engine_get(&e, &key, &meta);
+		void *data = get_data_block(&e, offset, &len);
 		if (data != NULL) {
 			all++;
 		}
