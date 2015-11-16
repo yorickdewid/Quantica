@@ -877,6 +877,9 @@ void *get_data_block(struct engine *e, uint64_t offset, size_t *len) {
 		return NULL;
 	}
 
+	if (!offset)
+		return NULL;
+
 	return get_data(e, offset, len);
 }
 

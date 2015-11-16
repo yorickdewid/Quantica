@@ -30,7 +30,6 @@ static struct base control;
 static uint8_t ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
-struct error _eglobal;
 
 char *get_zero_key() {
 	static char buf[QUID_LENGTH + 1];
@@ -228,32 +227,14 @@ void filesync() {
 	base_sync(&control);
 }
 
-/*
- * We found a key but it didn't contain data
- * Check if the key represents other structure
- */
-static char *get_external_keytype(quid_t *key, size_t *len, struct metadata *meta) {
-	/* Check if key is an index */
-	if (meta->type == MD_TYPE_INDEX) {
-		marshall_t *dataobj = index_btree_all(key);
-
-		char *buf = marshall_serialize(dataobj);
-		*len = strlen(buf);
-		marshall_free(dataobj);
-
-		return buf;
-	}
-	return NULL;
-}
-
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	size_t len = 0;
 	quid_create(&key);
 	slay_result_t nrs;
+
+	if (!ready)
+		return -1;
 
 	marshall_t *dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
@@ -267,6 +248,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		marshall_free(dataobj);
 		return -1;
 	}
+
 	zfree(dataslay);
 	marshall_free(dataobj);
 
@@ -276,59 +258,76 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 		struct metadata meta;
 		engine_get(&btx, &key, &meta);
+		if (meta.type != MD_TYPE_RECORD) {
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return -1;
+		}
 
 		meta.type = MD_TYPE_GROUP;
 		if (engine_setmeta(&btx, &key, &meta) < 0)
 			return -1;
 	}
+
 	return 0;
 }
 
 void *db_get(char *quid, size_t *len, bool descent) {
+	quid_t key;
+	size_t _len;
+	struct metadata meta;
+	strtoquid(quid, &key);
+	void *data = NULL;
+	marshall_t *dataobj = NULL;
+
 	if (!ready)
 		return NULL;
 
-	quid_t key;
-	struct metadata meta;
-	strtoquid(quid, &key);
-	size_t _len;
-
 	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (!offset) {
-		return get_external_keytype(&key, len, &meta);
-	}
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return NULL;
 
-	void *data = get_data_block(&btx, offset, &_len);
-	if (!data)
-		return NULL;
-
-	marshall_t *dataobj = slay_get(data, NULL, descent);
-	if (!dataobj) {
-		zfree(data);
-		return NULL;
+			dataobj = slay_get(data, NULL, descent);
+			if (!dataobj) {
+				zfree(data);
+				return NULL;
+			}
+			break;
+		}
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) return */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return NULL;
 	}
 
 	char *buf = marshall_serialize(dataobj);
 	*len = strlen(buf);
-	zfree(data);
+	if (data)
+		zfree(data);
 	marshall_free(dataobj);
 
 	return buf;
 }
 
-//TODO real with non-records
 char *db_get_type(char *quid) {
-	if (!ready)
-		return NULL;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
 
+	if (!ready)
+		return NULL;
+
 	size_t len;
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
-		error_throw("2f05699f70fa", "Key does not contain record");
+		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
@@ -342,17 +341,17 @@ char *db_get_type(char *quid) {
 }
 
 char *db_get_schema(char *quid) {
-	if (!ready)
-		return NULL;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
 
+	if (!ready)
+		return NULL;
+
 	size_t len;
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
-		error_throw("2f05699f70fa", "Key does not contain record");
+		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
@@ -366,13 +365,13 @@ char *db_get_schema(char *quid) {
 }
 
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	size_t len = 0;
 	slay_result_t nrs;
 	strtoquid(quid, &key);
+
+	if (!ready)
+		return -1;
 
 	marshall_t *dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
@@ -393,14 +392,14 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 }
 
 int db_delete(char *quid) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	engine_get(&btx, &key, &meta);
 
+	if (!ready)
+		return -1;
+
+	engine_get(&btx, &key, &meta);
 	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
 
@@ -411,14 +410,14 @@ int db_delete(char *quid) {
 }
 
 int db_purge(char *quid) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	engine_get(&btx, &key, &meta);
 
+	if (!ready)
+		return -1;
+
+	engine_get(&btx, &key, &meta);
 	if (meta.type == MD_TYPE_GROUP)
 		engine_list_delete(&btx, &key);
 
@@ -429,15 +428,15 @@ int db_purge(char *quid) {
 }
 
 int db_vacuum() {
-	if (!ready)
-		return -1;
-
 	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
-	char *bindata = generate_bindata_name(&control);
 
+	if (!ready)
+		return -1;
+
+	char *bindata = generate_bindata_name(&control);
 	if (engine_vacuum(&btx, tmp_key, bindata) < 0)
 		return -1;
 
@@ -447,14 +446,14 @@ int db_vacuum() {
 }
 
 int db_record_get_meta(char *quid, struct record_status *status) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	engine_get(&btx, &key, &meta);
 
+	if (!ready)
+		return -1;
+
+	engine_get(&btx, &key, &meta);
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
 	status->freeze = meta.freeze;
@@ -466,12 +465,12 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 }
 
 int db_record_set_meta(char *quid, struct record_status *status) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
+
+	if (!ready)
+		return -1;
 
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.syslock = status->syslock;
@@ -486,20 +485,22 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 }
 
 char *db_alias_get_name(char *quid) {
+	quid_t key;
+	strtoquid(quid, &key);
+
 	if (!ready)
 		return NULL;
 
-	quid_t key;
-	strtoquid(quid, &key);
 	return engine_list_get_val(&btx, &key);
 }
 
 int db_alias_update(char *quid, const char *name) {
+	quid_t key;
+	strtoquid(quid, &key);
+
 	if (!ready)
 		return -1;
 
-	quid_t key;
-	strtoquid(quid, &key);
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }
 
@@ -518,32 +519,49 @@ char *db_alias_all() {
 }
 
 void *db_alias_get_data(char *name, size_t *len, bool descent) {
+	quid_t key;
+	size_t _len;
+	struct metadata meta;
+	void *data = NULL;
+	marshall_t *dataobj = NULL;
+
 	if (!ready)
 		return NULL;
 
-	quid_t key;
 	if (engine_list_get_key(&btx, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	size_t _len;
-	struct metadata meta;
 	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (!offset) {
-		return get_external_keytype(&key, len, &meta);
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return NULL;
+
+			dataobj = slay_get(data, NULL, descent);
+			if (!dataobj) {
+				zfree(data);
+				return NULL;
+			}
+			break;
+		}
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) return */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return NULL;
 	}
-
-	void *data = get_data_block(&btx, offset, &_len);
-	if (!data)
-		return NULL;
-
-	marshall_t *dataobj = slay_get(data, NULL, descent);
-	if (!dataobj)
-		return NULL;
 
 	char *buf = marshall_serialize(dataobj);
 	*len = strlen(buf);
-	zfree(data);
+	if (data)
+		zfree(data);
 	marshall_free(dataobj);
+
 	return buf;
 }
 
@@ -551,19 +569,24 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
  * Set index on group element
  */
 int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey) {
-	if (!ready)
-		return -1;
-
 	quid_t key;
+	size_t _len;
 	struct metadata meta;
 	index_result_t nrs;
 	strtoquid(group_quid, &key);
-	size_t _len;
 	memset(&nrs, 0, sizeof(index_result_t));
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (!offset)
+	if (!ready)
 		return -1;
+
+	quid_create(&nrs.index);
+	quidtostr(index_quid, &nrs.index);
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	if (meta.type != MD_TYPE_GROUP) {
+		error_throw("2f05699f70fa", "Key does not contain data");
+		return -1;
+	}
 
 	void *data = get_data_block(&btx, offset, &_len);
 	if (!data)
@@ -573,8 +596,12 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	if (!dataobj)
 		return -1;
 
+	/* Determine index based on dataschema */
 	schema_t group = slay_get_schema(data);
-	index_btree_create(idxkey, dataobj, group, &nrs);
+	if (group == SCHEMA_TABLE)
+		index_btree_create_table(index_quid, idxkey, dataobj, &nrs);
+	else if (group == SCHEMA_SET)
+		index_btree_create_set(index_quid, idxkey, dataobj, &nrs);
 
 	marshall_free(dataobj);
 	zfree(data);

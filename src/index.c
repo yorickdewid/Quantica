@@ -29,77 +29,73 @@ static marshall_t *get_record(quid_t *key) {
 }
 
 /*
- * Create btree index
+ * Create btree index on table structure
  */
-int index_btree_create(const char *element, marshall_t *marshall, schema_t schema, index_result_t *result) {
-	char squid[QUID_LENGTH + 1];
+int index_btree_create_table(char *squid, const char *element, marshall_t *marshall, index_result_t *result) {
 	btree_t index;
-	struct engine *engine = get_current_engine();
 
-	quid_create(&result->index);
-	quidtostr(squid, &result->index);
+	btree_init(&index, squid);
+	btree_set_unique(&index, FALSE);
 
-	if (schema == SCHEMA_TABLE) {
+	for (unsigned int i = 0; i < marshall->size; ++i) {
+		quid_t key;
+		struct metadata meta;
+		strtoquid(marshall->child[i]->data, &key);
 
-		btree_init(&index, squid);
-		btree_set_unique(&index, FALSE);
+		marshall_t *rowobj = get_record(&key);
+		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
 
-		for (unsigned int i = 0; i < marshall->size; ++i) {
-			quid_t key;
-			struct metadata meta;
-			strtoquid(marshall->child[i]->data, &key);
-
-			marshall_t *rowobj = get_record(&key);
-			uint64_t offset = engine_get(engine, &key, &meta);
-
-			for (unsigned int j = 0; j < rowobj->size; ++j) {
-				if (!strcmp(rowobj->child[j]->name, element)) {
-					size_t value_len;
-					char *value = marshall_strdata(rowobj->child[j], &value_len);
-					btree_insert(&index, value, value_len, offset);
-					result->index_elements++;
-				}
-			}
-			marshall_free(rowobj);
-		}
-
-		btree_close(&index);
-	} else if (schema == SCHEMA_SET) {
-		if (!strisdigit((char *)element)) {
-			error_throw("888d28dff048", "Operation expexts an index given");
-			return -1;
-		}
-
-		btree_init(&index, squid);
-		btree_set_unique(&index, FALSE);
-
-		long int array_index = atol(element);
-
-		for (unsigned int i = 0; i < marshall->size; ++i) {
-			quid_t key;
-			struct metadata meta;
-			strtoquid(marshall->child[i]->data, &key);
-
-			marshall_t *rowobj = get_record(&key);
-			uint64_t offset = engine_get(engine, &key, &meta);
-
-			if (array_index <= (rowobj->size - 1)) {
+		for (unsigned int j = 0; j < rowobj->size; ++j) {
+			if (!strcmp(rowobj->child[j]->name, element)) {
 				size_t value_len;
-				char *value = marshall_strdata(rowobj->child[array_index], &value_len);
+				char *value = marshall_strdata(rowobj->child[j], &value_len);
 				btree_insert(&index, value, value_len, offset);
 				result->index_elements++;
 			}
-			marshall_free(rowobj);
 		}
+		marshall_free(rowobj);
+	}
 
-		btree_close(&index);
-	} else {
-		error_throw("ece28bc980db", "Invalid schema");
+	btree_close(&index);
+	return 0;
+}
+
+/*
+ * Create btree index on set
+ */
+int index_btree_create_set(char *squid, const char *element, marshall_t *marshall, index_result_t *result) {
+	btree_t index;
+
+	if (!strisdigit((char *)element)) {
+		error_throw("888d28dff048", "Operation expexts an index given");
 		return -1;
 	}
 
+	btree_init(&index, squid);
+	btree_set_unique(&index, FALSE);
+
+	long int array_index = atol(element);
+	for (unsigned int i = 0; i < marshall->size; ++i) {
+		quid_t key;
+		struct metadata meta;
+		strtoquid(marshall->child[i]->data, &key);
+
+		marshall_t *rowobj = get_record(&key);
+		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
+
+		if (array_index <= (rowobj->size - 1)) {
+			size_t value_len;
+			char *value = marshall_strdata(rowobj->child[array_index], &value_len);
+			btree_insert(&index, value, value_len, offset);
+			result->index_elements++;
+		}
+		marshall_free(rowobj);
+	}
+
+	btree_close(&index);
 	return 0;
 }
+
 
 marshall_t *index_btree_all(quid_t *key) {
 	char squid[QUID_LENGTH + 1];
