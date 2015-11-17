@@ -37,6 +37,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/dict.c \
 		$(SRCDIR)/stack.c \
 		$(SRCDIR)/resolv.c \
+		$(SRCDIR)/host.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/diagnose.c \
 		$(SRCDIR)/marshall.c \

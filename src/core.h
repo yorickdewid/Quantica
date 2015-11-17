@@ -35,6 +35,7 @@ char *get_dataheap_name();
 struct engine *get_current_engine();
 char *get_instance_prefix_key(char *short_quid);
 char *get_uptime();
+//char *get_system_hostname();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
 int crypto_sha256(char *s, const char *data);
