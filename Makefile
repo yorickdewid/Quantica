@@ -24,6 +24,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/stresc.c \
 		$(SRCDIR)/strsep.c \
 		$(SRCDIR)/strtoken.c \
+		$(SRCDIR)/zprintf.c \
 		$(SRCDIR)/quid.c \
 		$(SRCDIR)/sha1.c \
 		$(SRCDIR)/sha2.c \

@@ -284,27 +284,27 @@ void *db_get(char *quid, size_t *len, bool descent) {
 
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	switch (meta.type) {
-	case MD_TYPE_RECORD:
-	case MD_TYPE_GROUP: {
-		data = get_data_block(&btx, offset, &_len);
-		if (!data)
-			return NULL;
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return NULL;
 
-		dataobj = slay_get(data, NULL, descent);
-		if (!dataobj) {
-			zfree(data);
-			return NULL;
+			dataobj = slay_get(data, NULL, descent);
+			if (!dataobj) {
+				zfree(data);
+				return NULL;
+			}
+			break;
 		}
-		break;
-	}
-	case MD_TYPE_INDEX: {
-		dataobj = index_btree_all(&key);
-		break;
-	}
-	default:
-		/* Key contains data we cannot (yet) return */
-		error_throw("2f05699f70fa", "Key does not contain data");
-		return NULL;
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) return */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return NULL;
 	}
 
 	char *buf = marshall_serialize(dataobj);
@@ -533,27 +533,27 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	switch (meta.type) {
-	case MD_TYPE_RECORD:
-	case MD_TYPE_GROUP: {
-		data = get_data_block(&btx, offset, &_len);
-		if (!data)
-			return NULL;
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return NULL;
 
-		dataobj = slay_get(data, NULL, descent);
-		if (!dataobj) {
-			zfree(data);
-			return NULL;
+			dataobj = slay_get(data, NULL, descent);
+			if (!dataobj) {
+				zfree(data);
+				return NULL;
+			}
+			break;
 		}
-		break;
-	}
-	case MD_TYPE_INDEX: {
-		dataobj = index_btree_all(&key);
-		break;
-	}
-	default:
-		/* Key contains data we cannot (yet) return */
-		error_throw("2f05699f70fa", "Key does not contain data");
-		return NULL;
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) return */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return NULL;
 	}
 
 	char *buf = marshall_serialize(dataobj);
