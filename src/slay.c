@@ -216,6 +216,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					marshall->size = 1;
 				}
 				zfree(val_data);
+				error_clear();
 				return marshall;
 			}
 
@@ -258,6 +259,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					}
 					marshall->size++;
 					zfree(val_data);
+					error_clear();
 					continue;
 				}
 
@@ -304,6 +306,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					marshall->size++;
 					zfree(name);
 					zfree(val_data);
+					error_clear();
 					continue;
 				}
 
@@ -353,6 +356,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 
 				marshall->size++;
 				zfree(val_data);
+				error_clear();
 			}
 			break;
 		}
@@ -384,6 +388,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				marshall->size++;
 				zfree(name);
 				zfree(val_data);
+				error_clear();
 			}
 			break;
 		}

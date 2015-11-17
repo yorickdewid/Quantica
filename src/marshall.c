@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <error.h>
 #include "dict.h"
 #include "quid.h"
 #include "json_check.h"
@@ -128,6 +129,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						break;
 					}
 					default:
+						error_throw("ece28bc980db", "Invalid schema");
 						break;
 				}
 			}
@@ -196,12 +198,14 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						break;
 					}
 					default:
+						error_throw("ece28bc980db", "Invalid schema");
 						break;
 				}
 			}
 			break;
 		}
 		default:
+			error_throw("ece28bc980db", "Invalid schema");
 			break;
 	}
 	return obj;
@@ -316,9 +320,8 @@ char *marshall_strdata(marshall_t *obj, size_t *len) {
 			return (char *)obj->data;
 
 		default:
-			// TODO throw err
+			error_throw("ece28bc980db", "Invalid schema");
 			return NULL;
-			break;
 	}
 	return NULL;
 }
@@ -415,8 +418,12 @@ char *marshall_serialize(marshall_t *obj) {
 			unsigned int i;
 			for (i = 0; i < obj->size; ++i) {
 				char *elm = marshall_serialize(obj->child[i]);
-				nsz += strlen(elm) + 2;
-				zfree(elm);
+				if (elm) {
+					nsz += strlen(elm) + 2;
+					zfree(elm);
+				} else {
+					nsz += 5;
+				}
 			}
 
 			if (obj->name)
@@ -442,9 +449,14 @@ char *marshall_serialize(marshall_t *obj) {
 					curr_sz++;
 				}
 				char *elm = marshall_serialize(obj->child[i]);
-				strcat(data, elm);
-				curr_sz += strlen(elm);
-				zfree(elm);
+				if (elm) {
+					strcat(data, elm);
+					curr_sz += strlen(elm);
+					zfree(elm);
+				} else {
+					strcat(data, "null");
+					curr_sz += 5;
+				}
 			}
 			strcat(data, "]");
 			return data;
@@ -467,8 +479,12 @@ char *marshall_serialize(marshall_t *obj) {
 			unsigned int i;
 			for (i = 0; i < obj->size; ++i) {
 				char *elm = marshall_serialize(obj->child[i]);
-				nsz += strlen(elm) + 2;
-				zfree(elm);
+				if (elm) {
+					nsz += strlen(elm) + 2;
+					zfree(elm);
+				} else {
+					nsz += 5;
+				}
 			}
 
 			if (obj->name)
@@ -494,17 +510,21 @@ char *marshall_serialize(marshall_t *obj) {
 					curr_sz++;
 				}
 				char *elm = marshall_serialize(obj->child[i]);
-				strcat(data, elm);
-				curr_sz += strlen(elm);
-				zfree(elm);
+				if (elm) {
+					strcat(data, elm);
+					curr_sz += strlen(elm);
+					zfree(elm);
+				} else {
+					strcat(data, "null");
+					curr_sz += 5;
+				}
 			}
 			strcat(data, "}");
 			return data;
 		}
 		default:
-			// TODO throw err
+			error_throw("ece28bc980db", "Invalid schema");
 			return NULL;
-			break;
 	}
 	return NULL;
 }
