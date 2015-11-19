@@ -11,13 +11,13 @@
 #include "webapi.h"
 
 void print_version() {
-	printf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
+	zprintf(NULL, PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 }
 
 void print_usage() {
-	printf(
+	zprintf(NULL,
 	    PROGNAME " %s ("__DATE__", "__TIME__")\n"
-	    "Usage: "PROGNAME" [-?hvfd]\n"
+	    "Usage: " PROGNAME " [-?hvfd]\n"
 	    "\nOptions:\n"
 	    "  -?,-h    this help\n"
 	    "  -v       show version and exit\n"

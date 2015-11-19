@@ -266,7 +266,6 @@ static void db_delete_random_test() {
 		size_t len;
 		if (engine_delete(&e, &key) < 0) {
 			quidtostr(squid, &key);
-			//printf(">>%s.\n", get_error_description());
 			printf(">>%s\n", squid);
 			FATAL("engine_delete");
 		}

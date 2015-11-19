@@ -599,7 +599,7 @@ struct http_response *http_get(char *url, char *custom_headers, char *data, int 
 struct http_response *http_options(char *url) {
 	struct http_url *purl = parse_url(url);
 	if (!purl) {
-		printf("Unable to parse url");
+		lprintf("[erro] Unable to parse url");
 		return NULL;
 	}
 

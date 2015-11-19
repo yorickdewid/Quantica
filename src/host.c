@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <log.h>
 #include "zmalloc.h"
 
 /*
@@ -33,7 +34,7 @@ char *get_system_fqdn() {
 	hints.ai_flags = AI_CANONNAME;
 
 	if ((gai_result = getaddrinfo(hostname, "http", &hints, &info)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(gai_result));
+		lprintf("[erro] getaddrinfo: %s\n", gai_strerror(gai_result));
 		goto done;
 	}
 
