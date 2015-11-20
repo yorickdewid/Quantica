@@ -16,8 +16,10 @@ static marshall_t *get_record(quid_t *key) {
 	size_t len;
 	struct metadata meta;
 	uint64_t offset = engine_get(engine, key, &meta);
-	if (!offset)
+	if (iserror()) {
+		error_clear();
 		return NULL;
+	}
 
 	void *data = get_data_block(engine, offset, &len);
 	if (!data)
@@ -43,9 +45,17 @@ int index_btree_create_table(char *squid, const char *element, marshall_t *marsh
 		strtoquid(marshall->child[i]->data, &key);
 
 		marshall_t *rowobj = get_record(&key);
-		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
+		if (!rowobj)
+			continue;
 
+		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
 		for (unsigned int j = 0; j < rowobj->size; ++j) {
+			if (!rowobj->child[j])
+				continue;
+
+			if (!rowobj->child[j]->name_len)
+				continue;
+
 			if (!strcmp(rowobj->child[j]->name, element)) {
 				size_t value_len;
 				char *value = marshall_strdata(rowobj->child[j], &value_len);
@@ -81,10 +91,15 @@ int index_btree_create_set(char *squid, const char *element, marshall_t *marshal
 		strtoquid(marshall->child[i]->data, &key);
 
 		marshall_t *rowobj = get_record(&key);
-		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
+		if (!rowobj)
+			continue;
 
+		uint64_t offset = engine_get(get_current_engine(), &key, &meta);
 		if (array_index <= (rowobj->size - 1)) {
 			size_t value_len;
+			if (!rowobj->child[array_index])
+				continue;
+
 			char *value = marshall_strdata(rowobj->child[array_index], &value_len);
 			btree_insert(&index, value, value_len, offset);
 			result->index_elements++;
