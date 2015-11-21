@@ -78,6 +78,10 @@ void set_instance_name(char name[]) {
 	base_sync(&control);
 }
 
+bool get_ready_status() {
+	return ready ? TRUE : FALSE;
+}
+
 char *get_instance_name() {
 	return control.instance_name;
 }

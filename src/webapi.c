@@ -211,7 +211,7 @@ http_status_t api_not_found(char **response, http_request_t *req) {
 
 http_status_t api_root(char **response, http_request_t *req) {
 	unused(req);
-	snprintf(*response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"instance\":{\"name\":\"%s\",\"quid\":\"%s\"},\"session\":{\"quid\":\"%s\"},\"license\":\"" LICENSE  "\",\"active\":true,\"description\":\"The server is ready to accept requests\",\"status\":\"SUCCEEDED\",\"success\":true}", API_VERSION, get_version_string(), get_instance_name(), get_instance_key(), get_session_key());
+	snprintf(*response, RESPONSE_SIZE, "{\"api_version\":%d,\"db_version\":\"%s\",\"instance\":{\"name\":\"%s\",\"quid\":\"%s\"},\"session\":{\"quid\":\"%s\"},\"license\":\"" LICENSE  "\",\"active\":\"%s\",\"description\":\"The server is ready to accept requests\",\"status\":\"SUCCEEDED\",\"success\":true}", API_VERSION, get_version_string(), get_instance_name(), get_instance_key(), get_session_key(), str_bool(get_ready_status()));
 	return HTTP_OK;
 }
 
