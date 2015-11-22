@@ -3,9 +3,9 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <math.h>
 
 #include <config.h>
+#include "math.h"
 #include "time.h"
 
 #define DAYS45_70 (25 * 365 + 6)

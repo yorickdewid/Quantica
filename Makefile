@@ -9,8 +9,8 @@ CPPCHECKFLAGS=--quiet --std=c99
 VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
 WFLAGS=-pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
 CFLAGS=-c -g -O0 $(WFLAGS) -DDEBUG -DX64 -DTN12 -DRESOLV
-LDFLAGS= -lm
 SOURCES=$(SRCDIR)/common.c \
+		$(SRCDIR)/fdm.c \
 		$(SRCDIR)/time.c \
 		$(SRCDIR)/log.c \
 		$(SRCDIR)/error.c \
@@ -89,12 +89,12 @@ endif
 debug: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
+	$(CC) $(OBJECTS) -o $(BINDIR)/$@
 
 test: $(EXECUTABLETEST)
 
 $(EXECUTABLETEST): $(TESTOBJECTS)
-	$(CC) $(TESTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
+	$(CC) $(TESTOBJECTS) -o $(BINDIR)/$@
 
 .c.o:
 	$(CC) -I$(INCLUDE) $(CFLAGS) $< -o $@
@@ -119,7 +119,7 @@ genlookup3:
 	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
 qcli: $(CLIENTOBJECTS)
-	$(CC) $(CLIENTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
+	$(CC) $(CLIENTOBJECTS) -o $(BINDIR)/$@
 
 cleanall: clean cleandb cleanutil
 

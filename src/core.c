@@ -480,7 +480,6 @@ int db_purge(char *quid, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX:
-			//TODO unlink index file
 		case MD_TYPE_RECORD:
 		default:
 			break;
