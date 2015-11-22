@@ -400,7 +400,7 @@ int db_count_group(char *quid) {
 	size_t _len;
 	struct metadata meta;
 	strtoquid(quid, &key);
-	int cnt;
+	int cnt = 0;
 
 	if (!ready)
 		return -1;
