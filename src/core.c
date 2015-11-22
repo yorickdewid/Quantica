@@ -263,7 +263,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		struct metadata meta;
 		engine_get(&btx, &key, &meta);
 		if (meta.type != MD_TYPE_RECORD) {
-			error_throw("2f05699f70fa", "Key does not contain data");
+			error_throw("1e933eea602c", "Invalid record type");
 			return -1;
 		}
 
@@ -393,6 +393,43 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	zfree(dataslay);
 	marshall_free(dataobj);
 	return 0;
+}
+
+int db_count_group(char *quid) {
+	quid_t key;
+	size_t _len;
+	struct metadata meta;
+	strtoquid(quid, &key);
+	int cnt;
+
+	if (!ready)
+		return -1;
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	if (meta.type != MD_TYPE_GROUP) {
+		error_throw("1e933eea602c", "Invalid record type");
+		return -1;
+	}
+
+	void *data = get_data_block(&btx, offset, &_len);
+	if (!data)
+		return -1;
+
+	marshall_t *dataobj = slay_get(data, NULL, FALSE);
+	if (!dataobj)
+		return -1;
+
+	/* Only descending schemes contain children */
+	schema_t group = slay_get_schema(data);
+	if (group == SCHEMA_TABLE || group == SCHEMA_SET)
+		cnt = dataobj->size;
+	else
+		error_throw("ece28bc980db", "Invalid schema");
+
+	marshall_free(dataobj);
+	zfree(data);
+
+	return cnt;
 }
 
 int db_delete(char *quid, bool descent) {
@@ -648,7 +685,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	if (meta.type != MD_TYPE_GROUP) {
-		error_throw("2f05699f70fa", "Key does not contain data");
+		error_throw("1e933eea602c", "Invalid record type");
 		return -1;
 	}
 
@@ -666,6 +703,8 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 		index_btree_create_table(index_quid, idxkey, dataobj, &nrs);
 	else if (group == SCHEMA_SET)
 		index_btree_create_set(index_quid, idxkey, dataobj, &nrs);
+	else
+		error_throw("ece28bc980db", "Invalid schema");
 
 	marshall_free(dataobj);
 	zfree(data);

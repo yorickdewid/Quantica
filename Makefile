@@ -119,7 +119,7 @@ genlookup3:
 	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
 qcli: $(CLIENTOBJECTS)
-	$(CC) $(CLIENTOBJECTS) -o $(BINDIR)/$@
+	$(CC) $(CLIENTOBJECTS) $(CFLAGS) -o $(BINDIR)/$@
 
 cleanall: clean cleandb cleanutil
 

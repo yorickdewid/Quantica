@@ -77,7 +77,7 @@ int index_btree_create_set(char *squid, const char *element, marshall_t *marshal
 	btree_t index;
 
 	if (!strisdigit((char *)element)) {
-		error_throw("888d28dff048", "Operation expexts an index given");
+		error_throw("888d28dff048", "Operation expects an index given");
 		return -1;
 	}
 

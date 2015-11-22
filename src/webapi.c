@@ -574,6 +574,19 @@ http_status_t api_db_purge(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_count(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		int elements = db_count_group(quid);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"items\":%d,\"description\":\"Show number of items in group\",\"status\":\"SUCCEEDED\",\"success\":true}", elements);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_db_update(char **response, http_request_t *req) {
 	int items = 0;
 
@@ -756,6 +769,7 @@ static const struct webroute route[] = {
 	{"/insert",			api_db_put,			FALSE,	"Insert new dataset"},
 	{"/get",			api_db_get,			TRUE,	"Retrieve dataset by key"},
 	{"/retrieve",		api_db_get,			TRUE,	"Retrieve dataset by key"},
+	{"/count",			api_db_count,		TRUE,	"Count items in group"},
 	{"/update",			api_db_update,		TRUE,	"Update dataset by key"},
 	{"/delete",			api_db_delete,		TRUE,	"Delete dataset by key"},
 	{"/remove",			api_db_delete,		TRUE,	"Delete dataset by key"},

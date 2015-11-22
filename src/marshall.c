@@ -129,7 +129,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						break;
 					}
 					default:
-						error_throw("ece28bc980db", "Invalid schema");
+						error_throw("70bef771b0a3", "Invalid datatype");
 						break;
 				}
 			}
@@ -198,14 +198,14 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						break;
 					}
 					default:
-						error_throw("ece28bc980db", "Invalid schema");
+						error_throw("70bef771b0a3", "Invalid datatype");
 						break;
 				}
 			}
 			break;
 		}
 		default:
-			error_throw("ece28bc980db", "Invalid schema");
+			error_throw("70bef771b0a3", "Invalid datatype");
 			break;
 	}
 	return obj;
@@ -320,7 +320,7 @@ char *marshall_strdata(marshall_t *obj, size_t *len) {
 			return (char *)obj->data;
 
 		default:
-			error_throw("ece28bc980db", "Invalid schema");
+			error_throw("70bef771b0a3", "Invalid datatype");
 			return NULL;
 	}
 	return NULL;
@@ -523,7 +523,7 @@ char *marshall_serialize(marshall_t *obj) {
 			return data;
 		}
 		default:
-			error_throw("ece28bc980db", "Invalid schema");
+			error_throw("70bef771b0a3", "Invalid datatype");
 			return NULL;
 	}
 	return NULL;
