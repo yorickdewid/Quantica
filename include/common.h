@@ -17,6 +17,8 @@
 #define BITWISE
 #endif
 
+#define PNULL	(void **)0
+
 #define O_BINARY 0
 
 #define TRUE    1
@@ -71,7 +73,7 @@ char *strdup(const char *str);
 char *strndup(const char *str, size_t n);
 char *stresc(char *src);
 char *strsep(char ** stringp, const char *delim);
-char *zprintf(char **s, const char *fmt, ...);
+int zprintf(const char *fmt, ...);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */

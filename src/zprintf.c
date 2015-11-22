@@ -3,23 +3,15 @@
 #include <stdio.h>
 #include <string.h>
 
-char *zprintf(char **s, const char *fmt, ...) {
-	char *c = NULL;
-	int n, len;
-	va_list ap;
+#include "zmalloc.h"
 
-	va_start(ap, fmt);
-	n = vsnprintf(NULL, 0, fmt, ap) + 1;
-	va_end(ap);
+int zprintf(const char *fmt, ...) {
+	va_list arg;
+	int done;
 
-	len = *s ? strlen(*s) : 0;
+	va_start(arg, fmt);
+	done = vfprintf(stdout, fmt, arg);
+	va_end(arg);
 
-	if ((*s = realloc(*s, (len + n) * sizeof(char)))) {
-		c = *s + len;
-		va_start(ap, fmt);
-		vsnprintf(c, n, fmt, ap);
-		va_end(ap);
-	}
-
-	return c;
+	return done;
 }

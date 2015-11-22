@@ -11,11 +11,11 @@
 #include "webapi.h"
 
 void print_version() {
-	zprintf(NULL, PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
+	zprintf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 }
 
 void print_usage() {
-	zprintf(NULL,
+	zprintf(
 	    PROGNAME " %s ("__DATE__", "__TIME__")\n"
 	    "Usage: " PROGNAME " [-?hvfd]\n"
 	    "\nOptions:\n"
