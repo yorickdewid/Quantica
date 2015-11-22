@@ -554,9 +554,17 @@ http_status_t api_db_delete(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_purge(char **response, http_request_t *req) {
+	bool cascade = TRUE;
+
 	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *nocascade = get_param(req, "nocascade");
 	if (quid) {
-		db_purge(quid);
+		if (nocascade) {
+			if (!strcmp(nocascade, "true")) {
+				cascade = FALSE;
+			}
+		}
+		db_purge(quid, cascade);
 		if (iserror()) {
 			return response_internal_error(response);
 		}

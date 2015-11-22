@@ -432,13 +432,10 @@ int db_delete(char *quid, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX:
-			//TODO remove index
-			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
 	}
-
 
 	if (engine_delete(&btx, &key) < 0)
 		return -1;
@@ -446,17 +443,48 @@ int db_delete(char *quid, bool descent) {
 	return 0;
 }
 
-int db_purge(char *quid) {
+int db_purge(char *quid, bool descent) {
 	quid_t key;
+	size_t _len;
 	struct metadata meta;
 	strtoquid(quid, &key);
 
 	if (!ready)
 		return -1;
 
-	engine_get(&btx, &key, &meta);
-	if (meta.type == MD_TYPE_GROUP)
-		engine_list_delete(&btx, &key);
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_GROUP: {
+			if (descent) {
+				void *data = get_data_block(&btx, offset, &_len);
+				if (!data)
+					break;
+
+				marshall_t *dataobj = slay_get(data, NULL, FALSE);
+				if (!dataobj) {
+					zfree(data);
+					break;
+				}
+
+				for (unsigned int i = 0; i < dataobj->size; ++i) {
+					quid_t _key;
+					strtoquid(dataobj->child[i]->data, &_key);
+					engine_purge(&btx, &_key);
+					error_clear();
+				}
+				marshall_free(dataobj);
+				zfree(data);
+			}
+
+			engine_list_delete(&btx, &key);
+			break;
+		}
+		case MD_TYPE_INDEX:
+			//TODO unlink index file
+		case MD_TYPE_RECORD:
+		default:
+			break;
+	}
 
 	if (engine_purge(&btx, &key) < 0)
 		return -1;

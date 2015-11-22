@@ -62,7 +62,7 @@ char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
 int db_update(char *quid, int *items, const void *data, size_t data_len);
 int db_delete(char *quid, bool descent);
-int db_purge(char *quid);
+int db_purge(char *quid, bool descent);
 int db_vacuum();
 
 int db_record_get_meta(char *quid, struct record_status *status);
