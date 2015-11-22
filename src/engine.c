@@ -1311,6 +1311,9 @@ marshall_t *engine_list_all(struct engine *e) {
 		return NULL;
 	}
 
+	if (!e->stats.list_size)
+		return NULL;
+
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(e->stats.list_size, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_OBJECT;

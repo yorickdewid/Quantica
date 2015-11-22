@@ -699,6 +699,9 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
 		return response_internal_error(response);
 	}
 
+	if (!table)
+		table = zstrdup("null");
+
 	len = strlen(table);
 	resplen = RESPONSE_SIZE;
 	if (len > (RESPONSE_SIZE / 2)) {
