@@ -395,7 +395,7 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
-int db_delete(char *quid) {
+int db_delete(char *quid, bool descent) {
 	quid_t key;
 	size_t _len;
 	struct metadata meta;
@@ -407,24 +407,26 @@ int db_delete(char *quid) {
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&btx, offset, &_len);
-			if (!data)
-				break;
+			if (descent) {
+				void *data = get_data_block(&btx, offset, &_len);
+				if (!data)
+					break;
 
-			marshall_t *dataobj = slay_get(data, NULL, FALSE);
-			if (!dataobj) {
+				marshall_t *dataobj = slay_get(data, NULL, FALSE);
+				if (!dataobj) {
+					zfree(data);
+					break;
+				}
+
+				for (unsigned int i = 0; i < dataobj->size; ++i) {
+					quid_t _key;
+					strtoquid(dataobj->child[i]->data, &_key);
+					engine_delete(&btx, &_key);
+					error_clear();
+				}
+				marshall_free(dataobj);
 				zfree(data);
-				break;
 			}
-
-			for (unsigned int i = 0; i < dataobj->size; ++i) {
-				quid_t _key;
-				strtoquid(dataobj->child[i]->data, &_key);
-				if (engine_delete(&btx, &_key) < 0)
-					continue;
-			}
-			marshall_free(dataobj);
-			zfree(data);
 
 			engine_list_delete(&btx, &key);
 			break;
