@@ -17,6 +17,7 @@
 #include "time.h"
 #include "btree.h"
 #include "index.h"
+#include "condition.h"
 #include "marshall.h"
 #include "slay.h"
 #include "basecontrol.h"
@@ -537,6 +538,54 @@ int db_purge(char *quid, bool descent) {
 		return -1;
 
 	return 0;
+}
+
+void *db_select(char *quid, const char *element) {
+	quid_t key;
+	size_t _len;
+	struct metadata meta;
+	strtoquid(quid, &key);
+	void *data = NULL;
+	marshall_t *dataobj = NULL;
+
+	if (!ready)
+		return NULL;
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+			//
+		case MD_TYPE_GROUP: {
+			data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return NULL;
+
+			dataobj = slay_get(data, NULL, TRUE);
+			if (!dataobj) {
+				zfree(data);
+				return NULL;
+			}
+			break;
+		}
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) select */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return NULL;
+	}
+
+	marshall_t *selectobj = condition_select(element, dataobj);
+
+	char *buf = marshall_serialize(selectobj);
+	if (data)
+		zfree(data);
+	marshall_free(selectobj);
+	marshall_free(dataobj);
+
+	return buf;
 }
 
 int db_vacuum() {

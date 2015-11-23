@@ -46,4 +46,3 @@ void btree_init(btree_t *index, char *name);
 void btree_close(btree_t *index);
 
 #endif // INDEX_H_INCLUDED
-

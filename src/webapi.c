@@ -481,16 +481,22 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *noresolve = get_param(req, "noresolve");
+	char *select = get_param(req, "select");
 	if (quid) {
-		if (noresolve) {
-			if (!strcmp(noresolve, "true")) {
-				resolve = FALSE;
+		char *data = NULL;
+		if (select) {
+			data = db_select(quid, select);
+		} else {
+			if (noresolve) {
+				if (!strcmp(noresolve, "true")) {
+					resolve = FALSE;
+				}
 			}
-		}
 
-		char *data = db_get(quid, &len, resolve);
-		if (iserror()) {
-			return response_internal_error(response);
+			data = db_get(quid, &len, resolve);
+			if (iserror()) {
+				return response_internal_error(response);
+			}
 		}
 
 		len = strlen(data);
