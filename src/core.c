@@ -469,6 +469,8 @@ int db_delete(char *quid, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX:
+			engine_list_delete(&btx, &key);
+			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
@@ -517,6 +519,8 @@ int db_purge(char *quid, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX:
+			engine_list_delete(&btx, &key);
+			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
@@ -711,6 +715,11 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 
 	quidtostr(index_quid, &nrs.index);
 	*items = nrs.index_elements;
+
+	if (*items < 2) {
+		error_throw("3d2a88a4502b", "Too few items for index");
+		return 0;
+	}
 
 	/* Add index to database */
 	memset(&meta, 0, sizeof(struct metadata));

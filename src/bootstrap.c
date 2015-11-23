@@ -159,6 +159,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "888d28dff048", "Operation expects an index given") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "3d2a88a4502b", "Too few items for index") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(e, E_WARN, "ece28bc980db", "Invalid schema") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
@@ -170,7 +173,6 @@ void bootstrap(struct engine *e) {
 
 	if (register_error(e, E_WARN, "2f05699f70fa", "Key does not contain data") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
-
 
 	/* Clear any failed operations */
 	error_clear();
