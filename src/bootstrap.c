@@ -46,7 +46,6 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.importance = MD_IMPORTANT_LEVEL1;
 	meta.syslock = LOCK;
-	meta.type = MD_TYPE_RAW;
 	if (engine_insert_meta_data(e, &key, &meta, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
@@ -172,6 +171,9 @@ void bootstrap(struct engine *e) {
 		lprint("[erro] bootstrap: Insert error failed\n");
 
 	if (register_error(e, E_WARN, "2f05699f70fa", "Key does not contain data") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_WARN, "0fb1dd21b0fd", "Internal records cannot be altered") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
 	/* Clear any failed operations */

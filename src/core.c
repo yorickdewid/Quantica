@@ -372,10 +372,17 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
 	slay_result_t nrs;
+	struct metadata meta;
 	strtoquid(quid, &key);
 
 	if (!ready)
 		return -1;
+
+	engine_get(&btx, &key, &meta);
+	if (!engine_keytype_hasdata(meta.type)) {
+		error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
+		return -1;
+	}
 
 	marshall_t *dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
