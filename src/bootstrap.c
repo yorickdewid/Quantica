@@ -158,6 +158,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "888d28dff048", "Operation expects an index given") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "14d882da30d9", "Operation expects an string or array given") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(e, E_WARN, "3d2a88a4502b", "Too few items for index") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 

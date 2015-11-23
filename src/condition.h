@@ -3,6 +3,6 @@
 
 #include "marshall.h"
 
-marshall_t *condition_select(const char *element, marshall_t *marshall);
+marshall_t *marshall_select(marshall_t *element, marshall_t *marshall, void *parent);
 
 #endif // CONDITION_H_INCLUDED

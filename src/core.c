@@ -554,7 +554,6 @@ void *db_select(char *quid, const char *element) {
 	uint64_t offset = engine_get(&btx, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
-			//
 		case MD_TYPE_GROUP: {
 			data = get_data_block(&btx, offset, &_len);
 			if (!data)
@@ -577,12 +576,30 @@ void *db_select(char *quid, const char *element) {
 			return NULL;
 	}
 
-	marshall_t *selectobj = condition_select(element, dataobj);
+	marshall_t *elementobj = marshall_convert((char *)element, strlen(element));
+	if (!elementobj) {
+		if (data)
+			zfree(data);
+		marshall_free(dataobj);
+		return NULL;
+	}
+
+	if (elementobj->type != MTYPE_ARRAY && elementobj->type != MTYPE_STRING) {
+		error_throw("14d882da30d9", "Operation expects an string or array given");
+		if (data)
+			zfree(data);
+		marshall_free(elementobj);
+		marshall_free(dataobj);
+		return NULL;
+	}
+
+	marshall_t *selectobj = marshall_select(elementobj, dataobj, NULL);
 
 	char *buf = marshall_serialize(selectobj);
 	if (data)
 		zfree(data);
 	marshall_free(selectobj);
+	marshall_free(elementobj);
 	marshall_free(dataobj);
 
 	return buf;
