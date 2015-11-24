@@ -369,6 +369,7 @@ char *db_get_schema(char *quid) {
 	return buf;
 }
 
+//TODO check if meta type is still the same
 int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
@@ -603,6 +604,66 @@ void *db_select(char *quid, const char *element) {
 	marshall_free(dataobj);
 
 	return buf;
+}
+
+int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
+	quid_t key;
+	size_t _len;
+	size_t len = 0;
+	struct metadata meta;
+	marshall_t *newobject = NULL;
+	slay_result_t nrs;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return -1;
+
+	marshall_t *mergeobj = marshall_convert((char *)ndata, ndata_len);
+	if (!mergeobj) {
+		return -1;
+	}
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			void *data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return -1;
+
+			marshall_t *dataobj = slay_get(data, NULL, TRUE);
+			if (!dataobj)
+				return -1;
+
+			newobject = marshall_merge(mergeobj, dataobj);
+			zfree(data);
+			break;
+		}
+		case MD_TYPE_INDEX:
+		default:
+			error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
+			return -1;
+	}
+
+	if (iserror()) {
+		puts("no save");
+		return -1;
+	}
+
+	void *dataslay = slay_put(newobject, &len, &nrs);
+	*items = nrs.items;
+	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
+		zfree(dataslay);
+		marshall_free(mergeobj);
+		marshall_free(newobject);
+		return -1;
+	}
+
+	zfree(dataslay);
+	marshall_free(mergeobj);
+	marshall_free(newobject);
+
+	return 0;
 }
 
 int db_vacuum() {

@@ -19,18 +19,7 @@ marshall_t *marshall_select(marshall_t *element, marshall_t *marshall, void *par
 		}
 	}
 
-	if (marshall_type_hasdata(marshall->type)) {
-		for (unsigned int j = 0; j < selectors->size; ++j) {
-			if (marshall->name && !strcmp(marshall->name, (char *)(vector_at(selectors, j)))) {
-				selection->name = marshall->name;
-				selection->name_len = marshall->name_len;
-				selection->data = marshall->data;
-				selection->data_len = marshall->data_len;
-				selection->type = marshall->type;
-				selection->size = 1;
-			}
-		}
-	} else if (marshall_type_hasdescent(marshall->type)) {
+	if (marshall_type_hasdescent(marshall->type)) {
 		selection->child = (marshall_t **)tree_zcalloc(marshall->size, sizeof(marshall_t *), selection);
 		selection->name = marshall->name;
 		selection->name_len = marshall->name_len;
@@ -59,6 +48,8 @@ marshall_t *marshall_select(marshall_t *element, marshall_t *marshall, void *par
 			if (marshall->name && !strcmp(marshall->name, (char *)(vector_at(selectors, j)))) {
 				selection->name = marshall->name;
 				selection->name_len = marshall->name_len;
+				selection->data = marshall->data;
+				selection->data_len = marshall->data_len;
 				selection->type = marshall->type;
 				selection->size = 1;
 			}

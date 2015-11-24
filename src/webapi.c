@@ -606,7 +606,23 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 		if (iserror()) {
 			return response_internal_error(response);
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
+		snprintf(*response, RESPONSE_SIZE, "{\"items\":%d,\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}", items);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_item_add(char **response, http_request_t *req) {
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *data = get_param(req, "data");
+	if (quid && data) {
+		db_item_add(quid, &items, data, strlen(data));
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"items\":%d,\"description\":\"Items added to group\",\"status\":\"SUCCEEDED\",\"success\":true}", items);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);
@@ -786,6 +802,10 @@ static const struct webroute route[] = {
 	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
 	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
 	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
+
+	/* Items operations						*/
+	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
+	//{"/detach",			api_db_item_add,	TRUE,	"Remove item from group"},
 
 	/* Alias operations							*/
 	{"/alias/*",		api_alias_get,		FALSE,	"Get dataset by alias name"},

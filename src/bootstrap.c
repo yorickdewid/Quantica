@@ -179,6 +179,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "0fb1dd21b0fd", "Internal records cannot be altered") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "04904b8810ed", "Cannot merge structures") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	/* Clear any failed operations */
 	error_clear();
 }

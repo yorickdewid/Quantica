@@ -329,6 +329,136 @@ char *marshall_strdata(marshall_t *obj, size_t *len) {
 }
 
 /*
+ * Merge two marshall structutes and return result
+ */
+marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall) {
+	if (marshall_type_hasdescent(marshall->type)) { /* Multiple existing values */
+		if (newobject->type == MTYPE_OBJECT) {
+			for (unsigned int i = 0; i < newobject->size; ++i) {
+				if (marshall_type_hasdescent(newobject->child[i]->type)) {
+					if (marshall->type == MTYPE_ARRAY) {
+						marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+						marshall->child[marshall->size]->type = newobject->type;
+						marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), marshall);
+						marshall->child[marshall->size]->child[0] = newobject->child[i];
+						marshall->child[marshall->size]->size = 1;
+						marshall->size++;
+					} else {
+						marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+						marshall->child[marshall->size]->name = newobject->child[i]->name;
+						marshall->child[marshall->size]->name_len = newobject->child[i]->name_len;
+						marshall->child[marshall->size]->type = newobject->child[i]->type;
+						marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(newobject->child[i]->size, sizeof(marshall_t *), marshall);
+						for (unsigned int j = 0; j < newobject->child[i]->size; ++j) {
+							marshall->child[marshall->size]->child[marshall->child[marshall->size]->size++] = newobject->child[i]->child[j];
+						}
+						marshall->size++;
+					}
+				} else if (marshall->type == MTYPE_OBJECT && newobject->type == MTYPE_OBJECT) {
+					marshall->child = (marshall_t **)tree_zrealloc(marshall->child, (marshall->size + newobject->size) * sizeof(marshall_t *));
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+					marshall->child[marshall->size]->name = newobject->child[i]->name;
+					marshall->child[marshall->size]->name_len = newobject->child[i]->name_len;
+					marshall->child[marshall->size]->data = newobject->child[i]->data;
+					marshall->child[marshall->size]->data_len = newobject->child[i]->data_len;
+					marshall->child[marshall->size]->type = newobject->child[i]->type;
+					marshall->size++;
+				} else if (marshall->type == MTYPE_ARRAY && newobject->type == MTYPE_OBJECT) {
+					marshall->child = (marshall_t **)tree_zrealloc(marshall->child, (marshall->size + newobject->size) * sizeof(marshall_t *));
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+					marshall->child[marshall->size]->type = MTYPE_OBJECT;
+					marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), marshall);
+					marshall->child[marshall->size]->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+					marshall->child[marshall->size]->child[0]->name = newobject->child[i]->name;
+					marshall->child[marshall->size]->child[0]->name_len = newobject->child[i]->name_len;
+					marshall->child[marshall->size]->child[0]->data = newobject->child[i]->data;
+					marshall->child[marshall->size]->child[0]->data_len = newobject->child[i]->data_len;
+					marshall->child[marshall->size]->child[0]->type = newobject->child[i]->type;
+					marshall->child[marshall->size]->size++;
+					marshall->size++;
+				} else {
+					error_throw("04904b8810ed", "Cannot merge structures");
+					return marshall;
+				}
+			}
+		} else if (newobject->type == MTYPE_ARRAY) {
+			for (unsigned int i = 0; i < newobject->size; ++i) {
+				if (marshall_type_hasdescent(newobject->child[i]->type)) {
+					if (marshall->type == MTYPE_OBJECT && !newobject->child[i]->name) {
+						error_throw("04904b8810ed", "Cannot merge structures");
+						return marshall;
+					}
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+					marshall->child[marshall->size]->type = newobject->child[i]->type;
+					marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(newobject->child[i]->size, sizeof(marshall_t *), marshall);
+					for (unsigned int j = 0; j < newobject->child[i]->size; ++j) {
+						marshall->child[marshall->size]->child[marshall->child[marshall->size]->size++] = newobject->child[i]->child[j];
+					}
+					marshall->size++;
+				} else  if (marshall->type == MTYPE_ARRAY && newobject->type == MTYPE_ARRAY) {
+					marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+					marshall->child[marshall->size]->name = newobject->child[i]->name;
+					marshall->child[marshall->size]->name_len = newobject->child[i]->name_len;
+					marshall->child[marshall->size]->data = newobject->child[i]->data;
+					marshall->child[marshall->size]->data_len = newobject->child[i]->data_len;
+					marshall->child[marshall->size]->type = newobject->child[i]->type;
+					marshall->size++;
+				} else {
+					error_throw("04904b8810ed", "Cannot merge structures");
+					return marshall;
+				}
+			}
+		} else { /* Single new value, multiple existing */
+			if (marshall->type == MTYPE_OBJECT) {
+				error_throw("04904b8810ed", "Cannot merge structures");
+				return marshall;
+			}
+
+			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->name = newobject->name;
+			marshall->child[marshall->size]->name_len = newobject->name_len;
+			marshall->child[marshall->size]->data = newobject->data;
+			marshall->child[marshall->size]->data_len = newobject->data_len;
+			marshall->child[marshall->size]->type = newobject->type;
+			marshall->size++;
+		}
+	} else { /* Single existing values */
+		if (newobject->type == MTYPE_OBJECT) {
+			error_throw("04904b8810ed", "Cannot merge structures");
+			return marshall;
+		}
+
+		/* Make current structure an array */
+		marshall->child = (marshall_t **)tree_zcalloc(newobject->size + 1, sizeof(marshall_t *), marshall);
+		marshall->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+		marshall->child[0]->data = marshall->data;
+		marshall->child[0]->data_len = marshall->data_len;
+		marshall->child[0]->type = marshall->type;
+
+		marshall->type = MTYPE_ARRAY;
+		marshall->size = 1;
+
+		if (newobject->type == MTYPE_ARRAY) { /* Multiple new value, single existing */
+			for (unsigned int j = 0; j < newobject->size; ++j) {
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+				marshall->child[marshall->size]->data = newobject->child[j]->data;
+				marshall->child[marshall->size]->data_len = newobject->child[j]->data_len;
+				marshall->child[marshall->size]->type = newobject->child[j]->type;
+				marshall->size++;
+			}
+		} else { /* Single new value, single existing */
+			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->data = newobject->data;
+			marshall->child[marshall->size]->data_len = newobject->data_len;
+			marshall->child[marshall->size]->type = newobject->type;
+			marshall->size++;
+		}
+	}
+
+	return marshall;
+}
+
+/*
  * Convert marshall object to string
  */
 char *marshall_serialize(marshall_t *obj) {
