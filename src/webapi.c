@@ -635,6 +635,22 @@ http_status_t api_db_item_add(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_item_remove(char **response, http_request_t *req) {
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *data = get_param(req, "data");
+	if (quid && data) {
+		/*db_item_remove(quid, &items, data, strlen(data));*/
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"items\":%d,\"description\":\"Items removed from group\",\"status\":\"SUCCEEDED\",\"success\":true}", items);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_index_create(char **response, http_request_t *req) {
 	char squid[QUID_LENGTH + 1];
 	int items = 0;
@@ -812,7 +828,7 @@ static const struct webroute route[] = {
 
 	/* Items operations						*/
 	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
-	//{"/detach",			api_db_item_add,	TRUE,	"Remove item from group"},
+	{"/detach",			api_db_item_remove,	TRUE,	"Remove item from group"},
 
 	/* Alias operations							*/
 	{"/alias/*",		api_alias_get,		FALSE,	"Get dataset by alias name"},
@@ -1306,7 +1322,9 @@ done:
 
 	if (keepalive) {
 		error_clear();
+#if __KEEPALIVE__
 		return;
+#endif
 	}
 
 disconnect:
