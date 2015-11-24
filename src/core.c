@@ -627,12 +627,17 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
 			void *data = get_data_block(&btx, offset, &_len);
-			if (!data)
+			if (!data) {
+				marshall_free(mergeobj);
 				return -1;
+			}
 
 			marshall_t *dataobj = slay_get(data, NULL, TRUE);
-			if (!dataobj)
+			if (!dataobj) {
+				zfree(data);
+				marshall_free(mergeobj);
 				return -1;
+			}
 
 			newobject = marshall_merge(mergeobj, dataobj);
 			zfree(data);
@@ -645,7 +650,8 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	}
 
 	if (iserror()) {
-		puts("no save");
+		marshall_free(mergeobj);
+		marshall_free(newobject);
 		return -1;
 	}
 
