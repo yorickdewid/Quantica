@@ -597,12 +597,19 @@ http_status_t api_db_count(char **response, http_request_t *req) {
 }
 
 http_status_t api_db_update(char **response, http_request_t *req) {
+	bool cascade = TRUE;
 	int items = 0;
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *data = get_param(req, "data");
+	char *nocascade = get_param(req, "nocascade");
 	if (quid && data) {
-		db_update(quid, &items, data, strlen(data));
+		if (nocascade) {
+			if (!strcmp(nocascade, "true")) {
+				cascade = FALSE;
+			}
+		}
+		db_update(quid, &items, cascade, data, strlen(data));
 		if (iserror()) {
 			return response_internal_error(response);
 		}

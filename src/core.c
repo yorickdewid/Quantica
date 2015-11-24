@@ -369,9 +369,10 @@ char *db_get_schema(char *quid) {
 }
 
 //TODO check if meta type is still the same
-int db_update(char *quid, int *items, const void *data, size_t data_len) {
+int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
+	size_t _len;
 	slay_result_t nrs;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -379,15 +380,44 @@ int db_update(char *quid, int *items, const void *data, size_t data_len) {
 	if (!ready)
 		return -1;
 
-	engine_get(&btx, &key, &meta);
-	if (!engine_keytype_hasdata(meta.type)) {
-		error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
-		return -1;
-	}
 
 	marshall_t *dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
 		return -1;
+	}
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_GROUP: {
+			if (descent) {
+				void *descentdata = get_data_block(&btx, offset, &_len);
+				if (!data)
+					break;
+
+				marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+				if (!descentobj) {
+					zfree(descentdata);
+					break;
+				}
+
+				for (unsigned int i = 0; i < descentobj->size; ++i) {
+					quid_t _key;
+					strtoquid(descentobj->child[i]->data, &_key);
+					engine_delete(&btx, &_key);
+					error_clear();
+				}
+				marshall_free(descentobj);
+				zfree(descentdata);
+			}
+		}
+		case MD_TYPE_RECORD:
+			break;
+		case MD_TYPE_INDEX:
+		default:
+			error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
+			marshall_free(dataobj);
+			return -1;
+			break;
 	}
 
 	void *dataslay = slay_put(dataobj, &len, &nrs);
