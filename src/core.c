@@ -368,7 +368,6 @@ char *db_get_schema(char *quid) {
 	return buf;
 }
 
-//TODO check if meta type is still the same
 int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
@@ -426,6 +425,30 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
+	}
+
+	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
+		if (meta.type != MD_TYPE_GROUP) {
+			char _quid[QUID_LENGTH + 1];
+			quidtostr(_quid, &key);
+
+			engine_list_insert(&btx, &key, _quid, QUID_LENGTH);
+
+			struct metadata _meta;
+			engine_get(&btx, &key, &_meta);
+			if (_meta.type != MD_TYPE_RECORD) {
+				error_throw("1e933eea602c", "Invalid record type");
+				return -1;
+			}
+
+			_meta.type = MD_TYPE_GROUP;
+			if (engine_setmeta(&btx, &key, &_meta) < 0)
+				return -1;
+		}
+	} else{
+		if (meta.type == MD_TYPE_GROUP) {
+			engine_list_delete(&btx, &key);
+		}
 	}
 
 	zfree(dataslay);
