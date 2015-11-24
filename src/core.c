@@ -17,7 +17,6 @@
 #include "time.h"
 #include "btree.h"
 #include "index.h"
-#include "condition.h"
 #include "marshall.h"
 #include "slay.h"
 #include "basecontrol.h"
@@ -594,7 +593,7 @@ void *db_select(char *quid, const char *element) {
 		return NULL;
 	}
 
-	marshall_t *selectobj = marshall_select(elementobj, dataobj, NULL);
+	marshall_t *selectobj = marshall_filter(elementobj, dataobj, NULL);
 
 	char *buf = marshall_serialize(selectobj);
 	if (data)
