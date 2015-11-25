@@ -8,7 +8,7 @@
 #include <error.h>
 #include "zmalloc.h"
 #include "stack.h"
-#include "slay.h"
+#include "slay_marshall.h"
 #include "dict.h"
 #include "quid.h"
 #include "md5.h"

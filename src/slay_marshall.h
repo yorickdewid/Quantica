@@ -1,5 +1,5 @@
-#ifndef SLAY_H_INCLUDED
-#define SLAY_H_INCLUDED
+#ifndef SLAY_MARSHALL_H_INCLUDED
+#define SLAY_MARSHALL_H_INCLUDED
 
 #include <config.h>
 #include <common.h>
@@ -37,4 +37,4 @@ marshall_type_t slay_get_type(void *data);
 schema_t slay_get_schema(void *data);
 char *slay_get_strschema(void *data);
 
-#endif // SLAY_H_INCLUDED
+#endif // SLAY_MARSHALL_H_INCLUDED

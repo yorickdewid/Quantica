@@ -5,7 +5,6 @@
 #include "zmalloc.h"
 #include "quid.h"
 #include "core.h"
-#include "slay.h"
 #include "engine.h"
 #include "btree.h"
 #include "index.h"

@@ -4,7 +4,7 @@
 
 #include <log.h>
 #include <error.h>
-#include "slay.h"
+#include "slay_marshall.h"
 #include "quid.h"
 #include "dict.h"
 #include "marshall.h"

@@ -3,7 +3,7 @@
 
 #include "quid.h"
 #include "marshall.h"
-#include "slay.h"
+#include "slay_marshall.h"
 
 typedef struct {
 	quid_t index;
