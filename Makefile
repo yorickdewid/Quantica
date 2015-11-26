@@ -42,6 +42,7 @@ SOURCES=$(SRCDIR)/common.c \
 		$(SRCDIR)/json_check.c \
 		$(SRCDIR)/diagnose.c \
 		$(SRCDIR)/marshall.c \
+		$(SRCDIR)/dict_marshall.c \
 		$(SRCDIR)/slay_marshall.c \
 		$(SRCDIR)/basecontrol.c \
 		$(SRCDIR)/btree.c \
