@@ -18,7 +18,8 @@
 #include "btree.h"
 #include "index.h"
 #include "marshall.h"
-#include "slay.h"
+#include "dict_marshall.h"
+#include "slay_marshall.h"
 #include "basecontrol.h"
 #include "engine.h"
 #include "bootstrap.h"
@@ -720,6 +721,65 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	zfree(dataslay);
 	marshall_free(mergeobj);
 	marshall_free(newobject);
+
+	return 0;
+}
+
+int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) {
+	quid_t key;
+	size_t _len;
+	//size_t len = 0;
+	struct metadata meta;
+	marshall_t *filterobject = NULL;
+	//slay_result_t nrs;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return -1;
+
+	*items = 0;
+	marshall_t *mergeobj = marshall_convert((char *)ndata, ndata_len);
+	if (!mergeobj) {
+		return -1;
+	}
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP: {
+			void *data = get_data_block(&btx, offset, &_len);
+			if (!data) {
+				marshall_free(mergeobj);
+				return -1;
+			}
+
+			marshall_t *dataobj = slay_get(data, NULL, TRUE);
+			if (!dataobj) {
+				zfree(data);
+				marshall_free(mergeobj);
+				return -1;
+			}
+
+			filterobject = marshall_separate(mergeobj, dataobj);
+			zfree(data);
+			break;
+		}
+		case MD_TYPE_INDEX:
+		default:
+			error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
+			return -1;
+	}
+
+	if (iserror()) {
+		marshall_free(mergeobj);
+		marshall_free(filterobject);
+		return -1;
+	}
+
+	char *buf = marshall_serialize(filterobject);
+	puts(buf);
+	if (buf)
+		zfree(buf);
 
 	return 0;
 }

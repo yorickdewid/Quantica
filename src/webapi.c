@@ -25,6 +25,7 @@
 #include <error.h>
 
 #include "zmalloc.h"
+#include "dict_marshall.h"
 #include "core.h"
 #include "sha1.h"
 #include "md5.h"
@@ -641,7 +642,7 @@ http_status_t api_db_item_remove(char **response, http_request_t *req) {
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *data = get_param(req, "data");
 	if (quid && data) {
-		/*db_item_remove(quid, &items, data, strlen(data));*/
+		db_item_remove(quid, &items, data, strlen(data));
 		if (iserror()) {
 			return response_internal_error(response);
 		}
