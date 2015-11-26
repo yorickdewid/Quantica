@@ -620,6 +620,29 @@ http_status_t api_db_update(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_duplicate(char **response, http_request_t *req) {
+	char squid[QUID_LENGTH + 1];
+	bool meta = TRUE;
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	char *nometa = get_param(req, "nometa");
+	if (quid) {
+		if (nometa) {
+			if (!strcmp(nometa, "true")) {
+				meta = FALSE;
+			}
+		}
+		db_duplicate(quid, squid, &items, meta);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_db_item_add(char **response, http_request_t *req) {
 	int items = 0;
 
@@ -820,6 +843,8 @@ static const struct webroute route[] = {
 	{"/retrieve",		api_db_get,			TRUE,	"Retrieve dataset by key"},
 	{"/count",			api_db_count,		TRUE,	"Count items in group"},
 	{"/update",			api_db_update,		TRUE,	"Update dataset by key"},
+	{"/duplicate",		api_db_duplicate,	TRUE,	"Duplicate record into new record"},
+	{"/copy",			api_db_duplicate,	TRUE,	"Duplicate record into new record"},
 	{"/delete",			api_db_delete,		TRUE,	"Delete dataset by key"},
 	{"/remove",			api_db_delete,		TRUE,	"Delete dataset by key"},
 	{"/purge",			api_db_purge,		TRUE,	"Purge dataset and key"},

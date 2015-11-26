@@ -380,7 +380,6 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 	if (!ready)
 		return -1;
 
-
 	marshall_t *dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
 		return -1;
@@ -391,7 +390,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		case MD_TYPE_GROUP: {
 			if (descent) {
 				void *descentdata = get_data_block(&btx, offset, &_len);
-				if (!data)
+				if (!descentdata)
 					break;
 
 				marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
@@ -435,18 +434,11 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 
 			engine_list_insert(&btx, &key, _quid, QUID_LENGTH);
 
-			struct metadata _meta;
-			engine_get(&btx, &key, &_meta);
-			if (_meta.type != MD_TYPE_RECORD) {
-				error_throw("1e933eea602c", "Invalid record type");
-				return -1;
-			}
-
-			_meta.type = MD_TYPE_GROUP;
-			if (engine_setmeta(&btx, &key, &_meta) < 0)
+			meta.type = MD_TYPE_GROUP;
+			if (engine_setmeta(&btx, &key, &meta) < 0)
 				return -1;
 		}
-	} else{
+	} else {
 		if (meta.type == MD_TYPE_GROUP) {
 			engine_list_delete(&btx, &key);
 		}
@@ -454,6 +446,71 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 
 	zfree(dataslay);
 	marshall_free(dataobj);
+	return 0;
+}
+
+int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
+	quid_t key;
+	quid_t nkey;
+	size_t len = 0;
+	size_t _len;
+	slay_result_t nrs;
+	struct metadata meta;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return -1;
+
+	uint64_t offset = engine_get(&btx, &key, &meta);
+	switch (meta.type) {
+		case MD_TYPE_RECORD:
+		case MD_TYPE_GROUP:
+			break;
+		default:
+			error_throw("0fb1dd21b0fd", "Internal records cannot be altered");
+			return -1;
+			break;
+	}
+
+	void *descentdata = get_data_block(&btx, offset, &_len);
+	if (!descentdata)
+		return 0;
+
+	marshall_t *descentobj = slay_get(descentdata, NULL, TRUE);
+	if (!descentobj) {
+		zfree(descentdata);
+		return 0;
+	}
+
+	quid_create(&nkey);
+
+	void *dataslay = slay_put(descentobj, &len, &nrs);
+	*items = nrs.items;
+	if (engine_insert_data(&btx, &nkey, dataslay, len) < 0) {
+		zfree(descentdata);
+		zfree(dataslay);
+		marshall_free(descentobj);
+		return -1;
+	}
+
+	zfree(descentdata);
+	zfree(dataslay);
+	marshall_free(descentobj);
+
+	if (!copy_meta) {
+		memset(&meta, 0, sizeof(struct metadata));
+		meta.importance = MD_IMPORTANT_NORMAL;
+	}
+
+	quidtostr(nquid, &nkey);
+	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
+		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
+		meta.type = MD_TYPE_GROUP;
+	}
+
+	if (engine_setmeta(&btx, &nkey, &meta) < 0)
+		return -1;
+
 	return 0;
 }
 

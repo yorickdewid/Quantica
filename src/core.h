@@ -61,6 +61,7 @@ char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
 int db_count_group(char *quid);
 int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len);
+int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta);
 int db_delete(char *quid, bool descent);
 int db_purge(char *quid, bool descent);
 void *db_select(char *quid, const char *element);
