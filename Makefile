@@ -75,16 +75,36 @@ EXECUTABLE=quantica
 EXECUTABLETEST=quantica_test
 EXECUTABLECLIENT=qcli
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-	CFLAGS += -DLINUX
-	LDFLAGS += -lrt
-endif
-ifeq ($(UNAME_S),Darwin)
-	CFLAGS += -DOSX
-endif
-ifeq ($(UNAME_S),OpenBSD)
-	CFLAGS += -DOBSD
+ifeq ($(OS),Windows_NT)
+	CFLAGS += -DWIN32
+	ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+		CFLAGS += -DAMD64
+	endif
+	ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+		CFLAGS += -DIA32
+	endif
+else
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+		CFLAGS += -DLINUX
+		LDFLAGS += -lrt
+	endif
+	ifeq ($(UNAME_S),Darwin)
+		CFLAGS += -DOSX
+	endif
+	ifeq ($(UNAME_S),OpenBSD)
+		CFLAGS += -DOBSD
+	endif
+	UNAME_P := $(shell uname -p)
+	ifeq ($(UNAME_P),x86_64)
+		CFLAGS += -DAMD64
+	endif
+	ifneq ($(filter %86,$(UNAME_P)),)
+		CFLAGS += -DIA32
+	endif
+	ifneq ($(filter arm%,$(UNAME_P)),)
+		CFLAGS += -DARM
+	endif
 endif
 
 debug: $(EXECUTABLE)
