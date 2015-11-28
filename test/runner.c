@@ -11,6 +11,8 @@ void print_environment() {
 	LOGF("Date:\t\t%s", (char*)ctime(&now));
 }
 
+#ifdef TEST
+
 int main(int argc, char *argv[], char *envp[]) {
 	print_environment();
 
@@ -31,3 +33,5 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	return 0;
 }
+
+#endif

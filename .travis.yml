@@ -17,9 +17,9 @@ script:
   - make genquid
   - make genlookup3
   - make verminor
-  - make debug
+  - make debug clean
+  - make qcli clean
   - make test
-  - make qcli
   - ./bin/quantica_test
   - ./test/dupquid.sh
 

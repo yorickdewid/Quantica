@@ -56,7 +56,7 @@ endif
 
 all: debug
 
-debug: CFLAGS += -DDEBUG -DRESOLV
+debug: CFLAGS += -DDEBUG -DRESOLV -DDAEMON
 debug: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
@@ -90,6 +90,7 @@ verminor:
 genlookup3:
 	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
 
+qcli: CFLAGS += -DCLIENT
 qcli: $(CLIENTOBJECTS)
 	$(CC) -I$(INCLUDE) $(CFLAGS) $(CLIENTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 

@@ -63,7 +63,7 @@ int daemonize() {
 	return 0;
 }
 
-#ifndef TEST
+#ifdef DAEMON
 
 int main(int argc, char *argv[]) {
 	if (argc < 2)

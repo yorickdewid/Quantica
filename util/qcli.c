@@ -550,6 +550,8 @@ static int localcommand(char *cmd) {
 	return 0;
 }
 
+#ifdef CLIENT
+
 int main(int argc, char *argv[]) {
 	extern char *optarg;
 	extern int optind;
@@ -627,3 +629,5 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
+
+#endif
