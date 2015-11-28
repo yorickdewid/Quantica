@@ -63,6 +63,8 @@ int daemonize() {
 	return 0;
 }
 
+#ifndef TEST
+
 int main(int argc, char *argv[]) {
 	if (argc < 2)
 		return daemonize();
@@ -97,3 +99,5 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
+
+#endif

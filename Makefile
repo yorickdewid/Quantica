@@ -1,79 +1,24 @@
-INCLUDE=include
-SRCDIR=src
-TESTDIR=test
-BINDIR=bin
-UTILDIR=util
-VALGRIND=valgrind
-CPPCHECK=cppcheck
-CPPCHECKFLAGS=--quiet --std=c99
-VALFLAGS=--leak-check=full --track-origins=yes --show-reachable=yes
-WFLAGS=-pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
-CFLAGS=-g -O0 $(WFLAGS) -DDEBUG -DX64 -DTN12 -DRESOLV
-LDFLAGS= -lm
-SOURCES=$(SRCDIR)/common.c \
-		$(SRCDIR)/time.c \
-		$(SRCDIR)/log.c \
-		$(SRCDIR)/error.c \
-		$(SRCDIR)/zmalloc.c \
-		$(SRCDIR)/arc4random.c \
-		$(SRCDIR)/strlcpy.c \
-		$(SRCDIR)/strlcat.c \
-		$(SRCDIR)/itoa.c \
-		$(SRCDIR)/antoi.c \
-		$(SRCDIR)/strdup.c \
-		$(SRCDIR)/stresc.c \
-		$(SRCDIR)/strsep.c \
-		$(SRCDIR)/strtoken.c \
-		$(SRCDIR)/zprintf.c \
-		$(SRCDIR)/quid.c \
-		$(SRCDIR)/sha1.c \
-		$(SRCDIR)/sha2.c \
-		$(SRCDIR)/hmac.c \
-		$(SRCDIR)/aes.c \
-		$(SRCDIR)/base64.c \
-		$(SRCDIR)/crc32.c \
-		$(SRCDIR)/crc64.c \
-		$(SRCDIR)/md5.c \
-		$(SRCDIR)/vector.c \
-		$(SRCDIR)/dict.c \
-		$(SRCDIR)/stack.c \
-		$(SRCDIR)/resolv.c \
-		$(SRCDIR)/host.c \
-		$(SRCDIR)/json_check.c \
-		$(SRCDIR)/diagnose.c \
-		$(SRCDIR)/marshall.c \
-		$(SRCDIR)/dict_marshall.c \
-		$(SRCDIR)/slay_marshall.c \
-		$(SRCDIR)/basecontrol.c \
-		$(SRCDIR)/btree.c \
-		$(SRCDIR)/engine.c \
-		$(SRCDIR)/index.c \
-		$(SRCDIR)/core.c \
-		$(SRCDIR)/hashtable.c \
-		$(SRCDIR)/jenhash.c \
-		$(SRCDIR)/bootstrap.c \
-		$(SRCDIR)/webapi.c \
-		$(SRCDIR)/webclient.c \
-		$(SRCDIR)/sql.c
-TEST_SOURCES=$(TESTDIR)/benchmark-engine.c \
-		$(TESTDIR)/test-quid.c \
-		$(TESTDIR)/test-aes.c \
-		$(TESTDIR)/test-base64.c \
-		$(TESTDIR)/test-crc32.c \
-		$(TESTDIR)/test-sha1.c \
-		$(TESTDIR)/test-sha2.c \
-		$(TESTDIR)/test-md5.c \
-		$(TESTDIR)/benchmark-quid.c \
-		$(TESTDIR)/test-engine.c \
-		$(TESTDIR)/test-bootstrap.c \
-		$(TESTDIR)/test-json_check.c
-CLIENT_SOURCES=$(UTILDIR)/qcli.c
-OBJECTS=$(SOURCES:.c=.o) $(SRCDIR)/main.o
-TESTOBJECTS=$(SOURCES:.c=.o) $(TEST_SOURCES:.c=.o) $(TESTDIR)/runner.o
-CLIENTOBJECTS=$(SOURCES:.c=.o) $(CLIENT_SOURCES:.c=.o)
-EXECUTABLE=quantica
-EXECUTABLETEST=quantica_test
-EXECUTABLECLIENT=qcli
+INCLUDE = include
+SRCDIR = src
+TESTDIR = test
+BINDIR = bin
+UTILDIR = util
+VALGRIND = valgrind
+CPPCHECK = cppcheck
+CPPCHECKFLAGS = --quiet --std=c99
+VALFLAGS = --leak-check=full --track-origins=yes --show-reachable=yes
+WFLAGS = -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
+CFLAGS = -g -O0 $(WFLAGS) -DX64 -DTN12
+LDFLAGS = -lm
+SOURCES = $(wildcard $(SRCDIR)/*.c)
+TEST_SOURCES = $(wildcard $(TESTDIR)/*.c)
+CLIENT_SOURCES = $(UTILDIR)/qcli.c
+OBJECTS = $(SOURCES:.c=.o)
+TESTOBJECTS = $(SOURCES:.c=.o) $(TEST_SOURCES:.c=.o)
+CLIENTOBJECTS = $(SOURCES:.c=.o) $(CLIENT_SOURCES:.c=.o)
+EXECUTABLE = quantica
+EXECUTABLETEST = quantica_test
+EXECUTABLECLIENT = qcli
 
 ifeq ($(OS),Windows_NT)
 	CFLAGS += -DWIN32
@@ -107,11 +52,17 @@ else
 	endif
 endif
 
+.PHONY: all debug test memcheck cov fixeof genquid verminor genlookup3 qcli clean cleandb cleanutil cleandist
+
+all: debug
+
+debug: CFLAGS += -DDEBUG -DRESOLV
 debug: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
 
+test: CFLAGS += -DTEST
 test: $(EXECUTABLETEST)
 
 $(EXECUTABLETEST): $(TESTOBJECTS)
@@ -145,17 +96,19 @@ qcli: $(CLIENTOBJECTS)
 cleanall: clean cleandb cleanutil
 
 clean:
-	@rm -rf $(SRCDIR)/*.o
-	@rm -rf $(TESTDIR)/*.o
-	@rm -rf $(BINDIR)/$(EXECUTABLE)
-	@rm -rf $(BINDIR)/$(EXECUTABLETEST)
+	@$(RM) -rf $(SRCDIR)/*.o
+	@$(RM) -rf $(TESTDIR)/*.o
+	@$(RM) -rf $(BINDIR)/$(EXECUTABLE)
+	@$(RM) -rf $(BINDIR)/$(EXECUTABLETEST)
 
 cleandb:
-	@rm -rf $(BINDIR)/*
+	@$(RM) -rf $(BINDIR)/*
 
 cleanutil:
-	@rm -rf $(UTILDIR)/*.o
-	@rm -rf $(BINDIR)/lfeof
-	@rm -rf $(BINDIR)/genquid
-	@rm -rf $(BINDIR)/genlookup3
-	@rm -rf $(BINDIR)/qcli
+	@$(RM) -rf $(UTILDIR)/*.o
+	@$(RM) -rf $(BINDIR)/lfeof
+	@$(RM) -rf $(BINDIR)/genquid
+	@$(RM) -rf $(BINDIR)/genlookup3
+	@$(RM) -rf $(BINDIR)/qcli
+
+cleandist: clean
