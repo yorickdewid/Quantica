@@ -331,9 +331,58 @@ marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall) {
 	return marshall;
 }
 
+bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
+	if (object_2->type == MTYPE_OBJECT) {
+		if (object_1->type != MTYPE_OBJECT) {
+			return FALSE;
+		} else {
+			if (object_1->size != object_2->size)
+				return FALSE;
+			for (unsigned int i = 0; i < object_1->size; ++i) {
+				if (!marshall_equal(object_1->child[i], object_2->child[i]))
+					return FALSE;
+			}
+			return TRUE;
+		}
+	} else if (object_2->type == MTYPE_ARRAY) {
+		if (object_1->type != MTYPE_ARRAY) {
+			return FALSE;
+		} else {
+			if (object_1->size != object_2->size)
+				return FALSE;
+			for (unsigned int i = 0; i < object_1->size; ++i) {
+				if (!marshall_equal(object_1->child[i], object_2->child[i]))
+					return FALSE;
+			}
+			return TRUE;
+		}
+	} else {
+		if (object_1->type == MTYPE_OBJECT || object_1->type == MTYPE_ARRAY) {
+			return FALSE;
+		} else {
+			if (object_1->size != object_2->size)
+				return FALSE;
+			if (object_1->type != object_2->type)
+				return FALSE;
+			if (object_1->name_len != object_2->name_len)
+				return FALSE;
+			if (object_1->name && object_2->name) {
+				if (strcmp(object_1->name, object_2->name))
+					return FALSE;
+			}
+			if (object_1->data_len != object_2->data_len)
+				return FALSE;
+			if (strcmp(object_1->data, object_2->data))
+				return FALSE;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 #if 0
 static void shift_left(marshall_t *marshall, int offset) {
-	for (unsigned int i = offset; i < marshall->size-1; ++i) {
+	for (unsigned int i = offset; i < marshall->size - 1; ++i) {
 		marshall->child[i]->data = marshall->child[i + 1]->data;
 		marshall->child[i]->data_len = marshall->child[i + 1]->data_len;
 		marshall->child[i]->type = marshall->child[i + 1]->type;
