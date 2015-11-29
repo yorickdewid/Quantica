@@ -785,10 +785,11 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	quid_t key;
 	size_t _len;
-	//size_t len = 0;
+	size_t len = 0;
 	struct metadata meta;
 	marshall_t *filterobject = NULL;
-	//slay_result_t nrs;
+	slay_result_t nrs;
+	bool alteration = FALSE;
 	strtoquid(quid, &key);
 
 	if (!ready)
@@ -817,7 +818,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				return -1;
 			}
 
-			filterobject = marshall_separate(mergeobj, dataobj);
+			filterobject = marshall_separate(mergeobj, dataobj, &alteration);
 			zfree(data);
 			break;
 		}
@@ -833,10 +834,25 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	char *buf = marshall_serialize(filterobject);
-	puts(buf);
-	if (buf)
-		zfree(buf);
+	if (!alteration) {
+		error_throw("6b4f4d9c00fc", "Cannot separate structures");
+		marshall_free(mergeobj);
+		marshall_free(filterobject);
+		return -1;
+	}
+
+	void *dataslay = slay_put(filterobject, &len, &nrs);
+	*items = nrs.items;
+	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
+		zfree(dataslay);
+		marshall_free(mergeobj);
+		marshall_free(filterobject);
+		return -1;
+	}
+
+	zfree(dataslay);
+	marshall_free(mergeobj);
+	marshall_free(filterobject);
 
 	return 0;
 }

@@ -36,7 +36,7 @@ char *marshall_strdata(marshall_t *obj, size_t *len);
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent);
 marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall);
 bool marshall_equal(marshall_t *object_1, marshall_t *object_2);
-marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall);
+marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed);
 char *marshall_get_strtype(marshall_type_t type);
 
 #endif // MARSHALL_H_INCLUDED

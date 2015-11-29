@@ -183,6 +183,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "04904b8810ed", "Cannot merge structures") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "6b4f4d9c00fc", "Cannot separate structures") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	/* Clear any failed operations */
 	error_clear();
 }
