@@ -467,6 +467,25 @@ arr_again:
 	return marshall;
 }
 
+#ifdef DEBUG
+void marshall_dump(marshall_t *marshall, int depth) {
+	if (!marshall) {
+		puts("no marshall");
+		return;
+	}
+
+	printf("%*s%d type: %s\n", (depth * 4), " ", depth, marshall_get_strtype(marshall->type));
+	printf("%*s%d name: %s[%zu]\n", (depth * 4), " ", depth, marshall->name, marshall->name_len);
+	printf("%*s%d data: %s[%zu]\n", (depth * 4), " ", depth, (char *)marshall->data, marshall->data_len);
+	printf("%*s%d size: %d\n", (depth * 4), " ", depth, marshall->size);
+
+	for (unsigned int i = 0; i < marshall->size; ++i) {
+		printf("%*s --|\n", (depth * 4), " ");
+		marshall_dump(marshall->child[i], depth + 1);
+	}
+}
+#endif
+
 char *marshall_get_strtype(marshall_type_t type) {
 	switch (type) {
 		case MTYPE_NULL:
