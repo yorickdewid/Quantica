@@ -372,8 +372,10 @@ bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
 			}
 			if (object_1->data_len != object_2->data_len)
 				return FALSE;
-			if (strcmp(object_1->data, object_2->data))
-				return FALSE;
+			if (object_1->data && object_2->data) {
+				if (strcmp(object_1->data, object_2->data))
+					return FALSE;
+			}
 			return TRUE;
 		}
 	}
