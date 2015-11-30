@@ -392,6 +392,7 @@ static void shift_left(marshall_t *marshall, int offset) {
 }
 
 marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed) {
+	marshall_dump(filterobject, 0);
 	if (marshall->type == MTYPE_OBJECT) {
 		if (filterobject->type == MTYPE_OBJECT) {
 			if (marshall_equal(marshall, filterobject)) {

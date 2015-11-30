@@ -246,8 +246,7 @@ void engine_close(struct engine *e) {
 	close(e->fd);
 	close(e->db_fd);
 
-	size_t i;
-	for (i = 0; i < CACHE_SLOTS; ++i) {
+	for (size_t i = 0; i < CACHE_SLOTS; ++i) {
 		if (e->cache[i].offset) {
 			zfree(e->cache[i].table);
 		}
@@ -310,8 +309,7 @@ static uint64_t alloc_dbchunk(struct engine *e, size_t len) {
 	if (!e->dbcache[DBCACHE_SLOTS - 1].len)
 		goto new_block;
 
-	int i;
-	for (i = 0; i < DBCACHE_SLOTS; ++i) {
+	for (int i = 0; i < DBCACHE_SLOTS; ++i) {
 		struct engine_dbcache *slot = &e->dbcache[i];
 		if (len <= slot->len) {
 			int diff = (((double)(len) / (double)slot->len) * 100);
@@ -360,17 +358,16 @@ static void free_dbchunk(struct engine *e, uint64_t offset) {
 		return;
 	}
 
-	int i, j;
 	info.free = 1;
 	info.next = 0;
 	struct engine_dbcache dbinfo;
 	size_t len = from_be32(info.len);
 	dbinfo.offset = offset;
-	for (i = DBCACHE_SLOTS - 1; i >= 0; --i) {
+	for (int i = DBCACHE_SLOTS - 1; i >= 0; --i) {
 		struct engine_dbcache *slot = &e->dbcache[i];
 		if (len > slot->len) {
 			if (slot->len) {
-				for (j = 0; j < i; ++j) {
+				for (int j = 0; j < i; ++j) {
 					e->dbcache[j] = e->dbcache[j + 1];
 				}
 			}
@@ -1022,10 +1019,9 @@ int engine_recover_storage(struct engine *e) {
 
 //TODO Copy over other keytypes
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
-	int i;
 	struct engine_table *table = get_table(e, table_offset);
 	size_t sz = table->size;
-	for (i = 0; i < (int)sz; ++i) {
+	for (int i = 0; i < (int)sz; ++i) {
 		uint64_t child = from_be64(table->items[i].child);
 		uint64_t right = from_be64(table->items[i + 1].child);
 		uint64_t dboffset = from_be64(table->items[i].offset);
@@ -1184,8 +1180,7 @@ char *engine_list_get_val(struct engine *e, const quid_t *c_quid) {
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
 		zassert(tablelist->size <= LIST_SIZE);
 
-		int i = 0;
-		for (; i < tablelist->size; ++i) {
+		for (int i = 0; i < tablelist->size; ++i) {
 			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
 			if (cmp == 0) {
 				size_t len = from_be32(tablelist->items[i].len);
@@ -1219,8 +1214,7 @@ int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t 
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
 		zassert(tablelist->size <= LIST_SIZE);
 
-		int i = 0;
-		for (; i < tablelist->size; ++i) {
+		for (int i = 0; i < tablelist->size; ++i) {
 			if (from_be32(tablelist->items[i].hash) == hash) {
 				memcpy(key, &tablelist->items[i].quid, sizeof(quid_t));
 				zfree(tablelist);
@@ -1250,8 +1244,7 @@ int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name,
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
 		zassert(tablelist->size <= LIST_SIZE);
 
-		int i = 0;
-		for (; i < tablelist->size; ++i) {
+		for (int i = 0; i < tablelist->size; ++i) {
 			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
 			if (cmp == 0) {
 				memcpy(&tablelist->items[i].name, name, len);
@@ -1283,8 +1276,7 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid) {
 		struct engine_tablelist *tablelist = get_tablelist(e, offset);
 		zassert(tablelist->size <= LIST_SIZE);
 
-		int i = 0;
-		for (; i < tablelist->size; ++i) {
+		for (int i = 0; i < tablelist->size; ++i) {
 			int cmp = quidcmp(c_quid, &tablelist->items[i].quid);
 			if (cmp == 0) {
 				memset(&tablelist->items[i].quid, 0, sizeof(quid_t));

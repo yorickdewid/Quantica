@@ -34,7 +34,6 @@ struct http_url *parse_url(const char *url) {
 	/* Define variable */
 	const char *curstr;
 	int len;
-	int i;
 	int userpass_flag;
 	int bracket_flag;
 
@@ -132,7 +131,7 @@ struct http_url *parse_url(const char *url) {
 	 * Any ":", "@" and "/" must be encoded.
 	 */
 	/* Eat "//" */
-	for (i = 0; i < 2; i++) {
+	for (int i = 0; i < 2; i++) {
 		if (*curstr != '/') {
 			parsed_url_free(purl);
 			lprint("[erro] Cannot parse URL\n");

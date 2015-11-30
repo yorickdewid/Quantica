@@ -10,7 +10,6 @@
 /* dictionary initialization code used in both DictCreate and grow */
 hashtable_t *alloc_hashtable(int size) {
 	hashtable_t *d;
-	int i;
 
 	d = (hashtable_t *)tree_zmalloc(sizeof(hashtable_t), NULL);
 	zassert(d != 0);
@@ -19,7 +18,7 @@ hashtable_t *alloc_hashtable(int size) {
 	d->table = (struct item **)tree_zcalloc(d->size, sizeof(struct item *), d);
 	zassert(d->table != 0);
 
-	for (i = 0; i < d->size; ++i)
+	for (int i = 0; i < d->size; ++i)
 		d->table[i] = NULL;
 
 	return d;
@@ -51,12 +50,11 @@ static unsigned long int hash_generate(const char *s) {
 
 static void hashtable_grow(hashtable_t **d) {
 	hashtable_t *d2;	/* new dictionary we'll create */
-	int i;
 	struct item *e;
 	hashtable_t *_d = (hashtable_t *)*d;
 
 	d2 = alloc_hashtable(_d->size * GROWTH_FACTOR);
-	for (i = 0; i < _d->size; i++) {
+	for (int i = 0; i < _d->size; i++) {
 		for (e = _d->table[i]; e != 0; e = e->next) {
 			/* note: this recopies everything */
 			/* a more efficient implementation would

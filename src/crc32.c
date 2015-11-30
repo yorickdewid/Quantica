@@ -45,11 +45,10 @@ static const unsigned long crc_table[256] = {
 unsigned long crc32_calculate(unsigned long in_crc32, const void *buf, size_t len) {
 	unsigned long crc32;
 	unsigned char *byte_buf;
-	size_t i;
 
 	crc32 = in_crc32 ^ 0xffffffff;
 	byte_buf = (unsigned char*) buf;
-	for (i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; ++i) {
 		crc32 = (crc32 >> 8) ^ crc_table[(crc32 ^ byte_buf[i]) & 0xff];
 	}
 	return (crc32 ^ 0xffffffff);

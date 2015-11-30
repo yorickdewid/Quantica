@@ -24,9 +24,9 @@ static enum {
 
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	int i, len = INSTANCE_RANDOM;
+	int len = INSTANCE_RANDOM;
 	char strrand[INSTANCE_RANDOM];
-	for (i = 0; i < len; ++i)
+	for (int i = 0; i < len; ++i)
 		strrand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
 	strrand[len - 1] = 0;
 

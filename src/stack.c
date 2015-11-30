@@ -14,8 +14,7 @@ void stack_init(qstack_t *stack, int max_size) {
 }
 
 void stack_destroy(qstack_t *stack) {
-	int i;
-	for (i = 0; i < stack->max_size; ++i) {
+	for (int i = 0; i < stack->max_size; ++i) {
 		if (stack->contents[i])
 			tree_zfree(stack->contents[i]);
 	}

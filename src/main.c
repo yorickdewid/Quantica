@@ -69,8 +69,7 @@ int main(int argc, char *argv[]) {
 	if (argc < 2)
 		return daemonize();
 
-	int i;
-	for (i = 1; i < argc; ++i) {
+	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 				case 'D':

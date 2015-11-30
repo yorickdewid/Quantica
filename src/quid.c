@@ -61,9 +61,9 @@ static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t time
 	uid->clock_seq_hi_and_reserved = (clock_seq & 0x3f00) >> 8;
 	uid->clock_seq_hi_and_reserved |= 0x80;
 
-	int i;
-	for (i = 0; i < 4; ++i)
+	for (int i = 0; i < 4; ++i) {
 		uid->node[i] = arc4random();
+	}
 	uid->node[4] = (arc4random() & 0xf0);
 	uid->node[5] = (arc4random() & 0xff);
 }
@@ -164,7 +164,7 @@ void strtoquid(const char *s, quid_t *u) {
 	}
 }
 
-/* 
+/*
  * Determine QUID format
  */
 uint8_t strquid_format(const char *s) {
