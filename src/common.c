@@ -31,6 +31,8 @@ char *strtoupper(char *str) {
 }
 
 bool strisdigit(char *str) {
+	if (*str == '-')
+		++str;
 	for (; *str; ++str)
 		if (!isdigit(*str))
 			return FALSE;

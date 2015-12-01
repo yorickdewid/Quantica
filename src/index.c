@@ -75,8 +75,8 @@ int index_btree_create_table(char *squid, const char *element, marshall_t *marsh
 int index_btree_create_set(char *squid, const char *element, marshall_t *marshall, index_result_t *result) {
 	btree_t index;
 
-	if (!strisdigit((char *)element)) {
-		error_throw("888d28dff048", "Operation expects an index given");
+	if (!strisdigit((char *)element) || element[0] == '-') {
+		error_throw("888d28dff048", "Operation expects an positive index given");
 		return -1;
 	}
 

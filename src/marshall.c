@@ -84,7 +84,7 @@ marshall_type_t autoscalar(const char *data, size_t len) {
 		return b ? MTYPE_TRUE : MTYPE_FALSE;
 	if (strisdigit((char *)data))
 		return MTYPE_INT;
-	if (strismatch(data, "1234567890.")) {
+	if (strismatch(data, "-1234567890.")) {
 		if (strccnt(data, '.') == 1)
 			if (data[0] != '.' && data[len - 1] != '.')
 				return MTYPE_FLOAT;

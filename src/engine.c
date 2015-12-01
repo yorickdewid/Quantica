@@ -1017,7 +1017,7 @@ int engine_recover_storage(struct engine *e) {
 	return 0;
 }
 
-//TODO Copy over other keytypes
+//TODO Copy over other keytypes, indexes, aliasses..
 static void engine_copy(struct engine *e, struct engine *ce, uint64_t table_offset) {
 	struct engine_table *table = get_table(e, table_offset);
 	size_t sz = table->size;
