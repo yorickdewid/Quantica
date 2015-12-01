@@ -18,6 +18,8 @@ struct record_status {
 	uint8_t freeze;
 	uint8_t nodata;
 	char type[STATUS_TYPE_SIZE];
+	uint8_t has_alias;
+	char alias[LIST_NAME_LENGTH];
 };
 
 /*

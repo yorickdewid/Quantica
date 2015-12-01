@@ -269,6 +269,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		}
 
 		meta.type = MD_TYPE_GROUP;
+		meta.alias = 1;
 		if (engine_setmeta(&btx, &key, &meta) < 0)
 			return -1;
 	}
@@ -435,6 +436,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 			engine_list_insert(&btx, &key, _quid, QUID_LENGTH);
 
 			meta.type = MD_TYPE_GROUP;
+			meta.alias = 1;
 			if (engine_setmeta(&btx, &key, &meta) < 0)
 				return -1;
 		}
@@ -506,6 +508,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
 		meta.type = MD_TYPE_GROUP;
+		meta.alias = 1;
 	}
 
 	if (engine_setmeta(&btx, &nkey, &meta) < 0)
@@ -777,12 +780,17 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 
 	if (meta.type == MD_TYPE_GROUP) {
 		void *descentdata = get_data_block(&btx, offset, &_len);
-		if (!descentdata)
+		if (!descentdata) {
+			marshall_free(mergeobj);
+			marshall_free(newobject);
 			return -1;
+		}
 
 		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
 		if (!descentobj) {
 			zfree(descentdata);
+			marshall_free(mergeobj);
+			marshall_free(newobject);
 			return -1;
 		}
 
@@ -873,12 +881,17 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 	if (meta.type == MD_TYPE_GROUP) {
 		void *descentdata = get_data_block(&btx, offset, &_len);
-		if (!descentdata)
+		if (!descentdata) {
+			marshall_free(mergeobj);
+			marshall_free(filterobject);
 			return -1;
+		}
 
 		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
 		if (!descentobj) {
 			zfree(descentdata);
+			marshall_free(mergeobj);
+			marshall_free(filterobject);
 			return -1;
 		}
 
@@ -931,6 +944,14 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	status->freeze = meta.freeze;
 	status->nodata = meta.nodata;
 	status->importance = meta.importance;
+	status->has_alias = 0;
+
+	if (meta.alias) {
+		status->has_alias = 1;
+		char *name = engine_list_get_val(&btx, &key);
+		strlcpy(status->alias, name, LIST_NAME_LENGTH);
+		zfree(name);
+	}
 	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), STATUS_LIFECYCLE_SIZE);
 	strlcpy(status->type, get_str_type(meta.type), STATUS_TYPE_SIZE);
 	return 0;
@@ -1092,6 +1113,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
+	meta.alias = 1;
 	engine_insert_meta(&btx, &nrs.index, &meta);
 
 	/* Add index to alias list */

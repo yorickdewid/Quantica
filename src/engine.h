@@ -48,14 +48,15 @@ enum key_type {
 };
 
 struct metadata {
-	unsigned int lifecycle	: 5;	/* Record lifecycle */
-	unsigned int importance	: 4;	/* Relative importance */
+	unsigned int lifecycle	: 5;	/* Record lifecycle, key_lifecycle */
+	unsigned int importance	: 4;	/* Relative importance, key_importance */
 	unsigned int syslock	: 1;	/* System lock */
 	unsigned int exec		: 1;	/* Is executable UNUSED */
 	unsigned int freeze		: 1;	/* Management lock */
 	unsigned int nodata		: 1;	/* Indicates if the key contains data */
-	unsigned int type		: 3;	/* Additional flags */
-	unsigned int _res		: 16;	/* Reserved */
+	unsigned int alias		: 1;	/* Key is aliased */
+	unsigned int type		: 3;	/* Additional flags, key_type */
+	unsigned int _res		: 15;	/* Reserved */
 };
 
 struct engine_item {

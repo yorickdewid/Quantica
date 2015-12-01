@@ -99,27 +99,6 @@ void bootstrap(struct engine *e) {
 	if (engine_insert_meta_data(e, &key, &meta, data1, strlen(data1)) < 0)
 		lprint("[erro] bootstrap: Insert failed\n");
 
-	/* Add database bootlog routine */
-	const char *skey2 = get_instance_prefix_key("00000000008a");
-	strtoquid(skey2, &key);
-	const char data2[] = "_bootlog()";
-	meta.importance = MD_IMPORTANT_LEVEL3;
-	meta.syslock = LOCK;
-	meta.exec = TRUE;
-	meta.type = MD_TYPE_RAW;
-	if (engine_insert_meta_data(e, &key, &meta, data2, strlen(data2)) < 0)
-		lprint("[erro] bootstrap: Insert failed\n");
-
-	/* Set backend inter process communication */
-	const char *skey3 = get_instance_prefix_key("00000000008b");
-	strtoquid(skey3, &key);
-	const char data3[] = "SELECT IPC();SELECT SPNEGO()";
-	meta.importance = MD_IMPORTANT_LEVEL1;
-	meta.syslock = LOCK;
-	meta.type = MD_TYPE_RAW;
-	if (engine_insert_meta_data(e, &key, &meta, data3, strlen(data3)) < 0)
-		lprint("[erro] bootstrap: Insert failed\n");
-
 	/*
 	 * Register error messages
 	 */
