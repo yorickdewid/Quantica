@@ -18,6 +18,6 @@ typedef struct {
 
 int index_btree_create_table(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
 int index_btree_create_set(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
-marshall_t *index_btree_all(quid_t *key);
+marshall_t *index_btree_all(quid_t *key, bool descent);
 
 #endif // CORE_H_INCLUDED

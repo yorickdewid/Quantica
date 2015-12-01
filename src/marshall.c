@@ -360,8 +360,8 @@ bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
 		if (object_1->type == MTYPE_OBJECT || object_1->type == MTYPE_ARRAY) {
 			return FALSE;
 		} else {
-			//if (object_1->size != object_2->size)
-			//	return FALSE;
+			if (object_1->size != object_2->size)
+				return FALSE;
 			if (object_1->type != object_2->type)
 				return FALSE;
 			if (object_1->name_len != object_2->name_len)

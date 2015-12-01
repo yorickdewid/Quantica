@@ -111,7 +111,7 @@ int index_btree_create_set(char *squid, const char *element, marshall_t *marshal
 }
 
 
-marshall_t *index_btree_all(quid_t *key) {
+marshall_t *index_btree_all(quid_t *key, bool descent) {
 	char squid[QUID_LENGTH + 1];
 	btree_t index;
 
@@ -123,7 +123,7 @@ marshall_t *index_btree_all(quid_t *key) {
 
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(rskv->size, sizeof(marshall_t *), marshall);
-	marshall->type = MTYPE_OBJECT;
+	marshall->type = descent ? MTYPE_OBJECT : MTYPE_ARRAY;
 
 	for (unsigned int i = 0; i < rskv->size; ++i) {
 		index_keyval_t *kv = (index_keyval_t *)(vector_at(rskv, i));
@@ -142,9 +142,17 @@ marshall_t *index_btree_all(quid_t *key) {
 			return NULL;
 		}
 
-		marshall->child[marshall->size] = dataobj;
-		marshall->child[marshall->size]->name = tree_zstrdup(kv->key, marshall);
-		marshall->child[marshall->size]->name_len = kv->key_len;
+		if (descent) {
+			marshall->child[marshall->size] = dataobj;
+			marshall->child[marshall->size]->name = tree_zstrdup(kv->key, marshall);
+			marshall->child[marshall->size]->name_len = kv->key_len;
+		} else {
+			marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->data = tree_zstrdup(kv->key, marshall);
+			marshall->child[marshall->size]->data_len = kv->key_len;
+			marshall->child[marshall->size]->type = MTYPE_INT;
+			marshall->child[marshall->size]->size = 1;
+		}
 		marshall->size++;
 
 		zfree(data);

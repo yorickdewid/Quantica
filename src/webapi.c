@@ -483,8 +483,12 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *noresolve = get_param(req, "noresolve");
 	char *selector = get_param(req, "select");
+	/* TODO char *where = get_param(req, "where"); */
 	if (quid) {
 		char *data = NULL;
+		/* TODO if (where) {
+			puts(where);
+		} */
 		if (selector) {
 			data = db_select(quid, selector);
 			if (iserror()) {

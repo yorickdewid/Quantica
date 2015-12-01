@@ -303,7 +303,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key);
+			dataobj = index_btree_all(&key, descent);
 			break;
 		}
 		default:
@@ -678,7 +678,7 @@ void *db_select(char *quid, const char *element) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key);
+			dataobj = index_btree_all(&key, TRUE);
 			break;
 		}
 		default:
@@ -977,7 +977,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key);
+			dataobj = index_btree_all(&key, descent);
 			break;
 		}
 		default:
