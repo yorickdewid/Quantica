@@ -775,6 +775,27 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
+	if (meta.type == MD_TYPE_GROUP) {
+		void *descentdata = get_data_block(&btx, offset, &_len);
+		if (!descentdata)
+			return -1;
+
+		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+		if (!descentobj) {
+			zfree(descentdata);
+			return -1;
+		}
+
+		for (unsigned int i = 0; i < descentobj->size; ++i) {
+			quid_t _key;
+			strtoquid(descentobj->child[i]->data, &_key);
+			engine_delete(&btx, &_key);
+			error_clear();
+		}
+		marshall_free(descentobj);
+		zfree(descentdata);
+	}
+
 	zfree(dataslay);
 	marshall_free(mergeobj);
 	marshall_free(newobject);
@@ -848,6 +869,27 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		marshall_free(mergeobj);
 		marshall_free(filterobject);
 		return -1;
+	}
+
+	if (meta.type == MD_TYPE_GROUP) {
+		void *descentdata = get_data_block(&btx, offset, &_len);
+		if (!descentdata)
+			return -1;
+
+		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+		if (!descentobj) {
+			zfree(descentdata);
+			return -1;
+		}
+
+		for (unsigned int i = 0; i < descentobj->size; ++i) {
+			quid_t _key;
+			strtoquid(descentobj->child[i]->data, &_key);
+			engine_delete(&btx, &_key);
+			error_clear();
+		}
+		marshall_free(descentobj);
+		zfree(descentdata);
 	}
 
 	zfree(dataslay);
