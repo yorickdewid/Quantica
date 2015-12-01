@@ -392,9 +392,6 @@ static void shift_left(marshall_t *marshall, int offset) {
 }
 
 marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed) {
-#ifdef DEBUG
-	marshall_dump(filterobject, 0);
-#endif
 	if (marshall->type == MTYPE_OBJECT) {
 		if (filterobject->type == MTYPE_OBJECT) {
 			if (marshall_equal(marshall, filterobject)) {
@@ -482,9 +479,11 @@ void marshall_dump(marshall_t *marshall, int depth) {
 	printf("%*s%d data: %s[%zu]\n", (depth * 4), " ", depth, (char *)marshall->data, marshall->data_len);
 	printf("%*s%d size: %d\n", (depth * 4), " ", depth, marshall->size);
 
-	for (unsigned int i = 0; i < marshall->size; ++i) {
-		printf("%*s --|\n", (depth * 4), " ");
-		marshall_dump(marshall->child[i], depth + 1);
+	if (marshall->type == MTYPE_ARRAY || marshall->type == MTYPE_OBJECT) {
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			printf("%*s --|\n", (depth * 4), " ");
+			marshall_dump(marshall->child[i], depth + 1);
+		}
 	}
 }
 #endif

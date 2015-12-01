@@ -50,6 +50,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 							if (strismatch(obj->child[obj->size]->data, "1234567890."))
 								obj->child[obj->size]->type = MTYPE_FLOAT;
 						}
+						obj->child[obj->size]->size = 1;
 						obj->size++;
 						break;
 					case DICT_STRING:
@@ -59,6 +60,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 						obj->child[obj->size]->data_len = t[i].end - t[i].start;
 						if (strquid_format(obj->child[obj->size]->data) > 0)
 							obj->child[obj->size]->type = MTYPE_QUID;
+						obj->child[obj->size]->size = 1;
 						obj->size++;
 						break;
 					case DICT_OBJECT: {
@@ -109,6 +111,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 							if (strismatch(obj->child[obj->size]->data, "1234567890."))
 								obj->child[obj->size]->type = MTYPE_FLOAT;
 						}
+						obj->child[obj->size]->size = 1;
 						obj->size++;
 						setname = 0;
 						break;
@@ -124,6 +127,7 @@ static marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name,
 							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strquid_format(obj->child[obj->size]->data) > 0)
 								obj->child[obj->size]->type = MTYPE_QUID;
+							obj->child[obj->size]->size = 1;
 							obj->size++;
 							setname = 0;
 						}
