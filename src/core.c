@@ -988,11 +988,31 @@ char *db_alias_get_name(char *quid) {
 }
 
 int db_alias_update(char *quid, const char *name) {
-	quid_t key;
+	quid_t key, _key;
+	struct metadata meta;
 	strtoquid(quid, &key);
 
 	if (!ready)
 		return -1;
+
+
+	/* Does name already exist */
+	if (!engine_list_get_key(&btx, &_key, name, strlen(name))) {
+		error_throw("a09c8843b09d", "Alias exists");
+		return -1;
+	}
+	error_clear();
+
+	/* Check if key has alias */
+	engine_get(&btx, &key, &meta);
+	if (!meta.alias) {
+		engine_list_insert(&btx, &key, name, strlen(name));
+
+		meta.alias = 1;
+		if (engine_setmeta(&btx, &key, &meta) < 0)
+			return -1;
+		return 0;
+	}
 
 	return engine_list_update(&btx, &key, name, strlen(name));;
 }

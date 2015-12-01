@@ -1321,6 +1321,8 @@ marshall_t *engine_list_all(struct engine *e) {
 			size_t len = from_be32(tablelist->items[i].len);
 			if (!len)
 				continue;
+			if (tablelist->items[i].name[0] == '_')
+				continue;
 			tablelist->items[i].name[len] = '\0';
 
 			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);

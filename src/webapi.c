@@ -752,7 +752,7 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 			if (iserror()) {
 				return response_internal_error(response);
 			}
-			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias renamed\",\"status\":\"SUCCEEDED\",\"success\":true}");
+			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias set\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
 	}
@@ -866,7 +866,7 @@ static const struct webroute route[] = {
 	/* Alias operations							*/
 	{"/alias/*",		api_alias_get,		FALSE,	"Get dataset by alias name"},
 	{"/alias",			api_alias_all,		FALSE,	"Show all aliasses and origins"},
-	{"/alias",			api_alias_name,		TRUE,	"Show alias name by key"},
+	{"/alias",			api_alias_name,		TRUE,	"Show or set alias name by key"},
 
 	/* Database index operations				*/
 	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
