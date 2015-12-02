@@ -23,6 +23,7 @@ void print_usage() {
 	    "  -v       show version and exit\n"
 	    "  -d       run as daemon (default)\n"
 	    "  -f       run in foreground\n"
+	    "  -s       working directory\n"
 	    , get_version_string());
 }
 
@@ -46,13 +47,6 @@ int daemonize() {
 		return 1;
 	}
 
-#if SECURE_CHROOT
-	if ((chdir("/")) < 0) {
-		lprint("[erro] Failed to change directory\n");
-		return 1;
-	}
-#endif
-
 	/* Close out the standard file descriptors */
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
@@ -75,6 +69,16 @@ int main(int argc, char *argv[]) {
 				case 'D':
 				case 'd':
 					daemonize();
+					break;
+				case 'S':
+				case 's':
+					if (i + 1 < argc) {
+						if ((chdir(argv[i + 1])) < 0) {
+							lprint("[erro] Failed to change directory\n");
+							return 1;
+						}
+						daemonize();
+					}
 					break;
 				case 'F':
 				case 'f':

@@ -202,7 +202,7 @@ http_status_t response_empty_error(char **response) {
 
 http_status_t api_not_found(char **response, http_request_t *req) {
 	unused(req);
-	strlcpy(*response, "{\"description\":\"API call does not exist, request 'help' for a list of API calls\",\"status\":\"NOT_FOUND\",\"success\":false}", RESPONSE_SIZE);
+	strlcpy(*response, "{\"description\":\"API call does not exist, request 'help' for a list of API calls\",\"status\":\"API_NOT_FOUND\",\"success\":false}", RESPONSE_SIZE);
 	return HTTP_NOT_FOUND;
 }
 

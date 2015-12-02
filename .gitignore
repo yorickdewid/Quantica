@@ -42,3 +42,4 @@ util/verminor
 
 # Tests
 /cov-int
+var/
