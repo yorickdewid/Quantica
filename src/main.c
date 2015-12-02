@@ -47,10 +47,10 @@ int daemonize() {
 		return 1;
 	}
 
-	/* Close out the standard file descriptors */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
+	/* Redirect standard file descriptors */
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "w", stdout);
+	freopen("/dev/null", "w", stderr);
 
 	/* Daemon initialization */
 	start_webapi();
