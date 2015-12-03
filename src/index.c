@@ -60,6 +60,7 @@ int index_btree_create_table(char *squid, const char *element, marshall_t *marsh
 				char *value = marshall_strdata(rowobj->child[j], &value_len);
 				btree_insert(&index, value, value_len, offset);
 				result->index_elements++;
+				result->element = j;
 			}
 		}
 		marshall_free(rowobj);
@@ -102,6 +103,7 @@ int index_btree_create_set(char *squid, const char *element, marshall_t *marshal
 			char *value = marshall_strdata(rowobj->child[array_index], &value_len);
 			btree_insert(&index, value, value_len, offset);
 			result->index_elements++;
+			result->element = array_index;
 		}
 		marshall_free(rowobj);
 	}

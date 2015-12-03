@@ -8,6 +8,7 @@
 typedef struct {
 	quid_t index;
 	unsigned long index_elements;
+	unsigned int element;
 } index_result_t;
 
 typedef struct {
