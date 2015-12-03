@@ -24,6 +24,7 @@ struct value_slay {
 struct row_slay {
 	uint64_t elements;
 	uint8_t schema;
+	__be32 index_count;
 };
 
 typedef struct {

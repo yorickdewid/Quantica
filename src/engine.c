@@ -71,6 +71,16 @@ static struct engine_tablelist *alloc_tablelist() {
 	return tablelist;
 }
 
+static struct engine_index_list *alloc_indexlist() {
+	struct engine_index_list *indexlist = zcalloc(1, sizeof(struct engine_index_list));
+	if (!indexlist) {
+		zfree(indexlist);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
+		return NULL;
+	}
+	return indexlist;
+}
+
 static struct engine_table *get_table(struct engine *e, uint64_t offset) {
 	zassert(offset != 0);
 
@@ -124,6 +134,29 @@ static struct engine_tablelist *get_tablelist(struct engine *e, uint64_t offset)
 	return tablelist;
 }
 
+static struct engine_index_list *get_indexlist(struct engine *e, uint64_t offset) {
+	zassert(offset != 0);
+
+	struct engine_index_list *indexlist = zmalloc(sizeof(struct engine_index_list));
+	if (!indexlist) {
+		zfree(indexlist);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
+		return NULL;
+	}
+
+	if (lseek(e->fd, offset, SEEK_SET) < 0) {
+		zfree(indexlist);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
+		return NULL;
+	}
+	if (read(e->fd, indexlist, sizeof(struct engine_index_list)) != sizeof(struct engine_index_list)) {
+		zfree(indexlist);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
+		return NULL;
+	}
+	return indexlist;
+}
+
 /* Free a table acquired with alloc_table() or get_table() */
 static void put_table(struct engine *e, struct engine_table *table, uint64_t offset) {
 	zassert(offset != 0);
@@ -167,6 +200,21 @@ static void flush_tablelist(struct engine *e, struct engine_tablelist *tablelist
 	zfree(tablelist);
 }
 
+/* Write a tablelist and free it */
+static void flush_indexlist(struct engine *e, struct engine_index_list *indexlist, uint64_t offset) {
+	zassert(offset != 0);
+
+	if (lseek(e->fd, offset, SEEK_SET) < 0) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+	if (write(e->fd, indexlist, sizeof(struct engine_index_list)) != sizeof(struct engine_index_list)) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+	zfree(indexlist);
+}
+
 static int engine_open(struct engine *e, const char *idxname, const char *dbname) {
 	memset(e, 0, sizeof(struct engine));
 	e->fd = open(idxname, O_RDWR | O_BINARY);
@@ -184,7 +232,9 @@ static int engine_open(struct engine *e, const char *idxname, const char *dbname
 	e->stats.keys = from_be64(super.nkey);
 	e->stats.free_tables = from_be64(super.nfree_table);
 	e->stats.list_size = from_be64(super.list_size);
+	e->stats.index_list_size = from_be64(super.index_list_size);
 	e->list_top = from_be64(super.list_top);
+	e->index_list_top = from_be64(super.index_list_top);
 	zassert(from_be64(super.version) == VERSION_MAJOR);
 
 	uint64_t crc64sum;
@@ -397,7 +447,9 @@ static void flush_super(struct engine *e, bool fast_flush) {
 	super.nkey = to_be64(e->stats.keys);
 	super.nfree_table = to_be64(e->stats.free_tables);
 	super.list_size = to_be64(e->stats.list_size);
+	super.index_list_size = to_be64(e->stats.index_list_size);
 	super.list_top = to_be64(e->list_top);
+	super.index_list_top = to_be64(e->index_list_top);
 	if (fast_flush)
 		goto flush_disk;
 
@@ -1341,6 +1393,55 @@ marshall_t *engine_list_all(struct engine *e) {
 	}
 
 	return marshall;
+}
+
+int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, int element) {
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return -1;
+	}
+
+	/* does indexlist exist */
+	if (e->index_list_top != 0) {
+		struct engine_index_list *indexlist = get_indexlist(e, e->index_list_top);
+		zassert(indexlist->size <= LIST_SIZE - 1);
+
+		memcpy(&indexlist->items[indexlist->size].index, index, sizeof(quid_t));
+		memcpy(&indexlist->items[indexlist->size].group, group, sizeof(quid_t));
+		indexlist->items[indexlist->size].element = to_be32(element);
+		indexlist->size++;
+
+		e->stats.index_list_size++;
+
+		/* check if we need to add a new table*/
+		if (indexlist->size >= LIST_SIZE) {
+			flush_indexlist(e, indexlist, e->index_list_top);
+
+			struct engine_index_list *new_indexlist = alloc_indexlist();
+			new_indexlist->link = to_be64(e->index_list_top);
+			uint64_t new_index_table_offset = alloc_raw_chunk(e, sizeof(struct engine_index_list));
+			flush_indexlist(e, new_indexlist, new_index_table_offset);
+
+			e->index_list_top = new_index_table_offset;
+		} else {
+			flush_indexlist(e, indexlist, e->index_list_top);
+		}
+	} else {
+		struct engine_index_list *new_indexlist = alloc_indexlist();
+		new_indexlist->size = 1;
+		memcpy(&new_indexlist->items[0].index, index, sizeof(quid_t));
+		memcpy(&new_indexlist->items[0].group, group, sizeof(quid_t));
+		new_indexlist->items[0].element = to_be32(element);
+
+		uint64_t new_index_table_offset = alloc_raw_chunk(e, sizeof(struct engine_index_list));
+		flush_indexlist(e, new_indexlist, new_index_table_offset);
+
+		e->index_list_top = new_index_table_offset;
+		e->stats.index_list_size = 1;
+	}
+	flush_super(e, TRUE);
+
+	return 0;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {

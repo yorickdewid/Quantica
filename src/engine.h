@@ -94,6 +94,18 @@ struct engine_tablelist {
 	__be64 link;
 };
 
+struct engine_index_list_item {
+	quid_t index;
+	quid_t group;
+	__be32 element;
+} __attribute__((packed));
+
+struct engine_index_list {
+	struct engine_index_list_item items[LIST_SIZE];
+	uint16_t size;
+	__be64 link;
+};
+
 struct blob_info {
 	__be32 len;
 	__be64 next;
@@ -109,6 +121,8 @@ struct engine_super {
 	__be64 crc_zero_key;
 	__be64 list_top;
 	__be64 list_size;
+	__be64 index_list_top;
+	__be64 index_list_size;
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
@@ -121,6 +135,7 @@ struct engine_stats {
 	uint64_t keys;
 	uint64_t free_tables;
 	uint64_t list_size;
+	uint64_t index_list_size;
 };
 
 struct engine {
@@ -129,6 +144,7 @@ struct engine {
 	uint64_t alloc;
 	uint64_t db_alloc;
 	uint64_t list_top;
+	uint64_t index_list_top;
 	int fd;
 	int db_fd;
 	bool lock;
@@ -187,6 +203,8 @@ int engine_list_get_key(struct engine *e, quid_t *key, const char *name, size_t 
 int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name, size_t len);
 int engine_list_delete(struct engine *e, const quid_t *c_quid);
 marshall_t *engine_list_all(struct engine *e);
+
+int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, int element);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);
