@@ -1385,10 +1385,12 @@ marshall_t *engine_list_all(struct engine *e) {
 			marshall->child[marshall->size]->data_len = len;
 			marshall->size++;
 		}
+
 		if (tablelist->link) {
 			offset = from_be64(tablelist->link);
 		} else
 			offset = 0;
+
 		zfree(tablelist);
 	}
 
@@ -1442,6 +1444,69 @@ int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t
 	flush_super(e, TRUE);
 
 	return 0;
+}
+
+marshall_t *engine_index_list_all(struct engine *e) {
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return NULL;
+	}
+
+	if (!e->stats.index_list_size)
+		return NULL;
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(e->stats.index_list_size, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_OBJECT;
+
+	uint64_t offset = e->index_list_top;
+	while (offset) {
+		struct engine_index_list *indexlist = get_indexlist(e, offset);
+		zassert(indexlist->size <= LIST_SIZE);
+
+		for (int i = 0; i < indexlist->size; ++i) {
+			char index_squid[QUID_LENGTH + 1];
+			char group_squid[QUID_LENGTH + 1];
+			quidtostr(index_squid, &indexlist->items[i].index);
+			quidtostr(group_squid, &indexlist->items[i].group);
+
+			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(2, sizeof(marshall_t *), marshall);
+			marshall->child[marshall->size]->type = MTYPE_OBJECT;
+			marshall->child[marshall->size]->name = tree_zstrdup(index_squid, marshall);
+			marshall->child[marshall->size]->name_len = QUID_LENGTH;
+			marshall->child[marshall->size]->size = 2;
+
+			/* Indexed group */
+			marshall->child[marshall->size]->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->child[0]->type = MTYPE_QUID;
+			marshall->child[marshall->size]->child[0]->name = tree_zstrdup("group", marshall);
+			marshall->child[marshall->size]->child[0]->name_len = QUID_LENGTH;
+			marshall->child[marshall->size]->child[0]->data = tree_zstrdup(group_squid, marshall);
+			marshall->child[marshall->size]->child[0]->data_len = 5;
+
+			/* Indexed element */
+			marshall->child[marshall->size]->child[1] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->child[1]->type = MTYPE_INT;
+			marshall->child[marshall->size]->child[1]->name = tree_zstrdup("element", marshall);
+			marshall->child[marshall->size]->child[1]->name_len = 7;
+
+			int element = from_be32(indexlist->items[i].element);
+			char *selement = itoa(element);
+			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(selement, marshall);
+			marshall->child[marshall->size]->child[1]->data_len = strlen(selement);
+			marshall->size++;
+		}
+
+		if (indexlist->link) {
+			offset = from_be64(indexlist->link);
+		} else
+			offset = 0;
+
+		zfree(indexlist);
+	}
+
+	return marshall;
 }
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle) {

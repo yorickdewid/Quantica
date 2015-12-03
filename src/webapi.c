@@ -231,7 +231,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char *hostname = get_system_fqdn();
 
 	*response = zrealloc(*response, RESPONSE_SIZE * 2);
-	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"core\":\"%s\",\"dataheap\":\"%s\",\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_zero_key(), get_dataheap_name(), get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"core\":\"%s\",\"dataheap\":\"%s\",\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_zero_key(), get_dataheap_name(), get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	zfree(hostname);
 	return HTTP_OK;
 }
@@ -808,8 +808,31 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
 		resplen = RESPONSE_SIZE + len;
 		*response = zrealloc(*response, resplen);
 	}
-	snprintf(*response, resplen, "{\"alias\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", table);
+	snprintf(*response, resplen, "{\"aliasses\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", table);
 	zfree(table);
+	return HTTP_OK;
+}
+
+http_status_t api_index_all(char **response, http_request_t *req) {
+	unused(req);
+	size_t len = 0, resplen;
+
+	char *list = db_index_all();
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+
+	if (!list)
+		list = zstrdup("null");
+
+	len = strlen(list);
+	resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE / 2)) {
+		resplen = RESPONSE_SIZE + len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"indexes\":%s,\"description\":\"Listening indexes\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
+	zfree(list);
 	return HTTP_OK;
 }
 
@@ -870,6 +893,7 @@ static const struct webroute route[] = {
 
 	/* Database index operations				*/
 	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
+	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
 };
 
 http_status_t api_help(char **response, http_request_t *req) {

@@ -50,6 +50,7 @@ char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 unsigned long int stat_tablesize();
+unsigned long int stat_indexsize();
 void quid_generate(char *quid);
 void quid_generate_short(char *quid);
 void filesync();
@@ -77,6 +78,7 @@ int db_record_set_meta(char *quid, struct record_status *status);
 char *db_alias_get_name(char *quid);
 int db_alias_update(char *quid, const char *name);
 char *db_alias_all();
+char *db_index_all();
 void *db_alias_get_data(char *name, size_t *len, bool descent);
 
 int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey);

@@ -211,6 +211,10 @@ unsigned long int stat_tablesize() {
 	return btx.stats.list_size;
 }
 
+unsigned long int stat_indexsize() {
+	return btx.stats.index_list_size;
+}
+
 sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 	return sql_exec(query, len);
 }
@@ -520,6 +524,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 int db_count_group(char *quid) {
 	quid_t key;
 	size_t _len;
+	marshall_t *dataobj = NULL;
 	struct metadata meta;
 	strtoquid(quid, &key);
 	int cnt = 0;
@@ -528,29 +533,32 @@ int db_count_group(char *quid) {
 		return -1;
 
 	uint64_t offset = engine_get(&btx, &key, &meta);
-	if (meta.type != MD_TYPE_GROUP) {
-		error_throw("1e933eea602c", "Invalid record type");
-		return -1;
+	switch (meta.type) {
+		case MD_TYPE_GROUP: {
+			void *data = get_data_block(&btx, offset, &_len);
+			if (!data)
+				return -1;
+
+			dataobj = slay_get(data, NULL, FALSE);
+			if (!dataobj) {
+				zfree(data);
+				return -1;
+			}
+			zfree(data);
+			break;
+		}
+		case MD_TYPE_INDEX: {
+			dataobj = index_btree_all(&key, FALSE);
+			break;
+		}
+		default:
+			/* Key contains data we cannot (yet) return */
+			error_throw("2f05699f70fa", "Key does not contain data");
+			return -1;
 	}
-
-	void *data = get_data_block(&btx, offset, &_len);
-	if (!data)
-		return -1;
-
-	marshall_t *dataobj = slay_get(data, NULL, FALSE);
-	if (!dataobj)
-		return -1;
-
-	/* Only descending schemes contain children */
-	schema_t group = slay_get_schema(data);
-	if (group == SCHEMA_TABLE || group == SCHEMA_SET)
-		cnt = dataobj->size;
-	else
-		error_throw("ece28bc980db", "Invalid schema");
+	cnt = dataobj->size;
 
 	marshall_free(dataobj);
-	zfree(data);
-
 	return cnt;
 }
 
@@ -1031,6 +1039,20 @@ char *db_alias_all() {
 	return buf;
 }
 
+char *db_index_all() {
+	if (!ready)
+		return NULL;
+
+	marshall_t *dataobj = engine_index_list_all(&btx);
+	if (!dataobj) {
+		return NULL;
+	}
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
 void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	quid_t key;
 	size_t _len;
@@ -1138,6 +1160,9 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 
 	/* Add index to alias list */
 	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
+
+	/* Add index to index list */
+	engine_index_list_insert(&btx, &nrs.index, &key, nrs.element);
 
 	return 0;
 }
