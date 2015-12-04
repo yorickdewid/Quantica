@@ -148,6 +148,10 @@ char *marshall_strdata(marshall_t *obj, size_t *len) {
 	return NULL;
 }
 
+int marshall_count(marshall_t *obj) {
+	return obj->size;
+}
+
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent) {
 	marshall_t *selection = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
 

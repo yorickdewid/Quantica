@@ -556,7 +556,7 @@ int db_count_group(char *quid) {
 			error_throw("2f05699f70fa", "Key does not contain data");
 			return -1;
 	}
-	cnt = dataobj->size;
+	cnt = marshall_count(dataobj);
 
 	marshall_free(dataobj);
 	return cnt;

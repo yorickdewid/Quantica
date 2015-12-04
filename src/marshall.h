@@ -33,6 +33,7 @@ bool marshall_type_hasdescent(marshall_type_t type);
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth);
 marshall_type_t autoscalar(const char *data, size_t len);
 char *marshall_strdata(marshall_t *obj, size_t *len);
+int marshall_count(marshall_t *obj);
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent);
 marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall);
 bool marshall_equal(marshall_t *object_1, marshall_t *object_2);
