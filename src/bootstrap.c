@@ -132,6 +132,9 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_WARN, "2836444cd009", "Alias not found") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_WARN, "e553d927706a", "Index not found") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(e, E_WARN, "a09c8843b09d", "Alias exists") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 

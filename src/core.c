@@ -600,6 +600,7 @@ int db_delete(char *quid, bool descent) {
 		}
 		case MD_TYPE_INDEX:
 			engine_list_delete(&btx, &key);
+			engine_index_list_delete(&btx, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
@@ -650,6 +651,7 @@ int db_purge(char *quid, bool descent) {
 		}
 		case MD_TYPE_INDEX:
 			engine_list_delete(&btx, &key);
+			engine_index_list_delete(&btx, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
