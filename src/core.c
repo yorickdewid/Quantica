@@ -595,6 +595,14 @@ int db_delete(char *quid, bool descent) {
 				zfree(data);
 			}
 
+			quid_t *index = engine_index_list_get_index(&btx, &key);
+			if (index) {
+				engine_list_delete(&btx, index);
+				engine_index_list_delete(&btx, index);
+				zfree(index);
+			}
+			error_clear();
+
 			engine_list_delete(&btx, &key);
 			break;
 		}
@@ -645,6 +653,14 @@ int db_purge(char *quid, bool descent) {
 				marshall_free(dataobj);
 				zfree(data);
 			}
+
+			quid_t *index = engine_index_list_get_index(&btx, &key);
+			if (index) {
+				engine_list_delete(&btx, index);
+				engine_index_list_delete(&btx, index);
+				zfree(index);
+			}
+			error_clear();
 
 			engine_list_delete(&btx, &key);
 			break;
@@ -1004,7 +1020,6 @@ int db_alias_update(char *quid, const char *name) {
 
 	if (!ready)
 		return -1;
-
 
 	/* Does name already exist */
 	if (!engine_list_get_key(&btx, &_key, name, strlen(name))) {

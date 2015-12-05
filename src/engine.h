@@ -205,6 +205,7 @@ int engine_list_delete(struct engine *e, const quid_t *c_quid);
 marshall_t *engine_list_all(struct engine *e);
 
 int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, int element);
+quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid);
 int engine_index_list_delete(struct engine *e, const quid_t *index);
 marshall_t *engine_index_list_all(struct engine *e);
 
