@@ -1477,6 +1477,36 @@ quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid) {
 	return NULL;
 }
 
+int engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
+	if (e->lock == LOCK) {
+		error_throw("986154f80058", "Database locked");
+		return -1;
+	}
+
+	uint64_t offset = e->index_list_top;
+	while (offset) {
+		struct engine_index_list *indexlist = get_indexlist(e, offset);
+		zassert(indexlist->size <= LIST_SIZE);
+
+		for (int i = 0; i < indexlist->size; ++i) {
+			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
+			if (cmp == 0) {
+				int element = from_be32(indexlist->items[i].element);
+				zfree(indexlist);
+				return element;
+			}
+		}
+		if (indexlist->link) {
+			offset = from_be64(indexlist->link);
+		} else
+			offset = 0;
+		zfree(indexlist);
+	}
+
+	error_throw("e553d927706a", "Index not found");
+	return -1;
+}
+
 int engine_index_list_delete(struct engine *e, const quid_t *index) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");

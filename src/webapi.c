@@ -641,7 +641,7 @@ http_status_t api_db_duplicate(char **response, http_request_t *req) {
 		if (iserror()) {
 			return response_internal_error(response);
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Record duplicated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);
