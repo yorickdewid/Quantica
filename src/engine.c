@@ -1563,6 +1563,10 @@ marshall_t *engine_index_list_all(struct engine *e) {
 		for (int i = 0; i < indexlist->size; ++i) {
 			char index_squid[QUID_LENGTH + 1];
 			char group_squid[QUID_LENGTH + 1];
+
+			if (!strlen(indexlist->items[i].element))
+				continue;
+
 			quidtostr(index_squid, &indexlist->items[i].index);
 			quidtostr(group_squid, &indexlist->items[i].group);
 
