@@ -97,7 +97,7 @@ struct engine_tablelist {
 struct engine_index_list_item {
 	quid_t index;
 	quid_t group;
-	__be32 element;
+	char element[64];
 } __attribute__((packed));
 
 struct engine_index_list {
@@ -204,9 +204,9 @@ int engine_list_update(struct engine *e, const quid_t *c_quid, const char *name,
 int engine_list_delete(struct engine *e, const quid_t *c_quid);
 marshall_t *engine_list_all(struct engine *e);
 
-int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, int element);
+int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, char *element);
 quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid);
-int engine_index_list_get_element(struct engine *e, const quid_t *c_quid);
+char *engine_index_list_get_element(struct engine *e, const quid_t *c_quid);
 int engine_index_list_delete(struct engine *e, const quid_t *index);
 marshall_t *engine_index_list_all(struct engine *e);
 

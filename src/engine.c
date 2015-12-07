@@ -1397,7 +1397,7 @@ marshall_t *engine_list_all(struct engine *e) {
 	return marshall;
 }
 
-int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, int element) {
+int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t *group, char *element) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
@@ -1410,7 +1410,7 @@ int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t
 
 		memcpy(&indexlist->items[indexlist->size].index, index, sizeof(quid_t));
 		memcpy(&indexlist->items[indexlist->size].group, group, sizeof(quid_t));
-		indexlist->items[indexlist->size].element = to_be32(element);
+		memcpy(&indexlist->items[indexlist->size].element, element, strlen(element));
 		indexlist->size++;
 
 		e->stats.index_list_size++;
@@ -1433,7 +1433,7 @@ int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t
 		new_indexlist->size = 1;
 		memcpy(&new_indexlist->items[0].index, index, sizeof(quid_t));
 		memcpy(&new_indexlist->items[0].group, group, sizeof(quid_t));
-		new_indexlist->items[0].element = to_be32(element);
+		memcpy(&new_indexlist->items[0].element, element, strlen(element));
 
 		uint64_t new_index_table_offset = alloc_raw_chunk(e, sizeof(struct engine_index_list));
 		flush_indexlist(e, new_indexlist, new_index_table_offset);
@@ -1477,10 +1477,10 @@ quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid) {
 	return NULL;
 }
 
-int engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
+char *engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
-		return -1;
+		return NULL;
 	}
 
 	uint64_t offset = e->index_list_top;
@@ -1491,7 +1491,7 @@ int engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
 		for (int i = 0; i < indexlist->size; ++i) {
 			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
 			if (cmp == 0) {
-				int element = from_be32(indexlist->items[i].element);
+				char *element = zstrdup(indexlist->items[i].element);
 				zfree(indexlist);
 				return element;
 			}
@@ -1504,7 +1504,7 @@ int engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
 	}
 
 	error_throw("e553d927706a", "Index not found");
-	return -1;
+	return NULL;
 }
 
 int engine_index_list_delete(struct engine *e, const quid_t *index) {
@@ -1523,7 +1523,7 @@ int engine_index_list_delete(struct engine *e, const quid_t *index) {
 			if (cmp == 0) {
 				memset(&indexlist->items[i].index, 0, sizeof(quid_t));
 				memset(&indexlist->items[i].group, 0, sizeof(quid_t));
-				indexlist->items[i].element = 0;
+				memset(&indexlist->items[i].element, 0, 64);
 				flush_indexlist(e, indexlist, offset);
 				e->stats.index_list_size--;
 				return 0;
@@ -1583,14 +1583,11 @@ marshall_t *engine_index_list_all(struct engine *e) {
 
 			/* Indexed element */
 			marshall->child[marshall->size]->child[1] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child[1]->type = MTYPE_INT;
+			marshall->child[marshall->size]->child[1]->type = MTYPE_STRING;
 			marshall->child[marshall->size]->child[1]->name = tree_zstrdup("element", marshall);
 			marshall->child[marshall->size]->child[1]->name_len = 7;
-
-			int element = from_be32(indexlist->items[i].element);
-			char *selement = itoa(element);
-			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(selement, marshall);
-			marshall->child[marshall->size]->child[1]->data_len = strlen(selement);
+			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(indexlist->items[i].element, marshall);
+			marshall->child[marshall->size]->child[1]->data_len = strlen(indexlist->items[i].element);
 			marshall->size++;
 		}
 
