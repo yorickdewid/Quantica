@@ -644,10 +644,11 @@ int db_delete(char *quid, bool descent) {
 			}
 
 			quid_t *index = engine_index_list_get_index(&btx, &key);
-			if (index) {
+			while (index) {
 				engine_list_delete(&btx, index);
 				engine_index_list_delete(&btx, index);
 				zfree(index);
+				index = engine_index_list_get_index(&btx, &key);
 			}
 			error_clear();
 
@@ -703,10 +704,11 @@ int db_purge(char *quid, bool descent) {
 			}
 
 			quid_t *index = engine_index_list_get_index(&btx, &key);
-			if (index) {
+			while (index) {
 				engine_list_delete(&btx, index);
 				engine_index_list_delete(&btx, index);
 				zfree(index);
+				index = engine_index_list_get_index(&btx, &key);
 			}
 			error_clear();
 
