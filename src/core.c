@@ -499,10 +499,6 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 		return -1;
 	}
 
-	zfree(descentdata);
-	zfree(dataslay);
-	marshall_free(descentobj);
-
 	if (!copy_meta) {
 		memset(&meta, 0, sizeof(struct metadata));
 		meta.importance = MD_IMPORTANT_NORMAL;
@@ -510,6 +506,55 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 
 	quidtostr(nquid, &nkey);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
+		if (copy_meta) {
+			char *index_element = engine_index_list_get_element(&btx, &key);
+			if (index_element) {
+				index_result_t inrs;
+				struct metadata _meta;
+				memset(&inrs, 0, sizeof(index_result_t));
+				char index_quid[QUID_LENGTH + 1];
+
+				/* Create index key */
+				quid_create(&inrs.index);
+				quidtostr(index_quid, &inrs.index);
+				puts(index_quid);
+
+				marshall_t *_descentobj = slay_get(descentdata, NULL, FALSE);
+				if (!_descentobj) {
+					zfree(descentdata);
+					zfree(dataslay);
+					marshall_free(descentobj);
+					zfree(index_element);
+					return 0;
+				}
+
+				/* Determine index based on dataschema */
+				if (nrs.schema == SCHEMA_TABLE)
+					index_btree_create_table(index_quid, index_element, _descentobj, &inrs);
+				else if (nrs.schema == SCHEMA_SET)
+					index_btree_create_set(index_quid, index_element, _descentobj, &inrs);
+				else
+					error_throw("ece28bc980db", "Invalid schema");
+
+				/* Add index to database */
+				memset(&_meta, 0, sizeof(struct metadata));
+				_meta.nodata = 1;
+				_meta.type = MD_TYPE_INDEX;
+				_meta.alias = 1;
+				engine_insert_meta(&btx, &inrs.index, &_meta);
+
+				/* Add index to alias list */
+				engine_list_insert(&btx, &inrs.index, index_quid, QUID_LENGTH);
+
+				/* Add index to index list */
+				engine_index_list_insert(&btx, &inrs.index, &nkey, index_element);
+
+				marshall_free(_descentobj);
+				zfree(index_element);
+			}
+			error_clear();
+		}
+
 		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
 		meta.type = MD_TYPE_GROUP;
 		meta.alias = 1;
@@ -518,6 +563,9 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (engine_setmeta(&btx, &nkey, &meta) < 0)
 		return -1;
 
+	zfree(descentdata);
+	zfree(dataslay);
+	marshall_free(descentobj);
 	return 0;
 }
 
@@ -1179,7 +1227,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
 
 	/* Add index to index list */
-	engine_index_list_insert(&btx, &nrs.index, &key, nrs.element);
+	engine_index_list_insert(&btx, &nrs.index, &key, (char *)idxkey);
 
 	return 0;
 }
