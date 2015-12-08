@@ -16,8 +16,6 @@
 #include "core.h"
 #include "engine.h"
 
-#define VECTOR_SIZE	2048
-
 static int delete_larger = 0;
 static uint64_t last_blob = 0;
 
@@ -1408,9 +1406,11 @@ int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t
 		struct engine_index_list *indexlist = get_indexlist(e, e->index_list_top);
 		zassert(indexlist->size <= LIST_SIZE - 1);
 
+		size_t psz = strlen(element);
 		memcpy(&indexlist->items[indexlist->size].index, index, sizeof(quid_t));
 		memcpy(&indexlist->items[indexlist->size].group, group, sizeof(quid_t));
-		memcpy(&indexlist->items[indexlist->size].element, element, strlen(element));
+		memcpy(&indexlist->items[indexlist->size].element, element, psz);
+		indexlist->items[indexlist->size].element_len = to_be32(psz);
 		indexlist->size++;
 
 		e->stats.index_list_size++;
@@ -1429,11 +1429,13 @@ int engine_index_list_insert(struct engine *e, const quid_t *index, const quid_t
 			flush_indexlist(e, indexlist, e->index_list_top);
 		}
 	} else {
+		size_t psz = strlen(element);
 		struct engine_index_list *new_indexlist = alloc_indexlist();
 		new_indexlist->size = 1;
 		memcpy(&new_indexlist->items[0].index, index, sizeof(quid_t));
 		memcpy(&new_indexlist->items[0].group, group, sizeof(quid_t));
-		memcpy(&new_indexlist->items[0].element, element, strlen(element));
+		memcpy(&new_indexlist->items[0].element, element, psz);
+		new_indexlist->items[0].element_len = to_be32(psz);
 
 		uint64_t new_index_table_offset = alloc_raw_chunk(e, sizeof(struct engine_index_list));
 		flush_indexlist(e, new_indexlist, new_index_table_offset);
@@ -1458,6 +1460,10 @@ quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid) {
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
+
+			if (!from_be32(indexlist->items[i].element_len))
+				continue;
+
 			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
 			if (cmp == 0) {
 				quid_t *index = (quid_t *)zmalloc(sizeof(quid_t));
@@ -1477,11 +1483,17 @@ quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid) {
 	return NULL;
 }
 
-char *engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
+marshall_t *engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
 	if (e->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return NULL;
 	}
+
+	int alloc_children = 10;
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(alloc_children, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_ARRAY;
 
 	uint64_t offset = e->index_list_top;
 	while (offset) {
@@ -1489,22 +1501,29 @@ char *engine_index_list_get_element(struct engine *e, const quid_t *c_quid) {
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
+			if (!from_be32(indexlist->items[i].element_len))
+				continue;
+
 			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
 			if (cmp == 0) {
-				char *element = zstrdup(indexlist->items[i].element);
-				zfree(indexlist);
-				return element;
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+				marshall->child[marshall->size]->type = MTYPE_STRING;
+				marshall->child[marshall->size]->data = tree_zstrdup(indexlist->items[i].element, marshall);
+				marshall->child[marshall->size]->data_len = from_be32(indexlist->items[i].element_len);
+				marshall->size++;
 			}
 		}
+
 		if (indexlist->link) {
 			offset = from_be64(indexlist->link);
 		} else
 			offset = 0;
+
 		zfree(indexlist);
 	}
 
 	error_throw("e553d927706a", "Index not found");
-	return NULL;
+	return marshall;
 }
 
 int engine_index_list_delete(struct engine *e, const quid_t *index) {
@@ -1519,6 +1538,10 @@ int engine_index_list_delete(struct engine *e, const quid_t *index) {
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
+
+			if (!from_be32(indexlist->items[i].element_len))
+				continue;
+
 			int cmp = quidcmp(index, &indexlist->items[i].index);
 			if (cmp == 0) {
 				memset(&indexlist->items[i].index, 0, sizeof(quid_t));
@@ -1564,7 +1587,7 @@ marshall_t *engine_index_list_all(struct engine *e) {
 			char index_squid[QUID_LENGTH + 1];
 			char group_squid[QUID_LENGTH + 1];
 
-			if (!strlen(indexlist->items[i].element))
+			if (!from_be32(indexlist->items[i].element_len))
 				continue;
 
 			quidtostr(index_squid, &indexlist->items[i].index);

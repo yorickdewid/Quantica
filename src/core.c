@@ -507,8 +507,8 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	quidtostr(nquid, &nkey);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		if (copy_meta) {
-			char *index_element = engine_index_list_get_element(&btx, &key);
-			if (index_element) {
+			marshall_t *index_element = engine_index_list_get_element(&btx, &key);
+			for (unsigned int i = 0; i < index_element->size; ++i) {
 				index_result_t inrs;
 				struct metadata _meta;
 				memset(&inrs, 0, sizeof(index_result_t));
@@ -521,18 +521,14 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 
 				marshall_t *_descentobj = slay_get(descentdata, NULL, FALSE);
 				if (!_descentobj) {
-					zfree(descentdata);
-					zfree(dataslay);
-					marshall_free(descentobj);
-					zfree(index_element);
-					return 0;
+					continue;
 				}
 
 				/* Determine index based on dataschema */
 				if (nrs.schema == SCHEMA_TABLE)
-					index_btree_create_table(index_quid, index_element, _descentobj, &inrs);
+					index_btree_create_table(index_quid, index_element->child[i]->data, _descentobj, &inrs);
 				else if (nrs.schema == SCHEMA_SET)
-					index_btree_create_set(index_quid, index_element, _descentobj, &inrs);
+					index_btree_create_set(index_quid, index_element->child[i]->data, _descentobj, &inrs);
 				else
 					error_throw("ece28bc980db", "Invalid schema");
 
@@ -547,12 +543,13 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				engine_list_insert(&btx, &inrs.index, index_quid, QUID_LENGTH);
 
 				/* Add index to index list */
-				engine_index_list_insert(&btx, &inrs.index, &nkey, index_element);
+				engine_index_list_insert(&btx, &inrs.index, &nkey, index_element->child[i]->data);
 
 				marshall_free(_descentobj);
-				zfree(index_element);
+
 			}
 			error_clear();
+			marshall_free(index_element);
 		}
 
 		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
