@@ -97,7 +97,7 @@ static dict_err_t dict_parse_string(dict_parser *parser, const char *str, size_t
 				parser->pos = start;
 				return DICT_ERROR_NOMEM;
 			}
-			dict_fill_token(token, DICT_STRING, start+1, parser->pos);
+			dict_fill_token(token, DICT_STRING, start + 1, parser->pos);
 #ifdef DICT_PARENT_LINKS
 			token->parent = parser->toksuper;
 #endif
@@ -116,11 +116,11 @@ static dict_err_t dict_parse_string(dict_parser *parser, const char *str, size_t
 				/* Allows escaped symbol \uXXXX */
 				case 'u':
 					parser->pos++;
-					for(i = 0; i < 4 && parser->pos < len && str[parser->pos] != '\0'; i++) {
+					for (i = 0; i < 4 && parser->pos < len && str[parser->pos] != '\0'; i++) {
 						/* If it isn't a hex character we have an error */
-						if(!((str[parser->pos] >= 48 && str[parser->pos] <= 57) || /* 0-9 */
-									(str[parser->pos] >= 65 && str[parser->pos] <= 70) || /* A-F */
-									(str[parser->pos] >= 97 && str[parser->pos] <= 102))) { /* a-f */
+						if (!((str[parser->pos] >= 48 && str[parser->pos] <= 57) || /* 0-9 */
+						        (str[parser->pos] >= 65 && str[parser->pos] <= 70) || /* A-F */
+						        (str[parser->pos] >= 97 && str[parser->pos] <= 102))) { /* a-f */
 							parser->pos = start;
 							return DICT_ERROR_INVAL;
 						}
@@ -231,8 +231,8 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 				break;
 			case ',':
 				if (tokens != NULL &&
-						tokens[parser->toksuper].type != DICT_ARRAY &&
-						tokens[parser->toksuper].type != DICT_OBJECT) {
+				        tokens[parser->toksuper].type != DICT_ARRAY &&
+				        tokens[parser->toksuper].type != DICT_OBJECT) {
 #ifdef DICT_PARENT_LINKS
 					parser->toksuper = tokens[parser->toksuper].parent;
 #else
@@ -256,7 +256,7 @@ dict_err_t dict_parse(dict_parser *parser, const char *str, size_t len, dict_tok
 				if (tokens != NULL) {
 					dict_token_t *t = &tokens[parser->toksuper];
 					if (t->type == DICT_OBJECT ||
-							(t->type == DICT_STRING && t->size != 0)) {
+					        (t->type == DICT_STRING && t->size != 0)) {
 						return DICT_ERROR_INVAL;
 					}
 				}
@@ -312,50 +312,50 @@ int dict_levelcount(dict_token_t *t, int depth, int level, int *cnt) {
 	} else if (t->type == DICT_OBJECT) {
 		j = 0;
 		for (i = 0; i < t->size; i++) {
-			j += dict_levelcount(t+1+j, depth, level, cnt);
-			j += dict_levelcount(t+1+j, depth, level, cnt);
+			j += dict_levelcount(t + 1 + j, depth, level, cnt);
+			j += dict_levelcount(t + 1 + j, depth, level, cnt);
 		}
-		return j+1;
+		return j + 1;
 	} else if (t->type == DICT_ARRAY) {
 		j = 0;
 		for (i = 0; i < t->size; i++) {
-			j += dict_levelcount(t+1+j, depth, level, cnt);
+			j += dict_levelcount(t + 1 + j, depth, level, cnt);
 		}
-		return j+1;
+		return j + 1;
 	}
 	return 0;
 }
 
 char *dict_array(vector_t *v, char *buf) {
 	unsigned int i;
-	char *_buf = buf+1;
-	for (i=0; i<v->size; ++i) {
+	char *_buf = buf + 1;
+	for (i = 0; i < v->size; ++i) {
 		dict_t *item = (dict_t *)vector_at(v, i);
-		if (i != (v->size-1)) {
+		if (i != (v->size - 1)) {
 			if (item->cap)
 				sprintf(_buf + strlen(_buf), "\"%s\",", item->str);
 			else
 				sprintf(_buf + strlen(_buf), "%s,", item->str);
-        } else {
+		} else {
 			if (item->cap)
 				sprintf(_buf + strlen(_buf), "\"%s\"", item->str);
 			else
 				sprintf(_buf + strlen(_buf), "%s", item->str);
 		}
-    }
-    buf[0] = '[';
-    buf[strlen(buf)] = ']';
-    buf[strlen(buf)+1] = '\0';
+	}
+	buf[0] = '[';
+	buf[strlen(buf)] = ']';
+	buf[strlen(buf) + 1] = '\0';
 
 	return buf;
 }
 
 char *dict_object(vector_t *v, char *buf) {
 	unsigned int i;
-	char *_buf = buf+1;
-	for (i=0; i<v->size; ++i) {
+	char *_buf = buf + 1;
+	for (i = 0; i < v->size; ++i) {
 		dict_t *item = (dict_t *)vector_at(v, i);
-		if (i != (v->size-1)) {
+		if (i != (v->size - 1)) {
 			if (item->cap)
 				sprintf(_buf + strlen(_buf), "\"%s\":\"%s\",", item->name, item->str);
 			else
@@ -367,9 +367,9 @@ char *dict_object(vector_t *v, char *buf) {
 				sprintf(_buf + strlen(_buf), "\"%s\":%s", item->name, item->str);
 		}
 	}
-    buf[0] = '{';
-    buf[strlen(buf)] = '}';
-    buf[strlen(buf)+1] = '\0';
+	buf[0] = '{';
+	buf[strlen(buf)] = '}';
+	buf[strlen(buf) + 1] = '\0';
 
 	return buf;
 }

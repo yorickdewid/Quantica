@@ -24,9 +24,9 @@ static enum {
 
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	int i, len = INSTANCE_RANDOM;
+	int len = INSTANCE_RANDOM;
 	char strrand[INSTANCE_RANDOM];
-	for (i = 0; i < len; ++i)
+	for (int i = 0; i < len; ++i)
 		strrand[i] = alphanum[arc4random() % (sizeof(alphanum) - 1)];
 	strrand[len - 1] = 0;
 
@@ -58,7 +58,7 @@ void base_sync(struct base *base) {
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
-	super.version = VERSION_RELESE;
+	super.version = VERSION_MAJOR;
 	super.bincnt = base->bincnt;
 	super.exitstatus = exit_status;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
@@ -67,12 +67,10 @@ void base_sync(struct base *base) {
 
 	if (lseek(base->fd, 0, SEEK_SET) < 0) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
-		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
 	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
-		ERROR(EIO_WRITE, EL_FATAL);
 		return;
 	}
 }
@@ -80,6 +78,7 @@ void base_sync(struct base *base) {
 void base_init(struct base *base) {
 	memset(base, 0, sizeof(struct base));
 	if (file_exists(BASECONTROL)) {
+
 		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);
 		if (base->fd < 0)
@@ -89,7 +88,6 @@ void base_init(struct base *base) {
 		memset(&super, 0, sizeof(struct base_super));
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
-			ERROR(EIO_READ, EL_FATAL);
 			return;
 		}
 		base->zero_key = super.zero_key;
@@ -101,7 +99,7 @@ void base_init(struct base *base) {
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
-		zassert(super.version == VERSION_RELESE);
+		zassert(super.version == VERSION_MAJOR);
 		zassert(!strcmp(super.magic, BASE_MAGIC));
 		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
@@ -112,6 +110,7 @@ void base_init(struct base *base) {
 		}
 		exit_status = EXSTAT_CHECKPOINT;
 	} else {
+
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);

@@ -4,7 +4,7 @@
 #include "quid.h"
 
 typedef struct {
-	char quid[QUID_LENGTH+1];
+	char quid[QUID_LENGTH + 1];
 	void *data;
 	int items;
 	char *name;

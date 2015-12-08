@@ -11,18 +11,19 @@
 #include "webapi.h"
 
 void print_version() {
-	printf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
+	zprintf(PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 }
 
 void print_usage() {
-	printf(
+	zprintf(
 	    PROGNAME " %s ("__DATE__", "__TIME__")\n"
-	    "Usage: "PROGNAME" [-?hvfd]\n"
+	    "Usage: " PROGNAME " [-?hvfd]\n"
 	    "\nOptions:\n"
 	    "  -?,-h    this help\n"
 	    "  -v       show version and exit\n"
 	    "  -d       run as daemon (default)\n"
 	    "  -f       run in foreground\n"
+	    "  -s       working directory\n"
 	    , get_version_string());
 }
 
@@ -46,34 +47,38 @@ int daemonize() {
 		return 1;
 	}
 
-#if SECURE_CHROOT
-	if ((chdir("/")) < 0) {
-		lprint("[erro] Failed to change directory\n");
-		return 1;
-	}
-#endif
-
-	/* Close out the standard file descriptors */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
+	/* Redirect standard file descriptors */
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "w", stdout);
+	freopen("/dev/null", "w", stderr);
 
 	/* Daemon initialization */
 	start_webapi();
 	return 0;
 }
 
+#ifdef DAEMON
+
 int main(int argc, char *argv[]) {
 	if (argc < 2)
 		return daemonize();
 
-	int i;
-	for (i = 1; i < argc; ++i) {
+	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 				case 'D':
 				case 'd':
 					daemonize();
+					break;
+				case 'S':
+				case 's':
+					if (i + 1 < argc) {
+						if ((chdir(argv[i + 1])) < 0) {
+							lprint("[erro] Failed to change directory\n");
+							return 1;
+						}
+						daemonize();
+					}
 					break;
 				case 'F':
 				case 'f':
@@ -97,3 +102,5 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
+
+#endif

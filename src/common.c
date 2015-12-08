@@ -31,6 +31,8 @@ char *strtoupper(char *str) {
 }
 
 bool strisdigit(char *str) {
+	if (*str == '-')
+		++str;
 	for (; *str; ++str)
 		if (!isdigit(*str))
 			return FALSE;
@@ -86,6 +88,14 @@ int strccnt(const char *str, char c) {
 		str++;
 	}
 	return cnt;
+}
+
+char *str_bool(bool b) {
+	return b ? "true" : "false";
+}
+
+char *str_null() {
+	return "null";
 }
 
 uint16_t _ntohs(uint16_t x) {
@@ -167,10 +177,10 @@ int file_exists(const char *path) {
 
 char *get_version_string() {
 	static char buf[16];
-	snprintf(buf, 16, "%d.%d.%d", VERSION_RELESE, VERSION_MAJOR, VERSION_MINOR);
+	snprintf(buf, 16, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	return buf;
 }
 
 long get_version() {
-	return sizeof(int) * VERSION_RELESE + sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR;
+	return sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR + sizeof(int) * VERSION_PATCH;
 }

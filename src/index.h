@@ -1,40 +1,24 @@
 #ifndef INDEX_H_INCLUDED
 #define INDEX_H_INCLUDED
 
-#define INDEX_SIZE 4
-#define INDEX_MSIZE (INDEX_SIZE/2)
-
-typedef enum {
-	INSERTNOTCOMPLETE,
-	SUCCESS,
-	DUPLICATEKEY,
-	UNDERFLOW,
-	NOTFOUND
-} status_t;
+#include "quid.h"
+#include "marshall.h"
+#include "slay_marshall.h"
 
 typedef struct {
-	char key[64];
-	unsigned char key_size;
-	unsigned long long int valset;
-} item_t;
+	quid_t index;
+	unsigned long index_elements;
+	unsigned int element;
+} index_result_t;
 
 typedef struct {
-	int cnt;
-	item_t items[INDEX_SIZE];
-	long int ptr[INDEX_SIZE + 1];
-} node_t;
+	char *key;
+	size_t key_len;
+	unsigned long long int value;
+} index_keyval_t;
 
-struct index {
-	long int root;
-	long int freelist;
-};
+int index_btree_create_table(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
+int index_btree_create_set(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
+marshall_t *index_btree_all(quid_t *key, bool descent);
 
-status_t index_insert(char *key, size_t key_size, long long int offset);
-status_t index_get(char *key);
-status_t index_delete(char *key);
-void index_print_root();
-void index_init(char *treefilname);
-void index_close();
-
-#endif // INDEX_H_INCLUDED
-
+#endif // CORE_H_INCLUDED

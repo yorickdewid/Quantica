@@ -47,6 +47,15 @@ void lprint(const char *str) {
 	fputs(str, stderr);
 }
 
+void lprinterr(const char *str) {
+	if (fp) {
+		char buf[32];
+		fprintf(fp, "[%s] ", tstostrf(buf, 32, get_timestamp(), "%d/%b/%Y %H:%M:%S %z"));
+		fputs(str, fp);
+	}
+
+	fputs(str, stderr);
+}
 
 void stop_log() {
 	if (fp)

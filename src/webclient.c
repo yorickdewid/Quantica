@@ -34,7 +34,6 @@ struct http_url *parse_url(const char *url) {
 	/* Define variable */
 	const char *curstr;
 	int len;
-	int i;
 	int userpass_flag;
 	int bracket_flag;
 
@@ -132,7 +131,7 @@ struct http_url *parse_url(const char *url) {
 	 * Any ":", "@" and "/" must be encoded.
 	 */
 	/* Eat "//" */
-	for (i = 0; i < 2; i++) {
+	for (int i = 0; i < 2; i++) {
 		if (*curstr != '/') {
 			parsed_url_free(purl);
 			lprint("[erro] Cannot parse URL\n");
@@ -347,7 +346,7 @@ struct http_response *handle_redirect(struct http_response *hresp, char *custom_
 struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	/* Parse url */
 	if (!purl) {
-		printf("Unable to parse url");
+		lprint("[erro] Cannot parse URL\n");
 		return NULL;
 	}
 
@@ -358,7 +357,7 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 	int tmpres;
 
 	/* Allocate memeory for htmlcontent */
-	struct http_response *hresp = (struct http_response *)malloc(sizeof(struct http_response));
+	struct http_response *hresp = (struct http_response *)zmalloc(sizeof(struct http_response));
 	if (!hresp) {
 		lprint("[erro] Unable to allocate memory\n");
 		return NULL;
@@ -369,6 +368,12 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 		.ai_family = AF_UNSPEC,
 		.ai_socktype = SOCK_STREAM
 	};
+
+	/* Take care of IPv6 adresses */
+	if (purl->host[0] == '[' && purl->host[strlen(purl->host) - 1] == ']') {
+		purl->host++;
+		purl->host[strlen(purl->host) - 1] = '\0';
+	}
 
 	struct addrinfo *servinfo;
 	if (getaddrinfo(purl->host, "http", &hints, &servinfo) < 0) {
@@ -420,18 +425,20 @@ struct http_response *http_req(char *http_headers, struct http_url *purl) {
 		sent += tmpres;
 	}
 
-	// receive response
+	/* Receive response */
 	int i = 0;
 	int amnt_recvd = 0;
 	int curr_sz = 4096;
 	int old_sz = curr_sz;
 	hresp->rawresp = (char *)zmalloc(curr_sz);
+	memset(hresp->rawresp, 0, curr_sz);
 	while ((amnt_recvd = recv(sock, hresp->rawresp + i, 4096, 0)) > 0) {
 		i += amnt_recvd;
 		old_sz = curr_sz;
 		curr_sz += 4096;
 
 		char *new_buf = zmalloc(curr_sz);
+		memset(new_buf, 0, curr_sz);
 		memcpy(new_buf, hresp->rawresp, old_sz);
 		free(hresp->rawresp);
 		hresp->rawresp = new_buf;
@@ -551,23 +558,26 @@ struct http_response *http_get(char *url, char *custom_headers, char *data, int 
 		auth_header = (char *)zrealloc(auth_header, strlen(auth_header) + 1);
 
 		/* Add to header */
-		http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		size_t nsz = strlen(http_headers) + strlen(auth_header) + 2;
+		http_headers = (char *)zrealloc(http_headers, nsz);
+		strncat(http_headers, auth_header, nsz);
 	}
 
 	/* Add custom headers, and close */
 	if (!head && data) {
 		if (custom_headers) {
-			sprintf(http_headers, "%s%s", http_headers, custom_headers);
-			sprintf(http_headers, "%s\r\n%s", http_headers, data);
+			strcat(http_headers, custom_headers);
+			strcat(http_headers, "\r\n");
+			strcat(http_headers, data);
 		} else {
-			sprintf(http_headers, "%s\r\n", http_headers);
+			strcat(http_headers, "\r\n");
 		}
 	} else {
 		if (custom_headers) {
-			sprintf(http_headers, "%s%s\r\n", http_headers, custom_headers);
+			strcat(http_headers, custom_headers);
+			strcat(http_headers, "\r\n");
 		} else {
-			sprintf(http_headers, "%s\r\n", http_headers);
+			strcat(http_headers, "\r\n");
 		}
 	}
 	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
@@ -588,7 +598,7 @@ struct http_response *http_get(char *url, char *custom_headers, char *data, int 
 struct http_response *http_options(char *url) {
 	struct http_url *purl = parse_url(url);
 	if (!purl) {
-		printf("Unable to parse url");
+		lprintf("[erro] Unable to parse url");
 		return NULL;
 	}
 
@@ -629,12 +639,13 @@ struct http_response *http_options(char *url) {
 		auth_header = (char *)zrealloc(auth_header, strlen(auth_header) + 1);
 
 		/* Add to header */
-		http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + strlen(auth_header) + 2);
-		sprintf(http_headers, "%s%s", http_headers, auth_header);
+		size_t nsz = strlen(http_headers) + strlen(auth_header) + 2;
+		http_headers = (char *)zrealloc(http_headers, nsz);
+		strncat(http_headers, auth_header, nsz);
 	}
 
 	/* Build headers */
-	sprintf(http_headers, "%s\r\n", http_headers);
+	strcat(http_headers, "\r\n");
 	http_headers = (char *)zrealloc(http_headers, strlen(http_headers) + 1);
 
 	/* Make request and return response */

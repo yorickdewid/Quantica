@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 bin/*
+util/verminor
 
 # Workspace specific
 *.layout
@@ -41,3 +42,4 @@ bin/*
 
 # Tests
 /cov-int
+var/

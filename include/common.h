@@ -17,6 +17,8 @@
 #define BITWISE
 #endif
 
+#define PNULL	(void **)0
+
 #define O_BINARY 0
 
 #define TRUE    1
@@ -39,12 +41,18 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #if defined(__mc68000__) || defined (__sparc__) || defined (__PPC__) \
     || (defined(__mips__) && (defined(MIPSEB) || defined (__MIPSEB__)) ) \
     || defined(__hpux__)  /* should be replaced by the macro for the PA */
-  #define BIG_ENDIAN_HOST 1
+#define BIG_ENDIAN_HOST 1
 #else
-  #define LITTLE_ENDIAN_HOST 1
+#define LITTLE_ENDIAN_HOST 1
 #endif
 
-typedef uint8_t bool;
+#define zassert(e)  \
+	((void) ((e) ? (void)0 : __zassert (#e, __FILE__, __LINE__)))
+
+#define __zassert(e, file, line) \
+	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
+
+typedef _Bool bool;
 
 char from_hex(char ch);
 int8_t strisbool(char *str);
@@ -57,11 +65,15 @@ char *strdtrim(char *str);
 char *strtoken(char *s, const char *delim);
 bool strismatch(const char *str, const char *tok);
 int strccnt(const char *str, char c);
+char *str_bool(bool b);
+char *str_null();
 int antoi(const char *str, size_t num);
 char *itoa(long i);
 char *strdup(const char *str);
+char *strndup(const char *str, size_t n);
 char *stresc(char *src);
 char *strsep(char ** stringp, const char *delim);
+int zprintf(const char *fmt, ...);
 
 typedef uint16_t BITWISE __be16; /* big endian, 16 bits */
 typedef uint32_t BITWISE __be32; /* big endian, 32 bits */

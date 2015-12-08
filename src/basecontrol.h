@@ -21,6 +21,7 @@ struct base {
 	int bincnt;
 };
 
+//TODO bitflip
 struct base_super {
 	quid_t instance_key;
 	char instance_name[INSTANCE_LENGTH];

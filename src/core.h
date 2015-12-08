@@ -4,7 +4,7 @@
 #include "quid.h"
 #include "time.h"
 #include "sql.h"
-#include "dstype.h"
+#include "marshall.h"
 #include "engine.h"
 
 #define STATUS_LIFECYCLE_SIZE 10
@@ -16,8 +16,10 @@ struct record_status {
 	uint8_t syslock;
 	uint8_t exec;
 	uint8_t freeze;
-	uint8_t error;
+	uint8_t nodata;
 	char type[STATUS_TYPE_SIZE];
+	uint8_t has_alias;
+	char alias[LIST_NAME_LENGTH];
 };
 
 /*
@@ -27,10 +29,14 @@ void start_core();
 void detach_core();
 
 char *get_zero_key();
+bool get_ready_status();
 void set_instance_name(char name[]);
 char *get_instance_name();
 char *get_instance_key();
 char *get_session_key();
+char *get_dataheap_name();
+struct engine *get_current_engine();
+char *get_instance_prefix_key(char *short_quid);
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);
 int crypto_md5(char *s, const char *data);
@@ -43,32 +49,38 @@ char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
+unsigned long int stat_tablesize();
+unsigned long int stat_indexsize();
 void quid_generate(char *quid);
+void quid_generate_short(char *quid);
 void filesync();
 
 /*
  * Database operations
  */
-int _db_put(char *quid, void *slay, size_t len);
 int db_put(char *quid, int *items, const void *data, size_t len);
-void *_db_get(char *quid, dstype_t *dt);
-void *db_get(char *quid, size_t *len);
+void *db_get(char *quid, size_t *len, bool descent);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
-int _db_update(char *quid, void *slay, size_t len);
-int db_update(char *quid, int *items, const void *data, size_t data_len);
-int db_delete(char *quid);
-int db_purge(char *quid);
+int db_count_group(char *quid);
+int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len);
+int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta);
+int db_delete(char *quid, bool descent);
+int db_purge(char *quid, bool descent);
+void *db_select(char *quid, const char *element);
+int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len);
+int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len);
 int db_vacuum();
 
 int db_record_get_meta(char *quid, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
 
-char *db_list_get(char *quid);
-int db_list_update(char *quid, const char *name);
-char *db_list_all();
-void *db_table_get(char *name, size_t *len);
+char *db_alias_get_name(char *quid);
+int db_alias_update(char *quid, const char *name);
+char *db_alias_all();
+char *db_index_all();
+void *db_alias_get_data(char *name, size_t *len, bool descent);
 
-int db_create_index(char *quid, const char *idxkey);
+int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey);
 
 #endif // CORE_H_INCLUDED

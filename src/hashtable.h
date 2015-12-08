@@ -26,7 +26,7 @@ hashtable_t *alloc_hashtable(int size);
 void free_hashtable(hashtable_t *);
 
 /* insert a new key-value pair into an existing dictionary */
-void hashtable_put(hashtable_t *, const char *key, const char *value);
+void hashtable_put(hashtable_t **, const char *key, const char *value);
 
 /* return the most recently inserted value associated with a key */
 /* or 0 if no matching key is present */

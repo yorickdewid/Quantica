@@ -1,16 +1,18 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <error.h>
 #include "test.h"
 #include "../src/zmalloc.h"
 #include "../src/quid.h"
 #include "../src/engine.h"
 
-static void test_engine_create(){
+static void test_engine_create() {
 	struct engine e;
 	const char fname[] = "test_database1.idx";
 	const char dbname[] = "test_database1.db";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	ASSERT(e.fd);
 	ASSERT(e.db_fd);
@@ -23,24 +25,28 @@ static void test_engine_create(){
 	unlink(dbname);
 	ASSERT(!file_exists(fname));
 	ASSERT(!file_exists(dbname));
+	error_clear();
 }
 
-static void test_engine_crud(){
+static void test_engine_crud() {
 	struct engine e;
 	const char fname[] = "test_database2.idx";
 	const char dbname[] = "test_database2.db";
 	quid_t quid;
+	struct metadata meta;
 	char data[] = ".....";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 	engine_close(&e);
 
 	engine_init(&e, fname, dbname);
 	size_t len;
-	void *rdata = engine_get(&e, &quid, &len);
+	uint64_t offset = engine_get(&e, &quid, &meta);
+	void *rdata = get_data_block(&e, offset, &len);
 	ASSERT(rdata);
 	zfree(rdata);
 	engine_close(&e);
@@ -52,23 +58,26 @@ static void test_engine_crud(){
 
 	engine_init(&e, fname, dbname);
 	size_t len2;
-	void *r2data = engine_get(&e, &quid, &len2);
+	uint64_t offset2 = engine_get(&e, &quid, &meta);
+	void *r2data = get_data_block(&e, offset2, &len2);
 	ASSERT(!r2data);
 	engine_close(&e);
 	unlink(fname);
 	unlink(dbname);
+	error_clear();
 }
 
-static void test_engine_meta(){
+static void test_engine_meta() {
 	struct engine e;
 	const char fname[] = "test_database4.idx";
 	const char dbname[] = "test_database4.db";
 	quid_t quid;
 	char data[] = ".....";
 
+	error_clear();
 	engine_init(&e, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&e, &quid, data, strlen(data));
 	ASSERT(!r);
 
 	const struct metadata md = {
@@ -77,7 +86,7 @@ static void test_engine_meta(){
 		.syslock = 0,
 		.exec = 1,
 		.freeze = 1,
-		.error = 0,
+		.nodata = 0,
 		.type = MD_TYPE_RAW,
 	};
 	int r2 = engine_setmeta(&e, &quid, &md);
@@ -86,12 +95,12 @@ static void test_engine_meta(){
 
 	engine_init(&e, fname, dbname);
 	struct metadata md2;
-	int r3 = engine_getmeta(&e, &quid, &md2);
-	ASSERT(!r3);
+	engine_get(&e, &quid, &md2);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct metadata)));
 	engine_close(&e);
 	unlink(fname);
 	unlink(dbname);
+	error_clear();
 }
 
 TEST_IMPL(engine) {
