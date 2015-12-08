@@ -1460,8 +1460,7 @@ quid_t *engine_index_list_get_index(struct engine *e, const quid_t *c_quid) {
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
-
-			if (!from_be32(indexlist->items[i].element_len))
+			if (!indexlist->items[i].element_len)
 				continue;
 
 			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
@@ -1501,7 +1500,7 @@ marshall_t *engine_index_list_get_element(struct engine *e, const quid_t *c_quid
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
-			if (!from_be32(indexlist->items[i].element_len))
+			if (!indexlist->items[i].element_len)
 				continue;
 
 			int cmp = quidcmp(c_quid, &indexlist->items[i].group);
@@ -1538,8 +1537,7 @@ int engine_index_list_delete(struct engine *e, const quid_t *index) {
 		zassert(indexlist->size <= LIST_SIZE);
 
 		for (int i = 0; i < indexlist->size; ++i) {
-
-			if (!from_be32(indexlist->items[i].element_len))
+			if (!indexlist->items[i].element_len)
 				continue;
 
 			int cmp = quidcmp(index, &indexlist->items[i].index);
@@ -1547,6 +1545,7 @@ int engine_index_list_delete(struct engine *e, const quid_t *index) {
 				memset(&indexlist->items[i].index, 0, sizeof(quid_t));
 				memset(&indexlist->items[i].group, 0, sizeof(quid_t));
 				memset(&indexlist->items[i].element, 0, 64);
+				indexlist->items[i].element_len = 0;
 				flush_indexlist(e, indexlist, offset);
 				e->stats.index_list_size--;
 				return 0;
@@ -1587,7 +1586,7 @@ marshall_t *engine_index_list_all(struct engine *e) {
 			char index_squid[QUID_LENGTH + 1];
 			char group_squid[QUID_LENGTH + 1];
 
-			if (!from_be32(indexlist->items[i].element_len))
+			if (!indexlist->items[i].element_len)
 				continue;
 
 			quidtostr(index_squid, &indexlist->items[i].index);

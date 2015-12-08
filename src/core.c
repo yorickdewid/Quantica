@@ -517,7 +517,6 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				/* Create index key */
 				quid_create(&inrs.index);
 				quidtostr(index_quid, &inrs.index);
-				puts(index_quid);
 
 				marshall_t *_descentobj = slay_get(descentdata, NULL, FALSE);
 				if (!_descentobj) {
