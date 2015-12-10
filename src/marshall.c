@@ -515,5 +515,4 @@ char *marshall_get_strtype(marshall_type_t type) {
 		default:
 			return "NULL";
 	}
-	return "NULL";
 }

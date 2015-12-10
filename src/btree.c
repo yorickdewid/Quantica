@@ -48,7 +48,7 @@ static void flush_node(btree_t *index, long int offset, node_t *pnode) {
 static long int alloc_node(btree_t *index) {
 	long int offset;
 	node_t node;
-	memset(&node, 0, sizeof(node_t));
+	nullify(&node, sizeof(node_t));
 
 	/* Check freelist */
 	if (index->freelist < 0) {
@@ -68,7 +68,7 @@ static long int alloc_node(btree_t *index) {
 
 static void free_node(btree_t *index, long int offset) {
 	node_t node;
-	memset(&node, 0, sizeof(node_t));
+	nullify(&node, sizeof(node_t));
 
 	get_node(index, offset, &node);
 	node.ptr[0] = index->freelist;
@@ -78,7 +78,7 @@ static void free_node(btree_t *index, long int offset) {
 
 static void storage_read(btree_t *index) {
 	struct root_super super;
-	memset(&super, 0, sizeof(struct root_super));
+	nullify(&super, sizeof(struct root_super));
 
 	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to read disk\n");
@@ -94,7 +94,7 @@ static void storage_read(btree_t *index) {
 
 static void storage_write(btree_t *index) {
 	struct root_super super;
-	memset(&super, 0, sizeof(struct root_super));
+	nullify(&super, sizeof(struct root_super));
 
 	super.root = index->root;
 	super.freelist = index->freelist;
@@ -114,7 +114,7 @@ void btree_set_unique(btree_t *index, bool unique) {
 }
 
 void btree_init(btree_t *index, char *name) {
-	memset(index, 0, sizeof(btree_t));
+	nullify(index, sizeof(btree_t));
 	index->root = -1;
 	index->freelist = -1;
 	index->unique_keys = TRUE;
@@ -122,7 +122,7 @@ void btree_init(btree_t *index, char *name) {
 	if (index->fp == NULL) {
 		// TODO set RW flag
 		index->fp = fopen(name, "w+b");
-		memset(&index->rootnode, 0, sizeof(node_t));
+		nullify(&index->rootnode, sizeof(node_t));
 		storage_write(index);
 	} else {
 		storage_read(index);
@@ -131,8 +131,7 @@ void btree_init(btree_t *index, char *name) {
 
 void btree_close(btree_t *index) {
 	storage_write(index);
-	if (index->fp)
-		fclose(index->fp);
+	fclose(index->fp);
 }
 
 static int get(char *key, item_t *kv, int n) {
@@ -195,7 +194,7 @@ static status_t insert(btree_t *index, char *key, size_t key_size, long long int
 	item_t *kv = NULL;
 	status_t code;
 	node_t node;
-	memset(&node, 0, sizeof(node_t));
+	nullify(&node, sizeof(node_t));
 
 	/* If leaf return to recursive caller */
 	if (offset == -1) {
@@ -246,7 +245,7 @@ static status_t insert(btree_t *index, char *key, size_t key_size, long long int
 	long long int v_final;
 	size_t s_final;
 	node_t newnode;
-	memset(&newnode, 0, sizeof(node_t));
+	nullify(&newnode, sizeof(node_t));
 	if (i == INDEX_SIZE) {
 		k_final = keynew_r;
 		s_final = keynew_r_size;
@@ -323,9 +322,9 @@ static status_t delete(btree_t *index, char *key, long int offset) {
 	item_t *rkey;
 	long int *p, left, right, *lptr, *rptr, q, q1;
 	node_t nod, nod1, nod2, nodL, nodR;
-	memset(&nod, 0, sizeof(node_t));
-	memset(&nod1, 0, sizeof(node_t));
-	memset(&nod2, 0, sizeof(node_t));
+	nullify(&nod, sizeof(node_t));
+	nullify(&nod1, sizeof(node_t));
+	nullify(&nod2, sizeof(node_t));
 
 	if (offset == -1)
 		return NOTFOUND;

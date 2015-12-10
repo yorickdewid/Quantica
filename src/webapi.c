@@ -222,7 +222,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char buf2[TIMENAME_SIZE + 1];
 	buf2[TIMENAME_SIZE] = '\0';
 
-	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
+	char *htime = tstostrf(buf, 26, get_timestamp(), ISO_8601_FORMAT);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
@@ -418,6 +418,7 @@ http_status_t api_gen_quid(char **response, http_request_t *req) {
 	}
 
 	if (iserror()) {
+		zfree(squid);
 		return response_internal_error(response);
 	}
 	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid);
@@ -437,6 +438,7 @@ http_status_t api_base64_enc(char **response, http_request_t *req) {
 	if (data) {
 		char *enc = crypto_base64_enc(data);
 		if (iserror()) {
+			zfree(enc);
 			return response_internal_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
@@ -451,6 +453,7 @@ http_status_t api_base64_dec(char **response, http_request_t *req) {
 	if (data) {
 		char *enc = crypto_base64_dec(data);
 		if (iserror()) {
+			zfree(enc);
 			return response_internal_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
@@ -755,14 +758,16 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias set\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
+		char *current_name = db_alias_get_name(quid);
+		if (iserror()) {
+			zfree(current_name);
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", current_name);
+		zfree(current_name);
+		return HTTP_OK;
 	}
-	char *current_name = db_alias_get_name(quid);
-	if (iserror()) {
-		return response_internal_error(response);
-	}
-	snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", current_name);
-	zfree(current_name);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_alias_get(char **response, http_request_t *req) {
@@ -941,8 +946,12 @@ void handle_request(int sd, fd_set *set) {
 	struct sockaddr_storage addr;
 	char str_addr[INET6_ADDRSTRLEN];
 	socklen_t len = sizeof(addr);
-	getpeername(sd, (struct sockaddr*)&addr, &len);
-	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
+	if (!getpeername(sd, (struct sockaddr*)&addr, &len)) {
+		inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
+	} else {
+		str_addr[0] = '?';
+		str_addr[1] = '\0';
+	}
 
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
 	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);

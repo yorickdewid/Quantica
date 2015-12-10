@@ -54,7 +54,7 @@ char *generate_bindata_name(struct base *base) {
 
 void base_sync(struct base *base) {
 	struct base_super super;
-	memset(&super, 0, sizeof(struct base_super));
+	nullify(&super, sizeof(struct base_super));
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
@@ -76,7 +76,7 @@ void base_sync(struct base *base) {
 }
 
 void base_init(struct base *base) {
-	memset(base, 0, sizeof(struct base));
+	nullify(base, sizeof(struct base));
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */
@@ -85,7 +85,7 @@ void base_init(struct base *base) {
 			return;
 
 		struct base_super super;
-		memset(&super, 0, sizeof(struct base_super));
+		nullify(&super, sizeof(struct base_super));
 		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;

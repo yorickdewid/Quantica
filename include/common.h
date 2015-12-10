@@ -52,6 +52,9 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #define __zassert(e, file, line) \
 	((void)printf("%s:%u: failed assertion `%s'\n", file, line, e), abort())
 
+#define nullify(p, sz) \
+	memset(p, 0, sz)
+
 typedef _Bool bool;
 
 char from_hex(char ch);

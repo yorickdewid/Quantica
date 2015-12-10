@@ -65,7 +65,7 @@ void *tree_zrealloc(void *usr, size_t size) {
 
 char *tree_zstrdup(const char *str, void *parent) {
 	size_t size;
-	char *copy;
+	char *copy = NULL;
 
 	size = strlen(str) + 1;
 	if ((copy = tree_zmalloc(size, parent)) == NULL) {
@@ -77,7 +77,7 @@ char *tree_zstrdup(const char *str, void *parent) {
 }
 
 char *tree_zstrndup(const char *str, size_t n, void *parent) {
-	char *copy;
+	char *copy = NULL;
 
 	if ((copy = tree_zmalloc(n + 1, parent)) == NULL) {
 		return NULL;

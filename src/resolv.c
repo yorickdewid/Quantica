@@ -39,6 +39,7 @@ int resolve_host(char *hostname, char *ip) {
 
 	if ((rv = getaddrinfo(host, NULL, &hints, &servinfo)) < 0) {
 		lprint("[erro] Cannot resolve host\n");
+		zfree(_htmp);
 		return 0;
 	}
 

@@ -500,7 +500,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	}
 
 	if (!copy_meta) {
-		memset(&meta, 0, sizeof(struct metadata));
+		nullify(&meta, sizeof(struct metadata));
 		meta.importance = MD_IMPORTANT_NORMAL;
 	}
 
@@ -511,7 +511,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 			for (unsigned int i = 0; i < index_element->size; ++i) {
 				index_result_t inrs;
 				struct metadata _meta;
-				memset(&inrs, 0, sizeof(index_result_t));
+				nullify(&inrs, sizeof(index_result_t));
 				char index_quid[QUID_LENGTH + 1];
 
 				/* Create index key */
@@ -532,7 +532,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 					error_throw("ece28bc980db", "Invalid schema");
 
 				/* Add index to database */
-				memset(&_meta, 0, sizeof(struct metadata));
+				nullify(&_meta, sizeof(struct metadata));
 				_meta.nodata = 1;
 				_meta.type = MD_TYPE_INDEX;
 				_meta.alias = 1;
@@ -556,8 +556,10 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 		meta.alias = 1;
 	}
 
-	if (engine_setmeta(&btx, &nkey, &meta) < 0)
+	if (engine_setmeta(&btx, &nkey, &meta) < 0) {
+		zfree(descentdata);
 		return -1;
+	}
 
 	zfree(descentdata);
 	zfree(dataslay);
@@ -954,6 +956,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	if (meta.type == MD_TYPE_GROUP) {
 		void *descentdata = get_data_block(&btx, offset, &_len);
 		if (!descentdata) {
+			zfree(dataslay);
 			marshall_free(mergeobj);
 			marshall_free(filterobject);
 			return -1;
@@ -961,6 +964,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
 		if (!descentobj) {
+			zfree(dataslay);
 			zfree(descentdata);
 			marshall_free(mergeobj);
 			marshall_free(filterobject);
@@ -1037,7 +1041,7 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
 
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	meta.syslock = status->syslock;
 	meta.exec = status->exec;
 	meta.freeze = status->freeze;
@@ -1172,7 +1176,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	struct metadata meta;
 	index_result_t nrs;
 	strtoquid(group_quid, &key);
-	memset(&nrs, 0, sizeof(index_result_t));
+	nullify(&nrs, sizeof(index_result_t));
 
 	if (!ready)
 		return -1;
@@ -1191,8 +1195,10 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 		return -1;
 
 	marshall_t *dataobj = slay_get(data, NULL, FALSE);
-	if (!dataobj)
+	if (!dataobj) {
+		zfree(data);
 		return -1;
+	}
 
 	/* Determine index based on dataschema */
 	schema_t group = slay_get_schema(data);
@@ -1215,7 +1221,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	}
 
 	/* Add index to database */
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
 	meta.alias = 1;

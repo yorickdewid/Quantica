@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <config.h>
 #include <common.h>
@@ -46,11 +47,14 @@ static inline void arc4_addrandom(arc4_stream_t *as, uint8_t *dat, int datlen) {
 
 static void arc4_stir(arc4_stream_t *as) {
 	int fd;
-	struct {
+	struct dat {
 		struct timeval tv;
 		pid_t pid;
 		uint8_t rnd[128 - sizeof(struct timeval) - sizeof(pid_t)];
-	} rdat;
+	};
+
+	struct dat rdat;
+	nullify(&rdat, sizeof(struct dat));
 
 	gettimeofday(&rdat.tv, NULL);
 	rdat.pid = getpid();
@@ -60,7 +64,7 @@ static void arc4_stir(arc4_stream_t *as) {
 			close(fd);
 		} else {
 			fputs("Cannot read " RANDOMDEV, stderr);
-			exit(1);
+			return;
 		}
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));

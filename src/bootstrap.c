@@ -27,7 +27,7 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 	strtoquid(skey, &key);
 
 	char errobj[256];
-	memset(&errobj, 0, sizeof(errobj));
+	nullify(&errobj, sizeof(errobj));
 
 	if (level == E_FATAL) {
 		snprintf(errobj, 256, "{\"level\":\"Fatal\", \"description\":\"%s\"}", error_message);
@@ -44,7 +44,7 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 	void *dataslay = slay_put(dataobj, &len, &nrs);
 
 	struct metadata meta;
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	meta.importance = MD_IMPORTANT_LEVEL1;
 	meta.syslock = LOCK;
 	if (engine_insert_meta_data(e, &key, &meta, dataslay, len) < 0) {
@@ -74,13 +74,14 @@ void bootstrap(struct engine *e) {
 			zfree(rdata);
 			return;
 		}
+		zfree(rdata);
 	}
 
 	/* No errors from this point on */
 	error_clear();
 
 	/* Add bootstrap signature to empty database */
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	const char data0[] = BS_MAGIC;
 	meta.importance = MD_IMPORTANT_CRITICAL;
 	meta.syslock = LOCK;

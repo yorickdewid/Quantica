@@ -461,5 +461,4 @@ char *slay_get_strschema(void *data) {
 		default:
 			return "NULL";
 	}
-	return "NULL";
 }
