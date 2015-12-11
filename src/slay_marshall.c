@@ -383,11 +383,14 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 					marshall->child[marshall->size]->data_len = val_len;
 				}
-				marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
-				marshall->child[marshall->size]->name_len = namelen;
-				marshall->size++;
-				zfree(name);
-				zfree(val_data);
+
+				if (name) {
+					marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
+					marshall->child[marshall->size]->name_len = namelen;
+					marshall->size++;
+					zfree(name);
+					zfree(val_data);
+				}
 				error_clear();
 			}
 			break;

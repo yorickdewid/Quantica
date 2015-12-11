@@ -337,6 +337,7 @@ static uint64_t alloc_table_chunk(struct engine *e, size_t len) {
 		e->free_top = from_be64(table->items[0].child);
 		e->stats.free_tables--;
 
+		zfree(table);
 		return offset;
 	}
 
@@ -543,6 +544,8 @@ static uint64_t table_join(struct engine *e, uint64_t table_offset) {
 	if (table->size == 0) {
 		uint64_t ret = from_be64(table->items[0].child);
 		free_index_chunk(e, table_offset);
+
+		zfree(table);
 		return ret;
 	}
 	put_table(e, table, table_offset);

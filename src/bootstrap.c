@@ -38,8 +38,10 @@ static int register_error(struct engine *e, int level, char *error_code, char *e
 	}
 
 	marshall_t *dataobj = marshall_convert(errobj, strlen(errobj));
-	if (!dataobj)
+	if (!dataobj) {
 		lprint("[erro] bootstrap: Conversion failed\n");
+		return -1;
+	}
 
 	void *dataslay = slay_put(dataobj, &len, &nrs);
 

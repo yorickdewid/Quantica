@@ -43,9 +43,8 @@ int resolve_host(char *hostname, char *ip) {
 		return 0;
 	}
 
-	// Loop through all the results and connect to the first we can
-	struct addrinfo *p = servinfo;
-	for (; p != NULL; p = p->ai_next) {
+	/* Loop through all the results and connect to the first we can */
+	for (struct addrinfo *p = servinfo; p != NULL; p = p->ai_next) {
 		void *ptr = NULL;
 		switch (p->ai_family) {
 			case AF_INET:
@@ -55,11 +54,13 @@ int resolve_host(char *hostname, char *ip) {
 				ptr = &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
 				break;
 			default:
-				break;
+				continue;
 		}
-		inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
-		proto = p->ai_family;
-		break;
+		if (ptr) {
+			inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
+			proto = p->ai_family;
+			break;
+		}
 	}
 
 	zfree(_htmp);

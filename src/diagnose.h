@@ -4,7 +4,7 @@
 #include <config.h>
 #include <common.h>
 
-#include "basecontrol.h"
+#include "base.h"
 
 bool diag_exerr(struct base *base);
 

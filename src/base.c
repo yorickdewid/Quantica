@@ -9,7 +9,7 @@
 #include <error.h>
 #include "arc4random.h"
 #include "diagnose.h"
-#include "basecontrol.h"
+#include "base.h"
 
 #define BASECONTROL		"base"
 #define INSTANCE_RANDOM	5
@@ -58,8 +58,8 @@ void base_sync(struct base *base) {
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
-	super.version = VERSION_MAJOR;
-	super.bincnt = base->bincnt;
+	super.version = to_be16(VERSION_MAJOR);
+	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -93,13 +93,13 @@ void base_init(struct base *base) {
 		base->zero_key = super.zero_key;
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
-		base->bincnt = super.bincnt;
+		base->bincnt = from_be32(super.bincnt);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
 		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
-		zassert(super.version == VERSION_MAJOR);
+		zassert(from_be16(super.version) == VERSION_MAJOR);
 		zassert(!strcmp(super.magic, BASE_MAGIC));
 		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
@@ -120,6 +120,11 @@ void base_init(struct base *base) {
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+		if (base->fd < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+
 		base_sync(base);
 		exit_status = EXSTAT_CHECKPOINT;
 	}

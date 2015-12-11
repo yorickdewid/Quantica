@@ -60,10 +60,9 @@ static void arc4_stir(arc4_stream_t *as) {
 	rdat.pid = getpid();
 	fd = open(RANDOMDEV, O_RDONLY, 0);
 	if (fd >= 0) {
-		if (read(fd, rdat.rnd, sizeof(rdat.rnd)) > 0) {
+		if (read(fd, rdat.rnd, sizeof(rdat.rnd)) != sizeof(rdat.rnd)) {
+			lprint("[erro] Failed to read " RANDOMDEV "\n");
 			close(fd);
-		} else {
-			fputs("Cannot read " RANDOMDEV, stderr);
 			return;
 		}
 	}

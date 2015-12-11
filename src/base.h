@@ -15,23 +15,22 @@ struct base {
 	char instance_name[INSTANCE_LENGTH];
 	quid_t zero_key;
 	bool lock;
-	uint16_t version;
+	unsigned short version;
 	int fd;
 	char bindata[BINDATA_LENGTH];
 	int bincnt;
 };
 
-//TODO bitflip
 struct base_super {
-	quid_t instance_key;
 	char instance_name[INSTANCE_LENGTH];
-	quid_t zero_key;
-	bool lock;
-	uint16_t version;
 	char bindata[BINDATA_LENGTH];
-	int bincnt;
-	uint8_t exitstatus;
 	char magic[MAGIC_LENGTH];
+	quid_t instance_key;
+	quid_t zero_key;
+	__be16 version;
+	__be32	bincnt;
+	uint8_t lock;
+	uint8_t exitstatus;
 } __attribute__((packed));
 
 char *generate_bindata_name(struct base *base);
