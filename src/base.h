@@ -19,8 +19,9 @@ typedef struct {
 
 typedef struct base {
 	quid_t instance_key;
-	char instance_name[INSTANCE_LENGTH];
 	quid_t zero_key;
+	quid_t page_key;
+	char instance_name[INSTANCE_LENGTH];
 	bool lock;
 	unsigned short version;
 	int fd;
@@ -34,6 +35,7 @@ struct _base {
 	char magic[MAGIC_LENGTH];
 	quid_t instance_key;
 	quid_t zero_key;
+	quid_t page_key;
 	__be16 version;
 	__be32	bincnt;
 	__be64 page_sz;

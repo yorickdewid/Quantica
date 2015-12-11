@@ -100,6 +100,12 @@ char *get_session_key() {
 	return buf;
 }
 
+char *get_page_key() {
+	static char buf[SHORT_QUID_LENGTH + 1];
+	quidtoshortstr(buf, &control.page_key);
+	return buf;
+}
+
 char *get_dataheap_name() {
 	return control.bindata;
 }

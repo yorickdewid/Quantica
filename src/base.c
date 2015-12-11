@@ -58,6 +58,7 @@ void base_sync(base_t *base, pager_t *core) {
 	nullify(&super, sizeof(struct _base));
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
+	super.page_key = base->page_key;
 	super.lock = base->lock;
 	super.version = to_be16(VERSION_MAJOR);
 	super.bincnt = to_be32(base->bincnt);
@@ -95,8 +96,10 @@ void base_init(base_t *base, pager_t *core) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
+
 		base->zero_key = super.zero_key;
 		base->instance_key = super.instance_key;
+		base->page_key = super.page_key;
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
 		core->pagesz = from_be64(super.page_sz);
@@ -122,14 +125,12 @@ void base_init(base_t *base, pager_t *core) {
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
+		quid_create(&base->page_key);
 		base->bincnt = 0;
 		exit_status = EXSTAT_INVALID;
 
-		quid_t page_key;
 		char page_quid[SHORT_QUID_LENGTH];
-		quid_create(&page_key);
-		quidtoshortstr(page_quid, &page_key);
-
+		quidtoshortstr(page_quid, &base->page_key);
 		pager_init(core, page_quid);
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
