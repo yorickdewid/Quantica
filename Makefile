@@ -84,13 +84,13 @@ fixeof:
 	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
 
 genquid:
-	$(CC) -O3 $(WFLAGS) $(LDFLAGS) -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(UTILDIR)/genquid
+	$(CC) -O3 $(WFLAGS) -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c $(LDFLAGS) -o $(UTILDIR)/genquid
 
 verminor:
 	$(CC) -O3 $(WFLAGS) $(UTILDIR)/verminor.c -o $(UTILDIR)/verminor
 
 genlookup3:
-	$(CC) -O3 $(WFLAGS) $(LDFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(UTILDIR)/genlookup3
+	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c $(LDFLAGS) -o $(UTILDIR)/genlookup3
 
 qcli: CFLAGS += -DCLIENT
 qcli: $(CLIENTOBJECTS)

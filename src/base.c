@@ -9,6 +9,7 @@
 #include <error.h>
 #include "arc4random.h"
 #include "diagnose.h"
+#include "pager.h"
 #include "base.h"
 
 #define BASECONTROL		"base"
@@ -38,7 +39,7 @@ static char *generate_instance_name() {
 	return buf;
 }
 
-char *generate_bindata_name(struct base *base) {
+char *generate_bindata_name(base_t *base) {
 	static char buf[BINDATA_LENGTH];
 	char *pdot = strchr(buf, '.');
 	if (!pdot) {
@@ -52,15 +53,19 @@ char *generate_bindata_name(struct base *base) {
 	return buf;
 }
 
-void base_sync(struct base *base) {
-	struct base_super super;
-	nullify(&super, sizeof(struct base_super));
+void base_sync(base_t *base, pager_t *core) {
+	struct _base super;
+	nullify(&super, sizeof(struct _base));
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
 	super.version = to_be16(VERSION_MAJOR);
 	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
+	super.page_sz = to_be64(core->pagesz);
+	super.page_cnt = to_be32(core->pagecnt);
+	super.page_offset = to_be64(core->offset);
+
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
@@ -69,14 +74,14 @@ void base_sync(struct base *base) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
 		return;
 	}
-	if (write(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
+	if (write(base->fd, &super, sizeof(struct _base)) != sizeof(struct _base)) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
 		return;
 	}
 }
 
-void base_init(struct base *base) {
-	nullify(base, sizeof(struct base));
+void base_init(base_t *base, pager_t *core) {
+	nullify(base, sizeof(base_t));
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */
@@ -84,9 +89,9 @@ void base_init(struct base *base) {
 		if (base->fd < 0)
 			return;
 
-		struct base_super super;
-		nullify(&super, sizeof(struct base_super));
-		if (read(base->fd, &super, sizeof(struct base_super)) != sizeof(struct base_super)) {
+		struct _base super;
+		nullify(&super, sizeof(struct _base));
+		if (read(base->fd, &super, sizeof(struct _base)) != sizeof(struct _base)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
@@ -94,6 +99,9 @@ void base_init(struct base *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
+		core->pagesz = from_be64(super.page_sz);
+		core->pagecnt = from_be32(super.page_cnt);
+		core->offset = from_be64(super.page_offset);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -117,6 +125,13 @@ void base_init(struct base *base) {
 		base->bincnt = 0;
 		exit_status = EXSTAT_INVALID;
 
+		quid_t page_key;
+		char page_quid[SHORT_QUID_LENGTH];
+		quid_create(&page_key);
+		quidtoshortstr(page_quid, &page_key);
+
+		pager_init(core, page_quid);
+
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
@@ -125,14 +140,14 @@ void base_init(struct base *base) {
 			return;
 		}
 
-		base_sync(base);
+		base_sync(base, core);
 		exit_status = EXSTAT_CHECKPOINT;
 	}
 }
 
-void base_close(struct base *base) {
+void base_close(base_t *base, pager_t *core) {
 	exit_status = EXSTAT_SUCCESS;
-	base_sync(base);
+	base_sync(base, core);
 	close(base->fd);
 	lprint("[info] Exist with EXSTAT_SUCCESS\n");
 }
