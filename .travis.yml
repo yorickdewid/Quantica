@@ -8,17 +8,13 @@ compiler:
   - clang
   - gcc
 
-matrix:
-  allow_failures:
-    - os: osx
+#matrix:
+#  allow_failures:
+#    - os: osx
 
 script:
-  - make fixeof
-  - make genquid
-  - make genlookup3
-  - make verminor
+  - make util
   - make debug clean
-  - make qcli clean
   - make test
   - ./bin/quantica_test
   - ./test/dupquid.sh

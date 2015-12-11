@@ -77,22 +77,24 @@ memcheck: debug
 cov: debug
 	$(CPPCHECK) $(CPPCHECKFLAGS) $(SRCDIR) $(UTILDIR) $(TESTDIR)
 
+util: fixeof genquid verminor genlookup3 qcli
+
 fixeof:
-	$(CC) $(UTILDIR)/lfeof.c -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -o $(BINDIR)/lfeof
-	find . -type f -name *.[c\|h] -print -exec $(BINDIR)/lfeof {} \;
+	$(CC) $(UTILDIR)/lfeof.c -pedantic-errors -std=c99 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -o $(UTILDIR)/lfeof
+	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
 
 genquid:
-	$(CC) -O3 $(WFLAGS) -I$(INCLUDE) $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(BINDIR)/genquid
+	$(CC) -O3 $(WFLAGS) $(LDFLAGS) -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c -o $(UTILDIR)/genquid
 
 verminor:
 	$(CC) -O3 $(WFLAGS) $(UTILDIR)/verminor.c -o $(UTILDIR)/verminor
 
 genlookup3:
-	$(CC) -O3 $(WFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(BINDIR)/genlookup3
+	$(CC) -O3 $(WFLAGS) $(LDFLAGS) -Wswitch-default -Wshadow -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/jenhash.c $(SRCDIR)/arc4random.c $(UTILDIR)/genlookup3.c -o $(UTILDIR)/genlookup3
 
 qcli: CFLAGS += -DCLIENT
 qcli: $(CLIENTOBJECTS)
-	$(CC) -I$(INCLUDE) $(CFLAGS) $(CLIENTOBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
+	$(CC) -I$(INCLUDE) $(CFLAGS) $(CLIENTOBJECTS) $(LDFLAGS) -o $(UTILDIR)/$@
 
 cleanall: clean cleandb cleanutil
 
@@ -107,9 +109,9 @@ cleandb:
 
 cleanutil:
 	@$(RM) -rf $(UTILDIR)/*.o
-	@$(RM) -rf $(BINDIR)/lfeof
-	@$(RM) -rf $(BINDIR)/genquid
-	@$(RM) -rf $(BINDIR)/genlookup3
-	@$(RM) -rf $(BINDIR)/qcli
+	@$(RM) -rf $(UTILDIR)/lfeof
+	@$(RM) -rf $(UTILDIR)/genquid
+	@$(RM) -rf $(UTILDIR)/genlookup3
+	@$(RM) -rf $(UTILDIR)/qcli
 
 cleandist: clean
