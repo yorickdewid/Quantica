@@ -11,21 +11,26 @@
 #define MAGIC_LENGTH	10
 
 typedef struct {
-	unsigned long long offset;
 	unsigned int pagesz;
 	unsigned int pagecnt;
 	int fd;
 } pager_t;
 
+struct _page_list_item {
+	__be32 sequence;
+	__be32 next;
+	quid_short_t page_key;
+} __attribute__((packed));
+
 typedef struct base {
 	quid_t instance_key;
 	quid_t zero_key;
-	quid_t page_key;
 	char instance_name[INSTANCE_LENGTH];
 	bool lock;
 	unsigned short version;
 	int fd;
 	char bindata[BINDATA_LENGTH];
+	unsigned int page_offset;
 	int bincnt;
 } base_t;
 
@@ -35,12 +40,11 @@ struct _base {
 	char magic[MAGIC_LENGTH];
 	quid_t instance_key;
 	quid_t zero_key;
-	quid_t page_key;
 	__be16 version;
 	__be32	bincnt;
 	__be64 page_sz;
 	__be32 page_cnt;
-	__be64 page_offset;
+	__be32 page_offset;
 	uint8_t lock;
 	uint8_t exitstatus;
 } __attribute__((packed));

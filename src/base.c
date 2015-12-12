@@ -53,19 +53,37 @@ char *generate_bindata_name(base_t *base) {
 	return buf;
 }
 
+void add_page_item(base_t *base, pager_t *core) {
+	struct _page_list_item item;
+	nullify(&item, sizeof(struct _page_list_item));
+
+	item.sequence = to_be32(++core->pagecnt);
+	item.next = 0;
+	quid_short_create(&item.page_key);
+
+	if (lseek(base->fd, base->page_offset, SEEK_SET) < 0) {
+		lprint("[erro] Failed to read " BASECONTROL "\n");
+		return;
+	}
+	if (write(base->fd, &item, sizeof(struct _page_list_item)) != sizeof(struct _page_list_item)) {
+		lprint("[erro] Failed to write page item\n");
+		return;
+	}
+	base->page_offset += sizeof(struct _page_list_item);
+}
+
 void base_sync(base_t *base, pager_t *core) {
 	struct _base super;
 	nullify(&super, sizeof(struct _base));
 	super.zero_key = base->zero_key;
 	super.instance_key = base->instance_key;
-	super.page_key = base->page_key;
 	super.lock = base->lock;
 	super.version = to_be16(VERSION_MAJOR);
 	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
 	super.page_sz = to_be64(core->pagesz);
 	super.page_cnt = to_be32(core->pagecnt);
-	super.page_offset = to_be64(core->offset);
+	super.page_offset = to_be32(base->page_offset);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -76,13 +94,14 @@ void base_sync(base_t *base, pager_t *core) {
 		return;
 	}
 	if (write(base->fd, &super, sizeof(struct _base)) != sizeof(struct _base)) {
-		lprint("[erro] Failed to read " BASECONTROL "\n");
+		lprint("[erro] Failed to write " BASECONTROL "\n");
 		return;
 	}
 }
 
 void base_init(base_t *base, pager_t *core) {
 	nullify(base, sizeof(base_t));
+	nullify(core, sizeof(pager_t));
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */
@@ -99,12 +118,11 @@ void base_init(base_t *base, pager_t *core) {
 
 		base->zero_key = super.zero_key;
 		base->instance_key = super.instance_key;
-		base->page_key = super.page_key;
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
 		core->pagesz = from_be64(super.page_sz);
 		core->pagecnt = from_be32(super.page_cnt);
-		core->offset = from_be64(super.page_offset);
+		base->page_offset = from_be32(super.page_offset);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -125,13 +143,9 @@ void base_init(base_t *base, pager_t *core) {
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
-		quid_create(&base->page_key);
 		base->bincnt = 0;
+		base->page_offset = sizeof(struct _base);
 		exit_status = EXSTAT_INVALID;
-
-		char page_quid[SHORT_QUID_LENGTH];
-		quidtoshortstr(page_quid, &base->page_key);
-		pager_init(core, page_quid);
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
@@ -142,6 +156,9 @@ void base_init(base_t *base, pager_t *core) {
 		}
 
 		base_sync(base, core);
+
+		add_page_item(base, core);
+
 		exit_status = EXSTAT_CHECKPOINT;
 	}
 }

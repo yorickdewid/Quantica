@@ -100,12 +100,6 @@ char *get_session_key() {
 	return buf;
 }
 
-char *get_page_key() {
-	static char buf[SHORT_QUID_LENGTH + 1];
-	quidtoshortstr(buf, &control.page_key);
-	return buf;
-}
-
 char *get_dataheap_name() {
 	return control.bindata;
 }
@@ -233,9 +227,9 @@ void quid_generate(char *quid) {
 }
 
 void quid_generate_short(char *quid) {
-	quid_t key;
-	quid_create(&key);
-	quidtoshortstr(quid, &key);
+	quid_short_t key;
+	quid_short_create(&key);
+	quid_shorttostr(quid, &key);
 }
 
 void filesync() {

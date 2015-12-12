@@ -45,6 +45,15 @@ void quid_create(quid_t *uid) {
 	format_quid(uid, clockseq, timestamp);
 }
 
+/* Construct short QUID */
+void quid_short_create(quid_short_t *uid) {
+	for (int i = 0; i < 4; ++i) {
+		uid->node[i] = arc4random();
+	}
+	uid->node[4] = (arc4random() & 0xf0);
+	uid->node[5] = (arc4random() & 0xff);
+}
+
 /*
  * Format QUID from the timestamp, clocksequence, and node ID
  * Structure succeeds version 3
@@ -121,7 +130,7 @@ void quidtostr(char *s, quid_t *u) {
 }
 
 /* Print QUID to short string */
-void quidtoshortstr(char *s, quid_t *u) {
+void quid_shorttostr(char *s, quid_short_t *u) {
 	snprintf(s, SHORT_QUID_LENGTH + 1, "{%.2x%.2x%.2x%.2x%.2x%.2x}"
 	         , u->node[0]
 	         , u->node[1]
