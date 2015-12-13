@@ -9,6 +9,7 @@
 #include <error.h>
 #include "arc4random.h"
 #include "diagnose.h"
+#include "zmalloc.h"
 #include "pager.h"
 #include "base.h"
 
@@ -54,22 +55,29 @@ char *generate_bindata_name(base_t *base) {
 }
 
 void add_page_item(base_t *base, pager_t *core) {
-	struct _page_list_item item;
-	nullify(&item, sizeof(struct _page_list_item));
+	struct _page_list_item super;
+	nullify(&super, sizeof(struct _page_list_item));
 
-	item.sequence = to_be32(++core->pagecnt);
-	item.next = 0;
-	quid_short_create(&item.page_key);
+	page_list_item_t *item = (page_list_item_t *)tree_zcalloc(1, sizeof(page_list_item_t), core->pages);
+	item->sequence = ++core->pagecnt;
+	item->next = NULL;
+	quid_short_create(&item->page_key);
+
+	super.sequence = to_be32(++core->pagecnt);
+	super.next = 0;
+	super.page_key = item->page_key;
 
 	if (lseek(base->fd, base->page_offset, SEEK_SET) < 0) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
 		return;
 	}
-	if (write(base->fd, &item, sizeof(struct _page_list_item)) != sizeof(struct _page_list_item)) {
+	if (write(base->fd, &super, sizeof(struct _page_list_item)) != sizeof(struct _page_list_item)) {
 		lprint("[erro] Failed to write page item\n");
 		return;
 	}
+
 	base->page_offset += sizeof(struct _page_list_item);
+	core->pages[item->sequence] = item;
 }
 
 void base_sync(base_t *base, pager_t *core) {
@@ -145,6 +153,7 @@ void base_init(base_t *base, pager_t *core) {
 		quid_create(&base->zero_key);
 		base->bincnt = 0;
 		base->page_offset = sizeof(struct _base);
+		core->pages = (page_list_item_t **)tree_zcalloc(5, sizeof(page_list_item_t *), NULL);
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
@@ -165,6 +174,7 @@ void base_init(base_t *base, pager_t *core) {
 
 void base_close(base_t *base, pager_t *core) {
 	exit_status = EXSTAT_SUCCESS;
+	tree_zfree(core->pages);
 	base_sync(base, core);
 	close(base->fd);
 	lprint("[info] Exist with EXSTAT_SUCCESS\n");

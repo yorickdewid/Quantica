@@ -10,9 +10,16 @@
 #define BINDATA_LENGTH	16
 #define MAGIC_LENGTH	10
 
+typedef struct page_list_item {
+	unsigned int sequence;
+	struct page_list_item *next;
+	quid_short_t page_key;
+} page_list_item_t;
+
 typedef struct {
 	unsigned int pagesz;
 	unsigned int pagecnt;
+	page_list_item_t **pages;
 	int fd;
 } pager_t;
 
