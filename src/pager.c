@@ -27,16 +27,47 @@ static void create_page(base_t *base, pager_t *core) {
 		return; //TODO err
 
 	super.sequence = to_be32(page->sequence);
-	super.page_key = page->page_key;
 
-	if (write(page->fd, &super, sizeof(struct _page)) < 0) {
+	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
 		lprint("[erro] Failed to write page item\n");
 		return;
 	}
 
 	core->pages = tree_zmalloc(DEFAULT_PAGE_ALLOC, core);
 	core->pages[core->count++] = page;
-	base_list_add(base, page->sequence, &page->page_key);
+	base_list_add(base, &page->page_key);
+}
+
+static void open_page(quid_short_t *page_key, pager_t *core) {
+	struct _page super;
+	char name[SHORT_QUID_LENGTH + 1];
+	nullify(&super, sizeof(struct _page));
+
+	page_t *page = (page_t *)tree_zcalloc(1, sizeof(page_t), core);
+	quid_shorttostr(name, page_key);
+	page->fd = open(name, O_RDWR | O_BINARY);
+	if (page->fd < 0)
+		return; //TODO err
+
+	if (read(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
+		lprint("[erro] Failed to read page item\n");
+		return;
+	}
+
+	page->page_key = *page_key;
+	page->sequence = from_be32(super.sequence);
+	core->pages[core->count++] = page;
+}
+
+static void flush_page(page_t *page) {
+	struct _page super;
+	nullify(&super, sizeof(struct _page));
+
+	super.sequence = to_be32(page->sequence);
+	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
+		lprint("[erro] Failed to write page item\n");
+		return;
+	}
 }
 
 /*
@@ -68,19 +99,18 @@ void pager_init(base_t *base) {
 			page_core->size = PAGE_SIZE;
 			create_page(base, page_core);
 		} else {
-			// read pages
-			/*for (unsigned short x = 0; x < from_be16(list.size); ++x) {
-				char name[SHORT_QUID_LENGTH + 1];
-				quid_shorttostr(name, &list.item[x].page_key);
-
-			}*/
+			//page_core->sequence = 1;//TOOD get seq from base
+			page_core->pages = tree_zmalloc(list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size, page_core);
+			for (unsigned short x = 0; x < list_size; ++x) {
+				open_page(&list.item[x].page_key, page_core);
+			}
 		}
 	}
 }
 
 void pager_close(base_t *base) {
-	// flush page by page
 	for (unsigned int i = 0; i < ((pager_t *)base->core)->count; ++i) {
+		flush_page(((pager_t *)base->core)->pages[i]);
 		close(((pager_t *)base->core)->pages[i]->fd);
 	}
 	tree_zfree(base->core);

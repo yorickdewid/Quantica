@@ -10,7 +10,6 @@
 
 struct _page {
 	__be32 sequence;
-	quid_short_t page_key;
 } __attribute__((packed));
 
 typedef struct page {

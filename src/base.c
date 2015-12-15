@@ -76,7 +76,7 @@ void base_list(base_t *base) {
 			char name[SHORT_QUID_LENGTH + 1];
 			quid_shorttostr(name, &list.item[x].page_key);
 
-			printf("Location %d:%d key: %s, seq: %d, free: %d\n", i, x, name, from_be32(list.item[x].sequence), list.item[x].free);
+			printf("Location %d:%d key: %s, free: %d\n", i, x, name, list.item[x].free);
 		}
 	}
 }
@@ -116,7 +116,7 @@ void base_list_delete(base_t *base, quid_short_t *key) {
 	}
 }
 
-void base_list_add(base_t *base, unsigned int sequence, quid_short_t *key) {
+void base_list_add(base_t *base, quid_short_t *key) {
 	struct page_list list;
 	nullify(&list, sizeof(struct page_list));
 	bool try_next = TRUE;
@@ -155,7 +155,6 @@ void base_list_add(base_t *base, unsigned int sequence, quid_short_t *key) {
 		}
 
 write_page:
-		list.item[idx].sequence = to_be32(sequence);
 		list.item[idx].free = 0;
 		memcpy(&list.item[idx].page_key, key, sizeof(quid_short_t));
 		if (!fill_gap)

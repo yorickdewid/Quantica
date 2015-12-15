@@ -12,7 +12,6 @@
 #define PAGE_LIST_SIZE	10
 
 struct _page_list_item {
-	__be32 sequence;
 	quid_short_t page_key;
 	char free;
 } __attribute__((packed));
@@ -51,7 +50,7 @@ struct _base {
 
 char *generate_bindata_name(struct base *base);
 
-void base_list_add(base_t *base, unsigned int sequence, quid_short_t *key);
+void base_list_add(base_t *base, quid_short_t *key);
 void base_list_delete(base_t *base, quid_short_t *key);
 
 void base_sync(base_t *base);
