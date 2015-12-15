@@ -77,15 +77,6 @@ void base_list(base_t *base) {
 			quid_shorttostr(name, &list.item[x].page_key);
 
 			printf("Location %d:%d key: %s, seq: %d, free: %d\n", i, x, name, from_be32(list.item[x].sequence), list.item[x].free);
-
-			if (lseek(base->fd, offset, SEEK_SET) < 0) {
-				lprint("[erro] Failed to read " BASECONTROL "\n");
-				return;
-			}
-			if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
-				lprint("[erro] Failed to write " BASECONTROL "\n");
-				return;
-			}
 		}
 	}
 }
@@ -178,8 +169,10 @@ write_page:
 			lprint("[erro] Failed to write " BASECONTROL "\n");
 			return;
 		}
-		if (!try_next)
+		if (!try_next) {
+			base_sync(base);
 			return;
+		}
 	}
 }
 
@@ -192,9 +185,6 @@ void base_sync(base_t *base) {
 	super.version = to_be16(VERSION_MAJOR);
 	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
-	// super.page_sz = to_be64(base->core.pagesz);
-	// super.page_cnt = to_be32(base->core.pagecnt);
-	super.page_offset = to_be32(base->page_offset);
 	super.page_list_count = to_be16(base->page_list_count);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
@@ -231,10 +221,8 @@ void base_init(base_t *base) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
-		// base->core.pagesz = from_be64(super.page_sz);
-		// base->core.pagecnt = from_be32(super.page_cnt);
-		base->page_offset = from_be32(super.page_offset);
 		base->page_list_count = from_be16(super.page_list_count);
+		base->core = NULL;
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -256,9 +244,8 @@ void base_init(base_t *base) {
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
 		base->bincnt = 0;
-		base->page_offset = sizeof(struct _base);
 		base->page_list_count = 0;
-		// base->core.pages = (page_list_item_t **)tree_zcalloc(INIT_PAGE_ALLOC, sizeof(page_list_item_t *), NULL);
+		base->core = NULL;
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
@@ -271,6 +258,7 @@ void base_init(base_t *base) {
 
 		base_sync(base);
 
+		/* We'll need at least one page */
 		struct page_list list;
 		nullify(&list, sizeof(struct page_list));
 		if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
@@ -284,7 +272,6 @@ void base_init(base_t *base) {
 
 void base_close(base_t *base) {
 	exit_status = EXSTAT_SUCCESS;
-	//tree_zfree(base->core.pages);
 	base_sync(base);
 	close(base->fd);
 	lprint("[info] Exist with EXSTAT_SUCCESS\n");

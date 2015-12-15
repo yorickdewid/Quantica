@@ -21,6 +21,7 @@
 #include "dict_marshall.h"
 #include "slay_marshall.h"
 #include "base.h"
+#include "pager.h"
 #include "engine.h"
 #include "bootstrap.h"
 #include "sql.h"
@@ -46,6 +47,7 @@ void start_core() {
 
 	quid_create(&sessionid);
 	base_init(&control);
+	pager_init(&control);
 
 	/* Initialize engine */
 	engine_init(&btx, get_zero_key(), control.bindata);
@@ -64,6 +66,7 @@ void detach_core() {
 
 	/* CLose all databases */
 	engine_close(&btx);
+	pager_close(&control);
 	base_close(&control);
 
 	/* Stop the logger */

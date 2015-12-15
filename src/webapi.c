@@ -1409,7 +1409,6 @@ int start_webapi() {
 	start_core();
 
 	lprint("[info] Starting daemon\n");
-	lprint("[info] Start database core\n");
 	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 	lprintf("[info] Current time: %lld\n", get_timestamp());
 	lprintf("[info] Storage core %s\n", get_zero_key());
