@@ -103,7 +103,7 @@ struct engine_index_list_item {
 
 struct engine_index_list {
 	struct engine_index_list_item items[LIST_SIZE];
-	uint16_t size;
+	uint16_t size;//TODO bitflip
 	__be64 link;
 };
 

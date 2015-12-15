@@ -17,6 +17,8 @@
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 
+#define INIT_PAGE_ALLOC	5
+
 static enum {
 	EXSTAT_ERROR,
 	EXSTAT_INVALID,
@@ -54,33 +56,134 @@ char *generate_bindata_name(base_t *base) {
 	return buf;
 }
 
-void add_page_item(base_t *base, pager_t *core) {
-	struct _page_list_item super;
-	nullify(&super, sizeof(struct _page_list_item));
+#ifdef DEBUG
+void base_list(base_t *base) {
+	struct page_list list;
+	nullify(&list, sizeof(struct page_list));
 
-	page_list_item_t *item = (page_list_item_t *)tree_zcalloc(1, sizeof(page_list_item_t), core->pages);
-	item->sequence = ++core->pagecnt;
-	item->next = NULL;
-	quid_short_create(&item->page_key);
+	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
+		unsigned long offset = sizeof(struct _base) * (i + 1);
+		if (lseek(base->fd, offset, SEEK_SET) < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
 
-	super.sequence = to_be32(++core->pagecnt);
-	super.next = 0;
-	super.page_key = item->page_key;
+		for (unsigned short x = 0; x < from_be16(list.size); ++x) {
+			char name[SHORT_QUID_LENGTH + 1];
+			quid_shorttostr(name, &list.item[x].page_key);
 
-	if (lseek(base->fd, base->page_offset, SEEK_SET) < 0) {
-		lprint("[erro] Failed to read " BASECONTROL "\n");
-		return;
+			printf("Location %d:%d key: %s, seq: %d, free: %d\n", i, x, name, from_be32(list.item[x].sequence), list.item[x].free);
+
+			if (lseek(base->fd, offset, SEEK_SET) < 0) {
+				lprint("[erro] Failed to read " BASECONTROL "\n");
+				return;
+			}
+			if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+				lprint("[erro] Failed to write " BASECONTROL "\n");
+				return;
+			}
+		}
 	}
-	if (write(base->fd, &super, sizeof(struct _page_list_item)) != sizeof(struct _page_list_item)) {
-		lprint("[erro] Failed to write page item\n");
-		return;
-	}
+}
+#endif
 
-	base->page_offset += sizeof(struct _page_list_item);
-	core->pages[item->sequence] = item;
+void base_list_delete(base_t *base, quid_short_t *key) {
+	struct page_list list;
+	nullify(&list, sizeof(struct page_list));
+
+	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
+		unsigned long offset = sizeof(struct _base) * (i + 1);
+		if (lseek(base->fd, offset, SEEK_SET) < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+
+		for (unsigned short x = 0; x < from_be16(list.size); ++x) {
+			if (!quid_shortcmp(&list.item[x].page_key, key)) {
+				list.item[x].free = 1;
+
+				if (lseek(base->fd, offset, SEEK_SET) < 0) {
+					lprint("[erro] Failed to read " BASECONTROL "\n");
+					return;
+				}
+				if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+					lprint("[erro] Failed to write " BASECONTROL "\n");
+					return;
+				}
+				return;
+
+			}
+		}
+	}
 }
 
-void base_sync(base_t *base, pager_t *core) {
+void base_list_add(base_t *base, unsigned int sequence, quid_short_t *key) {
+	struct page_list list;
+	nullify(&list, sizeof(struct page_list));
+	bool try_next = TRUE;
+	bool fill_gap = FALSE;
+
+	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
+		unsigned long offset = sizeof(struct _base) * (i + 1);
+		if (lseek(base->fd, offset, SEEK_SET) < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+
+		unsigned short idx = from_be16(list.size);
+		for (unsigned short x = 0; x < idx; ++x) {
+			if (list.item[x].free) {
+				idx = x;
+				try_next = FALSE;
+				fill_gap = TRUE;
+				goto write_page;
+			}
+		}
+
+		if (idx == PAGE_LIST_SIZE) {
+			if (i != base->page_list_count) {
+				continue;
+			} else {
+				nullify(&list, sizeof(struct page_list));
+				offset = sizeof(struct _base) * (++base->page_list_count + 1);
+				idx = 0;
+				try_next = FALSE;
+			}
+		}
+
+write_page:
+		list.item[idx].sequence = to_be32(sequence);
+		list.item[idx].free = 0;
+		memcpy(&list.item[idx].page_key, key, sizeof(quid_short_t));
+		if (!fill_gap)
+			list.size = to_be16(++idx);
+
+		if (lseek(base->fd, offset, SEEK_SET) < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+		if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+			lprint("[erro] Failed to write " BASECONTROL "\n");
+			return;
+		}
+		if (!try_next)
+			return;
+	}
+}
+
+void base_sync(base_t *base) {
 	struct _base super;
 	nullify(&super, sizeof(struct _base));
 	super.zero_key = base->zero_key;
@@ -89,9 +192,10 @@ void base_sync(base_t *base, pager_t *core) {
 	super.version = to_be16(VERSION_MAJOR);
 	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
-	super.page_sz = to_be64(core->pagesz);
-	super.page_cnt = to_be32(core->pagecnt);
+	// super.page_sz = to_be64(base->core.pagesz);
+	// super.page_cnt = to_be32(base->core.pagecnt);
 	super.page_offset = to_be32(base->page_offset);
+	super.page_list_count = to_be16(base->page_list_count);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -107,9 +211,8 @@ void base_sync(base_t *base, pager_t *core) {
 	}
 }
 
-void base_init(base_t *base, pager_t *core) {
+void base_init(base_t *base) {
 	nullify(base, sizeof(base_t));
-	nullify(core, sizeof(pager_t));
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */
@@ -128,9 +231,10 @@ void base_init(base_t *base, pager_t *core) {
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
-		core->pagesz = from_be64(super.page_sz);
-		core->pagecnt = from_be32(super.page_cnt);
+		// base->core.pagesz = from_be64(super.page_sz);
+		// base->core.pagecnt = from_be32(super.page_cnt);
 		base->page_offset = from_be32(super.page_offset);
+		base->page_list_count = from_be16(super.page_list_count);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -142,7 +246,7 @@ void base_init(base_t *base, pager_t *core) {
 			if (diag_exerr(base)) {
 				exit_status = EXSTAT_CHECKPOINT;
 			} else {
-				exit(1);
+				exit(1);//TODO exist?
 			}
 		}
 		exit_status = EXSTAT_CHECKPOINT;
@@ -153,7 +257,8 @@ void base_init(base_t *base, pager_t *core) {
 		quid_create(&base->zero_key);
 		base->bincnt = 0;
 		base->page_offset = sizeof(struct _base);
-		core->pages = (page_list_item_t **)tree_zcalloc(5, sizeof(page_list_item_t *), NULL);
+		base->page_list_count = 0;
+		// base->core.pages = (page_list_item_t **)tree_zcalloc(INIT_PAGE_ALLOC, sizeof(page_list_item_t *), NULL);
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
@@ -164,18 +269,23 @@ void base_init(base_t *base, pager_t *core) {
 			return;
 		}
 
-		base_sync(base, core);
+		base_sync(base);
 
-		add_page_item(base, core);
+		struct page_list list;
+		nullify(&list, sizeof(struct page_list));
+		if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+			lprint("[erro] Failed to write " BASECONTROL "\n");
+			return;
+		}
 
 		exit_status = EXSTAT_CHECKPOINT;
 	}
 }
 
-void base_close(base_t *base, pager_t *core) {
+void base_close(base_t *base) {
 	exit_status = EXSTAT_SUCCESS;
-	tree_zfree(core->pages);
-	base_sync(base, core);
+	//tree_zfree(base->core.pages);
+	base_sync(base);
 	close(base->fd);
 	lprint("[info] Exist with EXSTAT_SUCCESS\n");
 }

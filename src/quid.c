@@ -113,6 +113,11 @@ int quidcmp(const quid_t *a, const quid_t *b) {
 	return memcmp(a, b, sizeof(quid_t));
 }
 
+/* Compare two identifiers */
+int quid_shortcmp(const quid_short_t *a, const quid_short_t *b) {
+	return memcmp(a, b, sizeof(quid_short_t));
+}
+
 /* Print QUID to string */
 void quidtostr(char *s, quid_t *u) {
 	snprintf(s, QUID_LENGTH + 1, "{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}"

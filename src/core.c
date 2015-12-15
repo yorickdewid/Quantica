@@ -28,7 +28,7 @@
 
 static struct engine btx;
 static base_t control;
-static pager_t storage_core;
+//static pager_t storage_core;
 static uint8_t ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
@@ -45,7 +45,7 @@ void start_core() {
 	error_clear();
 
 	quid_create(&sessionid);
-	base_init(&control, &storage_core);
+	base_init(&control);
 
 	/* Initialize engine */
 	engine_init(&btx, get_zero_key(), control.bindata);
@@ -64,7 +64,7 @@ void detach_core() {
 
 	/* CLose all databases */
 	engine_close(&btx);
-	base_close(&control, &storage_core);
+	base_close(&control);
 
 	/* Stop the logger */
 	stop_log();
@@ -77,7 +77,7 @@ void set_instance_name(char name[]) {
 	strtoupper(name);
 	strlcpy(control.instance_name, name, INSTANCE_LENGTH);
 	control.instance_name[INSTANCE_LENGTH - 1] = '\0';
-	base_sync(&control, &storage_core);
+	base_sync(&control);
 }
 
 bool get_ready_status() {
@@ -234,7 +234,7 @@ void quid_generate_short(char *quid) {
 
 void filesync() {
 	engine_sync(&btx);
-	base_sync(&control, &storage_core);
+	base_sync(&control);
 }
 
 int db_put(char *quid, int *items, const void *data, size_t data_len) {

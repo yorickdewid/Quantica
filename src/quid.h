@@ -46,6 +46,7 @@ void quid_shorttostr(char *s, quid_short_t *u);
  * Compare to QUID keys
  */
 int quidcmp(const quid_t *a, const quid_t *b);
+int quid_shortcmp(const quid_short_t *a, const quid_short_t *b);
 
 /*
  * Convert QUID key to string
