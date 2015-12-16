@@ -21,7 +21,7 @@ static void create_page(base_t *base, pager_t *core) {
 	page_t *page = (page_t *)tree_zcalloc(1, sizeof(page_t), core);
 	quid_short_create(&page->page_key);
 	quid_shorttostr(name, &page->page_key);
-	page->sequence = core->sequence++;
+	page->sequence = base->page_sequence++;
 	page->fd = open(name, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	if (page->fd < 0)
 		return; //TODO err
@@ -95,17 +95,19 @@ void pager_init(base_t *base) {
 		if (i == 0 && list_size == 0) {
 			lprint("[info] Creating database heap\n");
 
-			page_core->sequence = 1;
-			page_core->size = PAGE_SIZE;
+			base->page_size = PAGE_SIZE;
 			create_page(base, page_core);
+			goto flush_base;
 		} else {
-			//page_core->sequence = 1;//TOOD get seq from base
 			page_core->pages = tree_zmalloc(list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size, page_core);
 			for (unsigned short x = 0; x < list_size; ++x) {
 				open_page(&list.item[x].page_key, page_core);
 			}
 		}
 	}
+
+flush_base:
+	base_sync(base);
 }
 
 void pager_close(base_t *base) {

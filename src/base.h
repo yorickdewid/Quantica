@@ -30,9 +30,10 @@ typedef struct base {
 	unsigned short version;
 	int fd;
 	char bindata[BINDATA_LENGTH];
-	unsigned int page_offset;
 	int bincnt;
-	unsigned int page_list_count;
+	unsigned short page_sequence;
+	unsigned short page_list_count;
+	unsigned char page_size;
 } base_t;
 
 struct _base {
@@ -43,7 +44,9 @@ struct _base {
 	quid_t zero_key;
 	__be16 version;
 	__be32	bincnt;
+	__be32	page_sequence;
 	__be16 page_list_count;
+	uint8_t page_size;
 	uint8_t lock;
 	uint8_t exitstatus;
 } __attribute__((packed));

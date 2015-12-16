@@ -6,7 +6,8 @@
 #include "base.h"
 #include "quid.h"
 
-#define PAGE_SIZE	(1024 * 1024 * 1024 * (unsigned long long)4) // 4 Mb
+#define MIN_PAGE_SIZE	4096 // 4 kb
+#define PAGE_SIZE		10 // 4 Mb
 
 struct _page {
 	__be32 sequence;
@@ -19,9 +20,7 @@ typedef struct page {
 } page_t;
 
 typedef struct {
-	unsigned long long size;
 	unsigned int count;
-	unsigned int sequence;
 	page_t **pages;
 } pager_t;
 
