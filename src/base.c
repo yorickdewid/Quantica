@@ -187,6 +187,8 @@ void base_sync(base_t *base) {
 	super.page_list_count = to_be16(base->page_list_count);
 	super.page_size = base->page_size;
 	super.page_sequence = to_be32(base->page_sequence);
+	super.page_offset = to_be64(base->page_offset);
+	super.page_offset_free = to_be64(base->page_offset_free);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -225,6 +227,8 @@ void base_init(base_t *base) {
 		base->page_list_count = from_be16(super.page_list_count);
 		base->page_size = super.page_size;
 		base->page_sequence = from_be32(super.page_sequence);
+		base->page_offset = from_be64(super.page_offset);
+		base->page_offset_free = from_be64(super.page_offset_free);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -245,8 +249,6 @@ void base_init(base_t *base) {
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
-		base->bincnt = 0;
-		base->page_list_count = 0;
 		base->page_sequence = 1;
 		exit_status = EXSTAT_INVALID;
 

@@ -13,6 +13,13 @@
 
 #define DEFAULT_PAGE_ALLOC	10
 
+static size_t page_align(size_t val) {
+	size_t i = 1;
+	while (i < val)
+		i <<= 1;
+	return i;
+}
+
 static void create_page(base_t *base, pager_t *core) {
 	struct _page super;
 	char name[SHORT_QUID_LENGTH + 1];
@@ -68,6 +75,17 @@ static void flush_page(page_t *page) {
 		lprint("[erro] Failed to write page item\n");
 		return;
 	}
+}
+
+unsigned long long pager_alloc(base_t *base, size_t len) {
+	if (!len)
+		return 0; // thow err
+
+	len = page_align(len);
+	unsigned long long offset = base->page_offset;
+	base->page_offset = offset + len;
+
+	return offset;
 }
 
 /*
