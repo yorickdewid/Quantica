@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <math.h>
 
 #include <config.h>
 #include <common.h>
@@ -19,6 +20,17 @@ static size_t page_align(size_t val) {
 		i <<= 1;
 	return i;
 }
+
+#ifdef DEBUG
+void pager_list(base_t *base) {
+	for (unsigned int i = 0; i < ((pager_t *)base->core)->count; ++i) {
+		char name[SHORT_QUID_LENGTH + 1];
+		quid_shorttostr(name, &((pager_t *)base->core)->pages[i]->page_key);
+
+		printf("Location %d fd: %d, key: %s, sequence: %u\n", i, ((pager_t *)base->core)->pages[i]->fd, name, ((pager_t *)base->core)->pages[i]->sequence);
+	}
+}
+#endif
 
 static void create_page(base_t *base, pager_t *core) {
 	struct _page super;
@@ -83,9 +95,23 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 
 	len = page_align(len);
 	unsigned long long offset = base->page_offset;
+	printf("OFFSET %llu\n", base->page_offset);
 	base->page_offset = offset + len;
 
 	return offset;
+}
+
+int pager_get_fd(base_t *base, unsigned long long *offset) {
+	unsigned long long page_size = MIN_PAGE_SIZE << base->page_size;
+	unsigned long long page_offset = *offset % page_size;
+	unsigned long long page = floor(*offset / page_size);
+
+	if (page > (((pager_t *)base->core)->count - 1)) {
+		return -1; // thow err
+	}
+
+	*offset = page_offset;
+	return ((pager_t *)base->core)->pages[page]->fd;
 }
 
 /*
@@ -113,7 +139,6 @@ void pager_init(base_t *base) {
 		if (i == 0 && list_size == 0) {
 			lprint("[info] Creating database heap\n");
 
-			base->page_size = PAGE_SIZE;
 			create_page(base, page_core);
 			goto flush_base;
 		} else {

@@ -6,9 +6,6 @@
 #include "base.h"
 #include "quid.h"
 
-#define MIN_PAGE_SIZE	4096 // 4 kb
-#define PAGE_SIZE		10 // 4 Mb
-
 struct _page {
 	__be32 sequence;
 } __attribute__((packed));
@@ -24,6 +21,8 @@ typedef struct {
 	page_t **pages;
 } pager_t;
 
+unsigned long long pager_alloc(base_t *base, size_t len);
+int pager_get_fd(base_t *base, unsigned long long *offset);
 void pager_init(base_t *base);
 void pager_close(base_t *base);
 
