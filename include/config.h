@@ -5,7 +5,7 @@
 #define INSTANCE_PREFIX	"QUANTZ"
 #define VERSION_MAJOR	0
 #define VERSION_MINOR	8
-#define VERSION_PATCH	15
+#define VERSION_PATCH	17
 #define LOGFILE			"quantica.log"
 #define BINDATA			"QUBIN_DATA"
 

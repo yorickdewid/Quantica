@@ -9,6 +9,7 @@
 #include <common.h>
 #include "quid.h"
 #include "marshall.h"
+#include "base.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
 #define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist_item))
@@ -139,7 +140,7 @@ struct engine_stats {
 	uint64_t index_list_size;
 };
 
-struct engine {
+typedef struct engine {
 	uint64_t top;
 	uint64_t free_top;
 	uint64_t alloc;
@@ -149,10 +150,11 @@ struct engine {
 	int fd;
 	int db_fd;
 	bool lock;
+	base_t *base;
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];
-};
+} engine_t;
 
 bool engine_keytype_hasdata(enum key_type type);
 

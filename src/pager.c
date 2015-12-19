@@ -40,7 +40,7 @@ static void create_page(base_t *base, pager_t *core) {
 	page_t *page = (page_t *)tree_zcalloc(1, sizeof(page_t), core);
 	quid_short_create(&page->page_key);
 	quid_shorttostr(name, &page->page_key);
-	page->sequence = base->page_sequence++;
+	page->sequence = base->pager.sequence++;
 	page->fd = open(name, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 	if (page->fd < 0)
 		return; //TODO err
@@ -94,23 +94,21 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 		return 0; // thow err
 
 	len = page_align(len);
-	unsigned long long offset = base->page_offset;
-	printf("OFFSET %llu\n", base->page_offset);
-	base->page_offset = offset + len;
+	unsigned long long offset = base->pager.offset;
+	base->pager.offset = offset + len;
 
 	return offset;
 }
 
 int pager_get_fd(base_t *base, unsigned long long *offset) {
-	unsigned long long page_size = MIN_PAGE_SIZE << base->page_size;
-	unsigned long long page_offset = *offset % page_size;
+	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 
 	if (page > (((pager_t *)base->core)->count - 1)) {
 		return -1; // thow err
 	}
 
-	*offset = page_offset;
+	*offset %= page_size; //TODO test
 	return ((pager_t *)base->core)->pages[page]->fd;
 }
 

@@ -185,10 +185,10 @@ void base_sync(base_t *base) {
 	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
 	super.page_list_count = to_be16(base->page_list_count);
-	super.page_size = base->page_size;
-	super.page_sequence = to_be32(base->page_sequence);
-	super.page_offset = to_be64(base->page_offset);
-	super.page_offset_free = to_be64(base->page_offset_free);
+	super.pager.size = base->pager.size;
+	super.pager.sequence = to_be32(base->pager.sequence);
+	super.pager.offset = to_be64(base->pager.offset);
+	super.pager.offset_free = to_be64(base->pager.offset_free);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -225,10 +225,10 @@ void base_init(base_t *base) {
 		base->lock = super.lock;
 		base->bincnt = from_be32(super.bincnt);
 		base->page_list_count = from_be16(super.page_list_count);
-		base->page_size = super.page_size;
-		base->page_sequence = from_be32(super.page_sequence);
-		base->page_offset = from_be64(super.page_offset);
-		base->page_offset_free = from_be64(super.page_offset_free);
+		base->pager.size = super.pager.size;
+		base->pager.sequence = from_be32(super.pager.sequence);
+		base->pager.offset = from_be64(super.pager.offset);
+		base->pager.offset_free = from_be64(super.pager.offset_free);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -249,7 +249,8 @@ void base_init(base_t *base) {
 		/* Create new database */
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
-		base->page_sequence = 1;
+		base->pager.sequence = 1;
+		base->pager.size = PAGE_SIZE;
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);

@@ -29,7 +29,6 @@
 
 static struct engine btx;
 static base_t control;
-//static pager_t storage_core;
 static uint8_t ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
@@ -64,7 +63,7 @@ void detach_core() {
 	if (!ready)
 		return;
 
-	/* CLose all databases */
+	/* Close all databases */
 	engine_close(&btx);
 	pager_close(&control);
 	base_close(&control);
