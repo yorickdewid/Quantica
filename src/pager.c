@@ -18,12 +18,14 @@ struct _page {
 	__be32 sequence;
 } __attribute__((packed));
 
+#if 0
 static size_t page_align(size_t val) {
 	size_t i = 1;
 	while (i < val)
 		i <<= 1;
 	return i;
 }
+#endif
 
 #ifdef DEBUG
 void pager_list(base_t *base) {
@@ -55,7 +57,10 @@ static void create_page(base_t *base, pager_t *core) {
 		return;
 	}
 
-	core->pages = tree_zmalloc(DEFAULT_PAGE_ALLOC, core);
+	if (core->count >= core->allocated) {
+		core->allocated += DEFAULT_PAGE_ALLOC;
+		core->pages = (page_t **)tree_zrealloc(core->pages, core->allocated * sizeof(page_t *));
+	}
 	core->pages[core->count++] = page;
 	base_list_add(base, &page->page_key);
 }
@@ -78,6 +83,10 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 
 	page->page_key = *page_key;
 	page->sequence = from_be32(super.sequence);
+	if (core->count >= core->allocated) {
+		core->allocated += DEFAULT_PAGE_ALLOC;
+		core->pages = (page_t **)tree_zrealloc(core->pages, core->allocated * sizeof(page_t *));
+	}
 	core->pages[core->count++] = page;
 }
 
@@ -97,14 +106,13 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 		return 0; // thow err
 
 	bool flush = FALSE;
-	len = page_align(len);
+	//len = page_align(len);
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long offset = base->pager.offset;
 
 	/* Create new page */
-	if (offset + len >= page_size) {
+	if ((offset % page_size) + len >= page_size) {
 		create_page(base, (pager_t *)base->core);
-		base->pager.offset = sizeof(struct _page);
 
 		offset = ((((pager_t *)base->core)->count - 1) * page_size);
 		offset += sizeof(struct _page);
@@ -112,7 +120,6 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	}
 
 	base->pager.offset = offset + len;
-
 	if (flush) {
 		base_sync(base);
 	}
@@ -128,7 +135,7 @@ int pager_get_fd(base_t *base, unsigned long long *offset) {
 		return -1; // thow err
 	}
 
-	*offset %= page_size; //TODO test
+	*offset %= page_size;
 	return ((pager_t *)base->core)->pages[page]->fd;
 }
 
@@ -168,11 +175,14 @@ void pager_init(base_t *base) {
 		if (i == 0 && list_size == 0) {
 			lprint("[info] Creating database heap\n");
 
+			page_core->allocated = DEFAULT_PAGE_ALLOC;
+			page_core->pages = (page_t **)tree_zcalloc(page_core->allocated, sizeof(page_t *), page_core);
 			create_page(base, page_core);
 			base->pager.offset = sizeof(struct _page);
 			goto flush_base;
 		} else {
-			page_core->pages = tree_zmalloc(list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size, page_core);
+			page_core->allocated = list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size + DEFAULT_PAGE_ALLOC;
+			page_core->pages = (page_t **)tree_zcalloc(page_core->allocated, sizeof(page_t *), page_core);
 			for (unsigned short x = 0; x < list_size; ++x) {
 				open_page(&list.item[x].page_key, page_core);
 			}

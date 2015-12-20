@@ -14,6 +14,7 @@ typedef struct {
 
 typedef struct {
 	unsigned int count;
+	unsigned int allocated;
 	page_t **pages;
 } pager_t;
 

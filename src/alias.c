@@ -1,5 +1,6 @@
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <config.h>
@@ -26,7 +27,7 @@ struct _alias_list {
 } __attribute__((packed));
 
 /* Read list structure from offset */
-static struct _alias_list *get_tablelist(base_t *base, unsigned long long offset) {
+static struct _alias_list *get_alias_list(base_t *base, unsigned long long offset) {
 	int fd = pager_get_fd(base, &offset);
 	struct _alias_list *list = (struct _alias_list *)zcalloc(1, sizeof(struct _alias_list));
 	if (!list) {
@@ -46,8 +47,7 @@ static struct _alias_list *get_tablelist(base_t *base, unsigned long long offset
 	}
 	return list;
 }
-#include <stdio.h>
-static void flush_tablelist(base_t *base, struct _alias_list *list, unsigned long long offset) {
+static void flush_alias_list(base_t *base, struct _alias_list *list, unsigned long long offset) {
 	int fd = pager_get_fd(base, &offset);
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
@@ -70,7 +70,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 
 	/* does list exist */
 	if (base->offset.alias != 0) {
-		struct _alias_list *list = get_tablelist(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
 		zassert(list->size <= LIST_SIZE - 1);
 
 		memcpy(&list->items[list->size].quid, c_quid, sizeof(quid_t));
@@ -83,7 +83,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 
 		/* Check if we need to add a new table*/
 		if (list->size >= LIST_SIZE) {
-			flush_tablelist(base, list, base->offset.alias);
+			flush_alias_list(base, list, base->offset.alias);
 
 			struct _alias_list *new_list = (struct _alias_list *)zcalloc(1, sizeof(struct _alias_list));
 			if (!new_list) {
@@ -95,10 +95,10 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 			new_list->link = to_be64(base->offset.alias);
 
 			unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _alias_list));
-			flush_tablelist(base, new_list, new_list_offset);
+			flush_alias_list(base, new_list, new_list_offset);
 			base->offset.alias = new_list_offset;
 		} else {
-			flush_tablelist(base, list, base->offset.alias);
+			flush_alias_list(base, list, base->offset.alias);
 		}
 	} else {
 		struct _alias_list *new_list = (struct _alias_list *)zcalloc(1, sizeof(struct _alias_list));
@@ -115,12 +115,15 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		new_list->items[0].hash = to_be32(hash);
 
 		unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _alias_list));
-		flush_tablelist(base, new_list, new_list_offset);
+		flush_alias_list(base, new_list, new_list_offset);
 
 		base->offset.alias = new_list_offset;
+
 		//engine->stats.list_size = 1;//TODO
 	}
-	//flush_super(engine, TRUE);
+
+	//TODO should sync every so many adds (mod)
+	base_sync(base);
 
 	return 0;
 }
