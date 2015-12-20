@@ -12,11 +12,11 @@
 #include "base.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct engine_item))
-#define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist_item))
+#define LIST_SIZE	((8192 - 1) / sizeof(struct engine_tablelist_item)) // deprecated by alias
 
 #define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
-#define LIST_NAME_LENGTH 48
+#define LIST_NAME_LENGTH 48 // deprecated by alias
 
 enum key_lifecycle {
 	MD_LIFECYCLE_FINITE = 0,
@@ -150,7 +150,7 @@ typedef struct engine {
 	int fd;
 	int db_fd;
 	bool lock;
-	base_t *base;
+	base_t *base; //TODO overgangsregeling :)
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];

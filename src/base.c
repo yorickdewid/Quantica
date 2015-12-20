@@ -58,8 +58,8 @@ char *generate_bindata_name(base_t *base) {
 
 #ifdef DEBUG
 void base_list(base_t *base) {
-	struct page_list list;
-	nullify(&list, sizeof(struct page_list));
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
 
 	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
 		unsigned long offset = sizeof(struct _base) * (i + 1);
@@ -67,7 +67,7 @@ void base_list(base_t *base) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
-		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
@@ -83,8 +83,8 @@ void base_list(base_t *base) {
 #endif
 
 void base_list_delete(base_t *base, quid_short_t *key) {
-	struct page_list list;
-	nullify(&list, sizeof(struct page_list));
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
 
 	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
 		unsigned long offset = sizeof(struct _base) * (i + 1);
@@ -92,7 +92,7 @@ void base_list_delete(base_t *base, quid_short_t *key) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
-		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
@@ -105,7 +105,7 @@ void base_list_delete(base_t *base, quid_short_t *key) {
 					lprint("[erro] Failed to read " BASECONTROL "\n");
 					return;
 				}
-				if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+				if (write(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 					lprint("[erro] Failed to write " BASECONTROL "\n");
 					return;
 				}
@@ -117,8 +117,8 @@ void base_list_delete(base_t *base, quid_short_t *key) {
 }
 
 void base_list_add(base_t *base, quid_short_t *key) {
-	struct page_list list;
-	nullify(&list, sizeof(struct page_list));
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
 	bool try_next = TRUE;
 	bool fill_gap = FALSE;
 
@@ -128,7 +128,7 @@ void base_list_add(base_t *base, quid_short_t *key) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
-		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
@@ -147,7 +147,7 @@ void base_list_add(base_t *base, quid_short_t *key) {
 			if (i != base->page_list_count) {
 				continue;
 			} else {
-				nullify(&list, sizeof(struct page_list));
+				nullify(&list, sizeof(struct _page_list));
 				offset = sizeof(struct _base) * (++base->page_list_count + 1);
 				idx = 0;
 				try_next = FALSE;
@@ -164,7 +164,7 @@ write_page:
 			lprint("[erro] Failed to read " BASECONTROL "\n");
 			return;
 		}
-		if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		if (write(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to write " BASECONTROL "\n");
 			return;
 		}
@@ -189,6 +189,9 @@ void base_sync(base_t *base) {
 	super.pager.sequence = to_be32(base->pager.sequence);
 	super.pager.offset = to_be64(base->pager.offset);
 	super.pager.offset_free = to_be64(base->pager.offset_free);
+	super.offset.alias = to_be64(base->offset.alias);
+	super.offset.index = to_be64(base->offset.index);
+	super.offset.heap = to_be64(base->offset.heap);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -229,6 +232,10 @@ void base_init(base_t *base) {
 		base->pager.sequence = from_be32(super.pager.sequence);
 		base->pager.offset = from_be64(super.pager.offset);
 		base->pager.offset_free = from_be64(super.pager.offset_free);
+		base->offset.alias = from_be64(super.offset.alias);
+		base->offset.index = from_be64(super.offset.index);
+		base->offset.heap = from_be64(super.offset.heap);
+
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
@@ -250,7 +257,7 @@ void base_init(base_t *base) {
 		quid_create(&base->instance_key);
 		quid_create(&base->zero_key);
 		base->pager.sequence = 1;
-		base->pager.size = PAGE_SIZE;
+		base->pager.size = DEFAULT_PAGE_SIZE;
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
@@ -264,9 +271,9 @@ void base_init(base_t *base) {
 		base_sync(base);
 
 		/* We'll need at least one page */
-		struct page_list list;
-		nullify(&list, sizeof(struct page_list));
-		if (write(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		struct _page_list list;
+		nullify(&list, sizeof(struct _page_list));
+		if (write(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to write " BASECONTROL "\n");
 			return;
 		}

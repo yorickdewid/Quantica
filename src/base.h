@@ -11,20 +11,20 @@
 #define MAGIC_LENGTH	10
 #define PAGE_LIST_SIZE	10
 
-#define MIN_PAGE_SIZE	4096 // 4 kb
-#define PAGE_SIZE		10 // 4 Mb
+#define MIN_PAGE_SIZE		4096 // 4 kb
+#define DEFAULT_PAGE_SIZE	10 // 4 Mb
 
 struct _page_list_item {
 	quid_short_t page_key;
 	char free;
 } __attribute__((packed));
 
-struct page_list {
+struct _page_list {
 	struct _page_list_item item[PAGE_LIST_SIZE];
 	__be16 size;
-};
+} __attribute__((packed));
 
-typedef struct base {
+typedef struct {
 	quid_t instance_key;
 	quid_t zero_key;
 	void *core;
@@ -40,6 +40,11 @@ typedef struct base {
 		unsigned long long offset_free;
 		unsigned char size;
 	} pager;
+	struct {
+		unsigned long index;
+		unsigned long heap;
+		unsigned long alias;
+	} offset;
 	unsigned short page_list_count;
 } base_t;
 
@@ -54,15 +59,20 @@ struct _base {
 	struct {
 		__be32 sequence;
 		__be64 offset;
-		__be64 offset_free;
+		__be64 offset_free; //TODO move?
 		uint8_t size;
 	} pager;
+	struct {
+		__be64 index;
+		__be64 heap;
+		__be64 alias;
+	} offset;
 	__be16 page_list_count;
 	uint8_t lock;
 	uint8_t exitstatus;
 } __attribute__((packed));
 
-char *generate_bindata_name(struct base *base);
+char *generate_bindata_name(base_t *base);
 
 void base_list_add(base_t *base, quid_short_t *key);
 void base_list_delete(base_t *base, quid_short_t *key);

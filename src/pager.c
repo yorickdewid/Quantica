@@ -14,6 +14,10 @@
 
 #define DEFAULT_PAGE_ALLOC	10
 
+struct _page {
+	__be32 sequence;
+} __attribute__((packed));
+
 static size_t page_align(size_t val) {
 	size_t i = 1;
 	while (i < val)
@@ -46,7 +50,6 @@ static void create_page(base_t *base, pager_t *core) {
 		return; //TODO err
 
 	super.sequence = to_be32(page->sequence);
-
 	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
 		lprint("[erro] Failed to write page item\n");
 		return;
@@ -93,9 +96,26 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	if (!len)
 		return 0; // thow err
 
+	bool flush = FALSE;
 	len = page_align(len);
+	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long offset = base->pager.offset;
+
+	/* Create new page */
+	if (offset + len >= page_size) {
+		create_page(base, (pager_t *)base->core);
+		base->pager.offset = sizeof(struct _page);
+
+		offset = ((((pager_t *)base->core)->count - 1) * page_size);
+		offset += sizeof(struct _page);
+		flush = TRUE;
+	}
+
 	base->pager.offset = offset + len;
+
+	if (flush) {
+		base_sync(base);
+	}
 
 	return offset;
 }
@@ -112,12 +132,23 @@ int pager_get_fd(base_t *base, unsigned long long *offset) {
 	return ((pager_t *)base->core)->pages[page]->fd;
 }
 
+unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
+	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
+	unsigned long long page = floor(offset / page_size);
+
+	if (page > (((pager_t *)base->core)->count - 1)) {
+		return -1; // thow err
+	}
+
+	return ((pager_t *)base->core)->pages[page]->sequence;
+}
+
 /*
  * Initialize all pages
  */
 void pager_init(base_t *base) {
-	struct page_list list;
-	nullify(&list, sizeof(struct page_list));
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
 
 	base->core = (pager_t *)tree_zcalloc(1, sizeof(pager_t), NULL);
 	pager_t *page_core = (pager_t *)base->core;
@@ -128,7 +159,7 @@ void pager_init(base_t *base) {
 			lprint("[erro] Failed to read \n");
 			return;
 		}
-		if (read(base->fd, &list, sizeof(struct page_list)) != sizeof(struct page_list)) {
+		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
 			lprint("[erro] Failed to read \n");
 			return;
 		}
@@ -138,6 +169,7 @@ void pager_init(base_t *base) {
 			lprint("[info] Creating database heap\n");
 
 			create_page(base, page_core);
+			base->pager.offset = sizeof(struct _page);
 			goto flush_base;
 		} else {
 			page_core->pages = tree_zmalloc(list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size, page_core);

@@ -10,7 +10,7 @@
 #include "engine.h"
 #include "diagnose.h"
 
-bool diag_exerr(struct base *base) {
+bool diag_exerr(base_t *base) {
 	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
 	struct engine engine;

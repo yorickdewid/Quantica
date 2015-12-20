@@ -6,6 +6,6 @@
 
 #include "base.h"
 
-bool diag_exerr(struct base *base);
+bool diag_exerr(base_t *base);
 
 #endif // DIAGNOSE_H_INCLUDED

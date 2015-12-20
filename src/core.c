@@ -222,10 +222,21 @@ sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 	return sql_exec(query, len);
 }
 
+#include "alias.h"
 void quid_generate(char *quid) {
 	quid_t key;
 	quid_create(&key);
 	quidtostr(quid, &key);
+
+	//btx.base = &control;
+
+	/*unsigned long long offset = 4294304;
+	int fd = pager_get_fd(&control, &offset);
+	printf("Writing to %d at %llu\n", fd, offset);*/
+
+	//printf("2>>>%p\n", (void *)btx.base);
+	//printf(">offset %llu\n", control.page_offset);
+	alias_add(&control, &key, "kaas", 4);
 }
 
 void quid_generate_short(char *quid) {
