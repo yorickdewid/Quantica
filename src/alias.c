@@ -71,7 +71,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 	/* does list exist */
 	if (base->offset.alias != 0) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE - 1);
+		zassert(list->size <= LIST_SIZE);
 
 		memcpy(&list->items[list->size].quid, c_quid, sizeof(quid_t));
 		memcpy(&list->items[list->size].name, c_name, len);
@@ -121,8 +121,144 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		base->stats.alias_size = 1;
 	}
 
-	//TODO should sync every so many adds (mod)
-	base_sync(base);
+	/* Flush every so many times */
+	if (!(base->stats.alias_size % 4)) {
+		base_sync(base);
+	}
 
 	return 0;
+}
+
+char *alias_get_val(base_t *base, const quid_t *c_quid) {
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				size_t len = from_be32(list->items[i].len);
+				char *name = (char *)zmalloc(len + 1);
+				name[len] = '\0';
+				memcpy(name, list->items[i].name, len);
+				zfree(list);
+				return name;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("2836444cd009", "Alias not found");
+	return NULL;
+}
+
+int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
+	unsigned int hash = jen_hash((unsigned char *)name, len);
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			if (from_be32(list->items[i].hash) == hash) {
+				memcpy(key, &list->items[i].quid, sizeof(quid_t));
+				zfree(list);
+				return 0;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("2836444cd009", "Alias not found");
+	return -1;
+}
+
+int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t len) {
+	unsigned int hash = jen_hash((unsigned char *)name, len);
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				memcpy(&list->items[i].name, name, len);
+				list->items[i].len = to_be32(len);
+				list->items[i].hash = to_be32(hash);
+				flush_alias_list(base, list, offset);
+				return 0;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("2836444cd009", "Alias not found");
+	return -1;
+}
+
+int alias_delete(base_t *base, const quid_t *c_quid) {
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				memset(&list->items[i].quid, 0, sizeof(quid_t));
+				list->items[i].len = 0;
+				flush_alias_list(base, list, offset);
+				base->stats.alias_size--;
+				return 0;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("2836444cd009", "Alias not found");
+	return -1;
+}
+
+marshall_t *alias_all(base_t *base) {
+	if (!base->stats.alias_size)
+		return NULL;
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(base->stats.alias_size, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_OBJECT;
+
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			char squid[QUID_LENGTH + 1];
+			quidtostr(squid, &list->items[i].quid);
+			size_t len = from_be32(list->items[i].len);
+			if (!len)
+				continue;
+			if (list->items[i].name[0] == '_')
+				continue;
+			list->items[i].name[len] = '\0';
+
+			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->type = MTYPE_QUID;
+			marshall->child[marshall->size]->name = tree_zstrdup(squid, marshall);
+			marshall->child[marshall->size]->name_len = QUID_LENGTH;
+			marshall->child[marshall->size]->data = tree_zstrdup(list->items[i].name, marshall);
+			marshall->child[marshall->size]->data_len = len;
+			marshall->size++;
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	return marshall;
 }

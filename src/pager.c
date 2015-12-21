@@ -19,15 +19,6 @@ struct _page {
 	__be32 sequence;
 } __attribute__((packed));
 
-#if 0
-static size_t page_align(size_t val) {
-	size_t i = 1;
-	while (i < val)
-		i <<= 1;
-	return i;
-}
-#endif
-
 #ifdef DEBUG
 void pager_list(base_t *base) {
 	for (unsigned int i = 0; i < ((pager_t *)base->core)->count; ++i) {
@@ -116,7 +107,6 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	zassert(len > 0);
 
 	bool flush = FALSE;
-	//len = page_align(len);
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long offset = base->pager.offset;
 
@@ -142,10 +132,6 @@ int pager_get_fd(base_t *base, unsigned long long *offset) {
 	unsigned long long page = floor(*offset / page_size);
 
 	zassert(page <= (((pager_t *)base->core)->count - 1));
-	/*if (page > (((pager_t *)base->core)->count - 1)) {
-		return -1; // thow err
-	}*/
-
 	*offset %= page_size;
 	return ((pager_t *)base->core)->pages[page]->fd;
 }
@@ -155,10 +141,6 @@ unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
 	unsigned long long page = floor(offset / page_size);
 
 	zassert(page <= (((pager_t *)base->core)->count - 1));
-	/*if (page > (((pager_t *)base->core)->count - 1)) {
-		return -1; // thow err
-	}*/
-
 	return ((pager_t *)base->core)->pages[page]->sequence;
 }
 
