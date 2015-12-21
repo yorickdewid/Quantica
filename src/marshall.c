@@ -16,7 +16,6 @@ struct {
 	bool data;
 	bool descent;
 } type_info[] = {
-
 	/* No data */
 	{MTYPE_NULL,	FALSE, FALSE},
 	{MTYPE_TRUE,	FALSE, FALSE},

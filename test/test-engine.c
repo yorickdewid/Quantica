@@ -8,17 +8,17 @@
 #include "../src/engine.h"
 
 static void test_engine_create() {
-	struct engine e;
+	engine_t engine;
 	const char fname[] = "test_database1.idx";
 	const char dbname[] = "test_database1.db";
 
 	error_clear();
-	engine_init(&e, fname, dbname);
-	ASSERT(e.fd);
-	ASSERT(e.db_fd);
-	ASSERT(e.alloc);
-	ASSERT(e.db_alloc);
-	engine_close(&e);
+	engine_init(&engine, fname, dbname);
+	ASSERT(engine.fd);
+	ASSERT(engine.db_fd);
+	ASSERT(engine.alloc);
+	ASSERT(engine.db_alloc);
+	engine_close(&engine);
 	ASSERT(file_exists(fname));
 	ASSERT(file_exists(dbname));
 	unlink(fname);
@@ -29,7 +29,7 @@ static void test_engine_create() {
 }
 
 static void test_engine_crud() {
-	struct engine e;
+	engine_t engine;
 	const char fname[] = "test_database2.idx";
 	const char dbname[] = "test_database2.db";
 	quid_t quid;
@@ -37,47 +37,47 @@ static void test_engine_crud() {
 	char data[] = ".....";
 
 	error_clear();
-	engine_init(&e, fname, dbname);
+	engine_init(&engine, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert_data(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&engine, &quid, data, strlen(data));
 	ASSERT(!r);
-	engine_close(&e);
+	engine_close(&engine);
 
-	engine_init(&e, fname, dbname);
+	engine_init(&engine, fname, dbname);
 	size_t len;
-	uint64_t offset = engine_get(&e, &quid, &meta);
-	void *rdata = get_data_block(&e, offset, &len);
+	uint64_t offset = engine_get(&engine, &quid, &meta);
+	void *rdata = get_data_block(&engine, offset, &len);
 	ASSERT(rdata);
 	zfree(rdata);
-	engine_close(&e);
+	engine_close(&engine);
 
-	engine_init(&e, fname, dbname);
-	int r2 = engine_delete(&e, &quid);
+	engine_init(&engine, fname, dbname);
+	int r2 = engine_delete(&engine, &quid);
 	ASSERT(!r2);
-	engine_close(&e);
+	engine_close(&engine);
 
-	engine_init(&e, fname, dbname);
+	engine_init(&engine, fname, dbname);
 	size_t len2;
-	uint64_t offset2 = engine_get(&e, &quid, &meta);
-	void *r2data = get_data_block(&e, offset2, &len2);
+	uint64_t offset2 = engine_get(&engine, &quid, &meta);
+	void *r2data = get_data_block(&engine, offset2, &len2);
 	ASSERT(!r2data);
-	engine_close(&e);
+	engine_close(&engine);
 	unlink(fname);
 	unlink(dbname);
 	error_clear();
 }
 
 static void test_engine_meta() {
-	struct engine e;
+	engine_t engine;
 	const char fname[] = "test_database4.idx";
 	const char dbname[] = "test_database4.db";
 	quid_t quid;
 	char data[] = ".....";
 
 	error_clear();
-	engine_init(&e, fname, dbname);
+	engine_init(&engine, fname, dbname);
 	quid_create(&quid);
-	int r = engine_insert_data(&e, &quid, data, strlen(data));
+	int r = engine_insert_data(&engine, &quid, data, strlen(data));
 	ASSERT(!r);
 
 	const struct metadata md = {
@@ -89,15 +89,15 @@ static void test_engine_meta() {
 		.nodata = 0,
 		.type = MD_TYPE_RAW,
 	};
-	int r2 = engine_setmeta(&e, &quid, &md);
+	int r2 = engine_setmeta(&engine, &quid, &md);
 	ASSERT(!r2);
-	engine_close(&e);
+	engine_close(&engine);
 
-	engine_init(&e, fname, dbname);
+	engine_init(&engine, fname, dbname);
 	struct metadata md2;
-	engine_get(&e, &quid, &md2);
+	engine_get(&engine, &quid, &md2);
 	ASSERT(!memcmp(&md, &md2, sizeof(struct metadata)));
-	engine_close(&e);
+	engine_close(&engine);
 	unlink(fname);
 	unlink(dbname);
 	error_clear();

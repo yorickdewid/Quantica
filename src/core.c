@@ -29,7 +29,7 @@
 #include "sql.h"
 #include "core.h"
 
-static struct engine btx;
+static engine_t btx;
 static base_t control;
 static uint8_t ready = FALSE;
 static long long uptime;
@@ -108,7 +108,7 @@ char *get_dataheap_name() {
 	return control.bindata;
 }
 
-struct engine *get_current_engine() {
+engine_t *get_current_engine() {
 	return &btx;
 }
 

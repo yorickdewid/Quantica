@@ -13,7 +13,7 @@
 bool diag_exerr(base_t *base) {
 	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
-	struct engine engine;
+	engine_t engine;
 
 	lprint("[info] Failure on exit, run diagnostics\n");
 	engine_init(&engine, get_zero_key(), base->bindata);

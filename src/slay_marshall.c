@@ -28,7 +28,7 @@ int object_descent_count(marshall_t *obj) {
 
 static void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *len) {
 	zassert(el >= 1);
-	struct row_slay *row = zcalloc(1, sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len);
+	struct row_slay *row = (struct row_slay *)zcalloc(1, sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len);
 	row->elements = el;
 	row->schema = schema;
 	*len = sizeof(struct row_slay) + (el * sizeof(struct value_slay)) + data_len;
@@ -68,13 +68,13 @@ static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, 
 
 	if (slay->size) {
 		void *src = ((uint8_t *)arrp) + sizeof(struct value_slay);
-		data = zmalloc(slay->size);
+		data = zcalloc(slay->size, sizeof(char));
 		memcpy(data, src, slay->size);
 	}
 
 	if (slay->namesize) {
 		void *src = ((uint8_t *)arrp) + sizeof(struct value_slay) + slay->size;
-		*name = zmalloc(slay->namesize);
+		*name = zcalloc(slay->namesize, sizeof(char));
 		memcpy(*name, src, slay->namesize);
 	}
 
@@ -170,7 +170,7 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 static marshall_t *get_child_record(char *quid, void *parent) {
 	quid_t key;
 	strtoquid(quid, &key);
-	struct engine *engine = get_current_engine();
+	engine_t *engine = get_current_engine();
 
 	size_t len;
 	struct metadata meta;

@@ -35,7 +35,7 @@ char *get_instance_name();
 char *get_instance_key();
 char *get_session_key();
 char *get_dataheap_name();
-struct engine *get_current_engine();
+engine_t *get_current_engine();
 char *get_instance_prefix_key(char *short_quid);
 char *get_uptime();
 int crypto_sha1(char *s, const char *data);

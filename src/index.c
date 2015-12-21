@@ -10,7 +10,7 @@
 #include "index.h"
 
 static marshall_t *get_record(quid_t *key) {
-	struct engine *engine = get_current_engine();
+	engine_t *engine = get_current_engine();
 
 	size_t len;
 	struct metadata meta;
