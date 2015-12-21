@@ -62,7 +62,7 @@ struct _base {
 	struct {
 		__be32 sequence;
 		__be64 offset;
-		// __be64 offset_free; //TODO move?
+		// __be64 offset_free;
 		uint8_t size;
 	} pager;
 	struct {

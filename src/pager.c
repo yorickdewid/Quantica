@@ -7,7 +7,8 @@
 
 #include <config.h>
 #include <common.h>
-#include "log.h"
+#include <log.h>
+#include <error.h>
 #include "zmalloc.h"
 #include "base.h"
 #include "pager.h"
@@ -38,6 +39,21 @@ void pager_list(base_t *base) {
 }
 #endif
 
+static void flush_page(page_t *page) {
+	struct _page super;
+	nullify(&super, sizeof(struct _page));
+
+	super.sequence = to_be32(page->sequence);
+	if (lseek(page->fd, 0, SEEK_SET) < 0) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+}
+
 static void create_page(base_t *base, pager_t *core) {
 	struct _page super;
 	char name[SHORT_QUID_LENGTH + 1];
@@ -48,12 +64,14 @@ static void create_page(base_t *base, pager_t *core) {
 	quid_shorttostr(name, &page->page_key);
 	page->sequence = base->pager.sequence++;
 	page->fd = open(name, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	if (page->fd < 0)
-		return; //TODO err
+	if (page->fd < 0) {
+		error_throw_fatal("65ccc95b60a6", "Failed to acquire descriptor");
+		return;
+	}
 
 	super.sequence = to_be32(page->sequence);
 	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
-		lprint("[erro] Failed to write page item\n");
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 
@@ -61,8 +79,10 @@ static void create_page(base_t *base, pager_t *core) {
 		core->allocated += DEFAULT_PAGE_ALLOC;
 		core->pages = (page_t **)tree_zrealloc(core->pages, core->allocated * sizeof(page_t *));
 	}
+
 	core->pages[core->count++] = page;
 	base_list_add(base, &page->page_key);
+	flush_page(page);
 }
 
 static void open_page(quid_short_t *page_key, pager_t *core) {
@@ -73,11 +93,13 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 	page_t *page = (page_t *)tree_zcalloc(1, sizeof(page_t), core);
 	quid_shorttostr(name, page_key);
 	page->fd = open(name, O_RDWR | O_BINARY);
-	if (page->fd < 0)
-		return; //TODO err
+	if (page->fd < 0) {
+		error_throw_fatal("65ccc95b60a6", "Failed to acquire descriptor");
+		return;
+	}
 
 	if (read(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
-		lprint("[erro] Failed to read page item\n");
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return;
 	}
 
@@ -90,20 +112,8 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 	core->pages[core->count++] = page;
 }
 
-static void flush_page(page_t *page) {
-	struct _page super;
-	nullify(&super, sizeof(struct _page));
-
-	super.sequence = to_be32(page->sequence);
-	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
-		lprint("[erro] Failed to write page item\n");
-		return;
-	}
-}
-
 unsigned long long pager_alloc(base_t *base, size_t len) {
-	if (!len)
-		return 0; // thow err
+	zassert(len > 0);
 
 	bool flush = FALSE;
 	//len = page_align(len);
@@ -131,9 +141,10 @@ int pager_get_fd(base_t *base, unsigned long long *offset) {
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 
-	if (page > (((pager_t *)base->core)->count - 1)) {
+	zassert(page <= (((pager_t *)base->core)->count - 1));
+	/*if (page > (((pager_t *)base->core)->count - 1)) {
 		return -1; // thow err
-	}
+	}*/
 
 	*offset %= page_size;
 	return ((pager_t *)base->core)->pages[page]->fd;
@@ -143,9 +154,10 @@ unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(offset / page_size);
 
-	if (page > (((pager_t *)base->core)->count - 1)) {
+	zassert(page <= (((pager_t *)base->core)->count - 1));
+	/*if (page > (((pager_t *)base->core)->count - 1)) {
 		return -1; // thow err
-	}
+	}*/
 
 	return ((pager_t *)base->core)->pages[page]->sequence;
 }
@@ -163,11 +175,11 @@ void pager_init(base_t *base) {
 	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
 		unsigned long offset = sizeof(struct _base) * (i + 1);
 		if (lseek(base->fd, offset, SEEK_SET) < 0) {
-			lprint("[erro] Failed to read \n");
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return;
 		}
 		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
-			lprint("[erro] Failed to read \n");
+			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return;
 		}
 

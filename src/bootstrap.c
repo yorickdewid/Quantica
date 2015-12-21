@@ -114,6 +114,12 @@ void bootstrap(struct engine *e) {
 	if (register_error(e, E_FATAL, "1fd531fa70c1", "Failed to write disk") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(e, E_FATAL, "65ccc95b60a6", "Failed to acquire descriptor") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
+	if (register_error(e, E_FATAL, "ef4b4df470a1", "Storage damaged beyond autorecovery") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(e, E_WARN, "de65321630e4", "Server is not ready") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 

@@ -248,8 +248,11 @@ void base_init(base_t *base) {
 		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
 				exit_status = EXSTAT_CHECKPOINT;
+				return;
 			} else {
-				exit(1);//TODO exist?
+				error_throw_fatal("ef4b4df470a1", "Storage damaged beyond autorecovery");
+				exit_status = EXSTAT_ERROR;
+				return;
 			}
 		}
 		exit_status = EXSTAT_CHECKPOINT;
