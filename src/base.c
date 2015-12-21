@@ -192,7 +192,9 @@ void base_sync(base_t *base) {
 	super.offset.alias = to_be64(base->offset.alias);
 	super.offset.index = to_be64(base->offset.index);
 	super.offset.heap = to_be64(base->offset.heap);
+	super.offset.index_list = to_be64(base->offset.index_list);
 	super.stats.alias_size = to_be64(base->stats.alias_size);
+	super.stats.index_list_size = to_be64(base->stats.index_list_size);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -236,7 +238,9 @@ void base_init(base_t *base) {
 		base->offset.alias = from_be64(super.offset.alias);
 		base->offset.index = from_be64(super.offset.index);
 		base->offset.heap = from_be64(super.offset.heap);
+		base->offset.index_list = from_be64(super.offset.index_list);
 		base->stats.alias_size = from_be64(super.stats.alias_size);
+		base->stats.index_list_size = from_be64(super.stats.index_list_size);
 
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';

@@ -44,9 +44,11 @@ typedef struct {
 		unsigned long index;
 		unsigned long heap;
 		unsigned long alias;
+		unsigned long index_list;
 	} offset;
 	struct {
 		unsigned long alias_size;
+		unsigned long index_list_size;
 	} stats;
 	unsigned short page_list_count;
 } base_t;
@@ -69,9 +71,11 @@ struct _base {
 		__be64 index;
 		__be64 heap;
 		__be64 alias;
+		__be64 index_list;
 	} offset;
 	struct {
 		__be64 alias_size;
+		__be64 index_list_size;
 	} stats;
 	__be16 page_list_count;
 	uint8_t lock;

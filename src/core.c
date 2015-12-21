@@ -23,6 +23,8 @@
 #include "base.h"
 #include "pager.h"
 #include "engine.h"
+#include "alias.h"
+#include "index_list.h"
 #include "bootstrap.h"
 #include "sql.h"
 #include "core.h"
@@ -266,7 +268,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 	quidtostr(quid, &key);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
-		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
+		alias_add(&control, &key, quid, QUID_LENGTH);
 
 		struct metadata meta;
 		engine_get(&btx, &key, &meta);
@@ -440,7 +442,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 			char _quid[QUID_LENGTH + 1];
 			quidtostr(_quid, &key);
 
-			engine_list_insert(&btx, &key, _quid, QUID_LENGTH);
+			alias_add(&control, &key, _quid, QUID_LENGTH);
 
 			meta.type = MD_TYPE_GROUP;
 			meta.alias = 1;
@@ -449,7 +451,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		}
 	} else {
 		if (meta.type == MD_TYPE_GROUP) {
-			engine_list_delete(&btx, &key);
+			alias_delete(&control, &key);
 		}
 	}
 
@@ -510,7 +512,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	quidtostr(nquid, &nkey);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		if (copy_meta) {
-			marshall_t *index_element = engine_index_list_get_element(&btx, &key);
+			marshall_t *index_element = index_list_get_element(&control, &key);
 			for (unsigned int i = 0; i < index_element->size; ++i) {
 				index_result_t inrs;
 				struct metadata _meta;
@@ -542,10 +544,10 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				engine_insert_meta(&btx, &inrs.index, &_meta);
 
 				/* Add index to alias list */
-				engine_list_insert(&btx, &inrs.index, index_quid, QUID_LENGTH);
+				alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
 
 				/* Add index to index list */
-				engine_index_list_insert(&btx, &inrs.index, &nkey, index_element->child[i]->data);
+				index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data);
 
 				marshall_free(_descentobj);
 
@@ -554,7 +556,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 			marshall_free(index_element);
 		}
 
-		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
+		alias_add(&control, &nkey, nquid, QUID_LENGTH);
 		meta.type = MD_TYPE_GROUP;
 		meta.alias = 1;
 	}
@@ -644,21 +646,21 @@ int db_delete(char *quid, bool descent) {
 				zfree(data);
 			}
 
-			quid_t *index = engine_index_list_get_index(&btx, &key);
+			quid_t *index = index_list_get_index(&control, &key);
 			while (index) {
-				engine_list_delete(&btx, index);
-				engine_index_list_delete(&btx, index);
+				alias_delete(&control, index);
+				index_list_delete(&control, index);
 				zfree(index);
-				index = engine_index_list_get_index(&btx, &key);
+				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
 
-			engine_list_delete(&btx, &key);
+			alias_delete(&control, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			engine_list_delete(&btx, &key);
-			engine_index_list_delete(&btx, &key);
+			alias_delete(&control, &key);
+			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
@@ -704,21 +706,21 @@ int db_purge(char *quid, bool descent) {
 				zfree(data);
 			}
 
-			quid_t *index = engine_index_list_get_index(&btx, &key);
+			quid_t *index = index_list_get_index(&control, &key);
 			while (index) {
-				engine_list_delete(&btx, index);
-				engine_index_list_delete(&btx, index);
+				alias_delete(&control, index);
+				index_list_delete(&control, index);
 				zfree(index);
-				index = engine_index_list_get_index(&btx, &key);
+				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
 
-			engine_list_delete(&btx, &key);
+			alias_delete(&control, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			engine_list_delete(&btx, &key);
-			engine_index_list_delete(&btx, &key);
+			alias_delete(&control, &key);
+			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
@@ -1027,7 +1029,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 
 	if (meta.alias) {
 		status->has_alias = 1;
-		char *name = engine_list_get_val(&btx, &key);
+		char *name = alias_get_val(&control, &key);
 		strlcpy(status->alias, name, LIST_NAME_LENGTH);
 		zfree(name);
 	}
@@ -1063,7 +1065,7 @@ char *db_alias_get_name(char *quid) {
 	if (!ready)
 		return NULL;
 
-	return engine_list_get_val(&btx, &key);
+	return alias_get_val(&control, &key);
 }
 
 int db_alias_update(char *quid, const char *name) {
@@ -1075,7 +1077,7 @@ int db_alias_update(char *quid, const char *name) {
 		return -1;
 
 	/* Does name already exist */
-	if (!engine_list_get_key(&btx, &_key, name, strlen(name))) {
+	if (!alias_get_key(&control, &_key, name, strlen(name))) {
 		error_throw("a09c8843b09d", "Alias exists");
 		return -1;
 	}
@@ -1084,7 +1086,7 @@ int db_alias_update(char *quid, const char *name) {
 	/* Check if key has alias */
 	engine_get(&btx, &key, &meta);
 	if (!meta.alias) {
-		engine_list_insert(&btx, &key, name, strlen(name));
+		alias_add(&control, &key, name, strlen(name));
 
 		meta.alias = 1;
 		if (engine_setmeta(&btx, &key, &meta) < 0)
@@ -1092,14 +1094,14 @@ int db_alias_update(char *quid, const char *name) {
 		return 0;
 	}
 
-	return engine_list_update(&btx, &key, name, strlen(name));;
+	return alias_update(&control, &key, name, strlen(name));;
 }
 
 char *db_alias_all() {
 	if (!ready)
 		return NULL;
 
-	marshall_t *dataobj = engine_list_all(&btx);
+	marshall_t *dataobj = alias_all(&control);
 	if (!dataobj) {
 		return NULL;
 	}
@@ -1113,7 +1115,7 @@ char *db_index_all() {
 	if (!ready)
 		return NULL;
 
-	marshall_t *dataobj = engine_index_list_all(&btx);
+	marshall_t *dataobj = index_list_all(&control);
 	if (!dataobj) {
 		return NULL;
 	}
@@ -1133,7 +1135,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	if (engine_list_get_key(&btx, &key, name, strlen(name)) < 0)
+	if (alias_get_key(&control, &key, name, strlen(name)) < 0)
 		return NULL;
 
 	uint64_t offset = engine_get(&btx, &key, &meta);
@@ -1231,10 +1233,9 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	engine_insert_meta(&btx, &nrs.index, &meta);
 
 	/* Add index to alias list */
-	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
+	alias_add(&control, &nrs.index, index_quid, QUID_LENGTH);
 
 	/* Add index to index list */
-	engine_index_list_insert(&btx, &nrs.index, &key, (char *)idxkey);
-
+	index_list_add(&control, &nrs.index, &key, (char *)idxkey);
 	return 0;
 }

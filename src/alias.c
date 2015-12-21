@@ -13,7 +13,7 @@
 #include "pager.h"
 #include "alias.h"
 
-#define LIST_SIZE	128
+#define ALIAS_LIST_SIZE	128
 
 struct _alias_list {
 	struct {
@@ -21,7 +21,7 @@ struct _alias_list {
 		__be32 len;
 		__be32 hash;
 		char name[ALIAS_NAME_LENGTH];
-	} items[LIST_SIZE];
+	} items[ALIAS_LIST_SIZE];
 	uint16_t size;
 	__be64 link;
 } __attribute__((packed));
@@ -29,6 +29,7 @@ struct _alias_list {
 /* Read list structure from offset */
 static struct _alias_list *get_alias_list(base_t *base, unsigned long long offset) {
 	int fd = pager_get_fd(base, &offset);
+
 	struct _alias_list *list = (struct _alias_list *)zcalloc(1, sizeof(struct _alias_list));
 	if (!list) {
 		zfree(list);
@@ -47,8 +48,10 @@ static struct _alias_list *get_alias_list(base_t *base, unsigned long long offse
 	}
 	return list;
 }
+
 static void flush_alias_list(base_t *base, struct _alias_list *list, unsigned long long offset) {
 	int fd = pager_get_fd(base, &offset);
+
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
@@ -71,7 +74,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 	/* does list exist */
 	if (base->offset.alias != 0) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		memcpy(&list->items[list->size].quid, c_quid, sizeof(quid_t));
 		memcpy(&list->items[list->size].name, c_name, len);
@@ -82,7 +85,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		base->stats.alias_size++;
 
 		/* Check if we need to add a new table*/
-		if (list->size >= LIST_SIZE) {
+		if (list->size >= ALIAS_LIST_SIZE) {
 			flush_alias_list(base, list, base->offset.alias);
 
 			struct _alias_list *new_list = (struct _alias_list *)zcalloc(1, sizeof(struct _alias_list));
@@ -93,7 +96,6 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 			}
 
 			new_list->link = to_be64(base->offset.alias);
-
 			unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _alias_list));
 			flush_alias_list(base, new_list, new_list_offset);
 			base->offset.alias = new_list_offset;
@@ -133,7 +135,7 @@ char *alias_get_val(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < list->size; ++i) {
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
@@ -159,7 +161,7 @@ int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < list->size; ++i) {
 			if (from_be32(list->items[i].hash) == hash) {
@@ -181,7 +183,7 @@ int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t le
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < list->size; ++i) {
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
@@ -205,7 +207,7 @@ int alias_delete(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < list->size; ++i) {
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
@@ -236,11 +238,12 @@ marshall_t *alias_all(base_t *base) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
-		zassert(list->size <= LIST_SIZE);
+		zassert(list->size <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < list->size; ++i) {
 			char squid[QUID_LENGTH + 1];
 			quidtostr(squid, &list->items[i].quid);
+
 			size_t len = from_be32(list->items[i].len);
 			if (!len)
 				continue;
