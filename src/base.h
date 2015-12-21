@@ -37,7 +37,7 @@ typedef struct {
 	struct {
 		unsigned short sequence;
 		unsigned long long offset;
-		unsigned long long offset_free;
+		// unsigned long long offset_free;
 		unsigned char size;
 	} pager;
 	struct {
@@ -45,6 +45,9 @@ typedef struct {
 		unsigned long heap;
 		unsigned long alias;
 	} offset;
+	struct {
+		unsigned long alias_size;
+	} stats;
 	unsigned short page_list_count;
 } base_t;
 
@@ -59,7 +62,7 @@ struct _base {
 	struct {
 		__be32 sequence;
 		__be64 offset;
-		__be64 offset_free; //TODO move?
+		// __be64 offset_free; //TODO move?
 		uint8_t size;
 	} pager;
 	struct {
@@ -67,6 +70,9 @@ struct _base {
 		__be64 heap;
 		__be64 alias;
 	} offset;
+	struct {
+		__be64 alias_size;
+	} stats;
 	__be16 page_list_count;
 	uint8_t lock;
 	uint8_t exitstatus;

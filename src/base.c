@@ -188,10 +188,11 @@ void base_sync(base_t *base) {
 	super.pager.size = base->pager.size;
 	super.pager.sequence = to_be32(base->pager.sequence);
 	super.pager.offset = to_be64(base->pager.offset);
-	super.pager.offset_free = to_be64(base->pager.offset_free);
+	// super.pager.offset_free = to_be64(base->pager.offset_free);
 	super.offset.alias = to_be64(base->offset.alias);
 	super.offset.index = to_be64(base->offset.index);
 	super.offset.heap = to_be64(base->offset.heap);
+	super.stats.alias_size = to_be64(base->stats.alias_size);
 
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
 	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
@@ -231,10 +232,11 @@ void base_init(base_t *base) {
 		base->pager.size = super.pager.size;
 		base->pager.sequence = from_be32(super.pager.sequence);
 		base->pager.offset = from_be64(super.pager.offset);
-		base->pager.offset_free = from_be64(super.pager.offset_free);
+		// base->pager.offset_free = from_be64(super.pager.offset_free);
 		base->offset.alias = from_be64(super.offset.alias);
 		base->offset.index = from_be64(super.offset.index);
 		base->offset.heap = from_be64(super.offset.heap);
+		base->stats.alias_size = from_be64(super.stats.alias_size);
 
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
 		super.bindata[BINDATA_LENGTH - 1] = '\0';

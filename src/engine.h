@@ -133,7 +133,7 @@ struct engine_dbsuper {
 	__be64 last;
 } __attribute__((packed));
 
-struct engine_stats {
+struct engine_stats { // deprecated by base.stats
 	uint64_t keys;
 	uint64_t free_tables;
 	uint64_t list_size;

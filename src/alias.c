@@ -79,7 +79,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		list->items[list->size].hash = to_be32(hash);
 		list->size++;
 
-		//engine->stats.list_size++;//TODO
+		base->stats.alias_size++;
 
 		/* Check if we need to add a new table*/
 		if (list->size >= LIST_SIZE) {
@@ -118,8 +118,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		flush_alias_list(base, new_list, new_list_offset);
 
 		base->offset.alias = new_list_offset;
-
-		//engine->stats.list_size = 1;//TODO
+		base->stats.alias_size = 1;
 	}
 
 	//TODO should sync every so many adds (mod)
