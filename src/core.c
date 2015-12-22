@@ -1217,7 +1217,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	marshall_free(dataobj);
 	zfree(data);
 
-	quidtostr(index_quid, &nrs.index);
+	quidtostr(index_quid, &nrs.index); //TODO needed?
 	*items = nrs.index_elements;
 
 	if (*items < 2) {

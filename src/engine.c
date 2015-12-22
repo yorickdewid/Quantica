@@ -43,13 +43,13 @@ struct _engine_super {
 	__be32 version;
 	__be64 top;
 	__be64 free_top;
-	__be64 nkey;
+	__be64 nkey; //DEPRECATED almost
 	__be64 nfree_table;
 	__be64 crc_zero_key;
-	__be64 list_top;
-	__be64 list_size;
-	__be64 index_list_top;
-	__be64 index_list_size;
+	__be64 list_top; //DEPRECATED
+	__be64 list_size; //DEPRECATED
+	__be64 index_list_top; //DEPRECATED
+	__be64 index_list_size; //DEPRECATED
 	char instance[INSTANCE_LENGTH];
 } __attribute__((packed));
 
@@ -62,7 +62,6 @@ struct {
 	enum key_type type;
 	bool dataheap;
 } keytype_info[] = {
-
 	/* No data */
 	{MD_TYPE_INDEX,		FALSE},
 	{MD_TYPE_RAW,		FALSE},
@@ -85,16 +84,6 @@ bool engine_keytype_hasdata(enum key_type type) {
 			return keytype_info[i].dataheap;
 	}
 	return FALSE;
-}
-
-static struct _engine_table *alloc_table() {
-	struct _engine_table *table = (struct _engine_table *)zcalloc(1, sizeof(struct _engine_table));
-	if (!table) {
-		zfree(table);
-		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
-		return NULL;
-	}
-	return table;
 }
 
 static struct _engine_table *get_table(engine_t *engine, uint64_t offset) {
@@ -127,7 +116,7 @@ static struct _engine_table *get_table(engine_t *engine, uint64_t offset) {
 	return table;
 }
 
-/* Free a table acquired with alloc_table() or get_table() */
+/* Free a table or put it into the cache */
 static void put_table(engine_t *engine, struct _engine_table *table, uint64_t offset) {
 	zassert(offset != 0);
 
@@ -462,7 +451,12 @@ static uint64_t split_table(engine_t *engine, struct _engine_table *table, quid_
 	memcpy(quid, &table->items[TABLE_SIZE / 2].quid, sizeof(quid_t));
 	*offset = from_be64(table->items[TABLE_SIZE / 2].offset);
 
-	struct _engine_table *new_table = alloc_table();
+	struct _engine_table *new_table = (struct _engine_table *)zcalloc(1, sizeof(struct _engine_table));
+	if (!new_table) {
+		zfree(new_table);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
+		return 0;
+	}
 	new_table->size = table->size - TABLE_SIZE / 2 - 1;
 
 	table->size = TABLE_SIZE / 2;
@@ -702,7 +696,12 @@ static uint64_t insert_toplevel(engine_t *engine, uint64_t *table_offset, quid_t
 	}
 
 	/* create new top level table */
-	struct _engine_table *new_table = alloc_table();
+	struct _engine_table *new_table = (struct _engine_table *)zcalloc(1, sizeof(struct _engine_table));
+	if (!new_table) {
+		zfree(new_table);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
+		return 0;
+	}
 	new_table->size = 1;
 	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);

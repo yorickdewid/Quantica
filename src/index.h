@@ -3,6 +3,7 @@
 
 #include "quid.h"
 #include "marshall.h"
+#include "pager.h"
 #include "slay_marshall.h"
 
 typedef struct {

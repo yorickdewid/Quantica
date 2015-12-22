@@ -29,8 +29,8 @@ typedef struct {
 } node_t;
 
 typedef struct {
-	long int root;
-	long int freelist;
+	long long root;
+	long long freelist;
 	node_t rootnode;
 	FILE *fp;
 	bool unique_keys;

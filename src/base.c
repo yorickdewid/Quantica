@@ -190,7 +190,7 @@ void base_sync(base_t *base) {
 	super.pager.offset = to_be64(base->pager.offset);
 	// super.pager.offset_free = to_be64(base->pager.offset_free);
 	super.offset.alias = to_be64(base->offset.alias);
-	super.offset.index = to_be64(base->offset.index);
+	super.offset.zero = to_be64(base->offset.zero);
 	super.offset.heap = to_be64(base->offset.heap);
 	super.offset.index_list = to_be64(base->offset.index_list);
 	super.stats.alias_size = to_be64(base->stats.alias_size);
@@ -236,7 +236,7 @@ void base_init(base_t *base) {
 		base->pager.offset = from_be64(super.pager.offset);
 		// base->pager.offset_free = from_be64(super.pager.offset_free);
 		base->offset.alias = from_be64(super.offset.alias);
-		base->offset.index = from_be64(super.offset.index);
+		base->offset.zero = from_be64(super.offset.zero);
 		base->offset.heap = from_be64(super.offset.heap);
 		base->offset.index_list = from_be64(super.offset.index_list);
 		base->stats.alias_size = from_be64(super.stats.alias_size);

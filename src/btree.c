@@ -14,11 +14,10 @@
 
 #define DEFAULT_RESULT_SIZE		10
 
-//TODO needs bitflip
-struct root_super {
-	long int root;
-	long int freelist;
-	bool unique_keys;
+struct _root_super {
+	__be64 root;
+	__be64 freelist;
+	char unique_keys;
 };
 
 static void get_node(btree_t *index, long int offset, node_t *pnode) {
@@ -77,33 +76,35 @@ static void free_node(btree_t *index, long int offset) {
 }
 
 static void storage_read(btree_t *index) {
-	struct root_super super;
-	nullify(&super, sizeof(struct root_super));
+	struct _root_super super;
+	nullify(&super, sizeof(struct _root_super));
 
 	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to read disk\n");
 		return;
 	}
-	if (fread(&super, sizeof(struct root_super), 1, index->fp) == sizeof(struct root_super))
+	if (fread(&super, sizeof(struct _root_super), 1, index->fp) == sizeof(struct _root_super))
 		lprint("[erro] Failed to read disk\n");
+
 	get_node(index, super.root, &index->rootnode);
-	index->root = super.root;
-	index->freelist = super.freelist;
+	index->root = from_be64(super.root);
+	index->freelist = from_be64(super.freelist);
 	index->unique_keys = super.unique_keys;
 }
 
 static void storage_write(btree_t *index) {
-	struct root_super super;
-	nullify(&super, sizeof(struct root_super));
+	struct _root_super super;
+	nullify(&super, sizeof(struct _root_super));
+	// int fd = pager_get_fd(base, &offset);
 
-	super.root = index->root;
-	super.freelist = index->freelist;
+	super.root = to_be64(index->root);
+	super.freelist = to_be64(index->freelist);
 	super.unique_keys = index->unique_keys;
 	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to write disk\n");
 		return;
 	}
-	if (fwrite(&super, sizeof(struct root_super), 1, index->fp) == 0)
+	if (fwrite(&super, sizeof(struct _root_super), 1, index->fp) == 0)
 		lprint("[erro] Failed to write disk\n");
 	if (index->root != -1)
 		flush_node(index, super.root, &index->rootnode);
@@ -119,8 +120,7 @@ void btree_init(btree_t *index, char *name) {
 	index->freelist = -1;
 	index->unique_keys = TRUE;
 	index->fp = fopen(name, "r+b");
-	if (index->fp == NULL) {
-		// TODO set RW flag
+	if (!index->fp) {
 		index->fp = fopen(name, "w+b");
 		nullify(&index->rootnode, sizeof(node_t));
 		storage_write(index);

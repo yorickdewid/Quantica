@@ -18,7 +18,7 @@ struct _engine_index_list {
 		quid_t index;
 		quid_t group;
 		__be32 element_len;
-		char element[64];
+		char element[64]; //TODO this could be any sz
 	} items[INDEX_LIST_SIZE];
 	uint16_t size;
 	__be64 link;
@@ -61,7 +61,7 @@ static void flush_index_list(base_t *base, struct _engine_index_list *list, unsi
 }
 
 int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element) {
-	/* does list exist */
+	/* Does list exist */
 	if (base->offset.index_list != 0) {
 		struct _engine_index_list *list = get_index_list(base, base->offset.index_list);
 		zassert(list->size <= INDEX_LIST_SIZE - 1);
@@ -75,7 +75,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 
 		base->stats.index_list_size++;
 
-		/* check if we need to add a new table*/
+		/* Check if we need to add a new table*/
 		if (list->size >= INDEX_LIST_SIZE) {
 			flush_index_list(base, list, base->offset.index_list);
 

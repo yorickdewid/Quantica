@@ -5,9 +5,9 @@ BINDIR = bin
 UTILDIR = util
 VALGRIND = valgrind
 CPPCHECK = cppcheck
-CPPCHECKFLAGS = --quiet --std=c11
+CPPCHECKFLAGS = --quiet --std=c1x
 VALFLAGS = --leak-check=full --track-origins=yes --show-reachable=yes
-WFLAGS = -pedantic-errors -std=c11 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
+WFLAGS = -pedantic-errors -std=c1x -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
 CFLAGS = -g -O0 $(WFLAGS) -DX64 -DTN12
 LDFLAGS = -lm
 SOURCES = $(wildcard $(SRCDIR)/*.c)
@@ -80,7 +80,7 @@ cov: debug
 util: fixeof genquid verminor genlookup3 qcli
 
 fixeof:
-	$(CC) $(UTILDIR)/lfeof.c -pedantic-errors -std=c11 -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -o $(UTILDIR)/lfeof
+	$(CC) $(UTILDIR)/lfeof.c -pedantic-errors -std=c1x -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow -o $(UTILDIR)/lfeof
 	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
 
 genquid:

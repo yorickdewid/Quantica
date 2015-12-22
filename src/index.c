@@ -112,7 +112,6 @@ int index_btree_create_set(char *squid, const char *element, marshall_t *marshal
 	return 0;
 }
 
-
 marshall_t *index_btree_all(quid_t *key, bool descent) {
 	char squid[QUID_LENGTH + 1];
 	btree_t index;

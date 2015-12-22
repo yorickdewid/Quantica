@@ -41,7 +41,7 @@ typedef struct {
 		unsigned char size;
 	} pager;
 	struct {
-		unsigned long index;
+		unsigned long zero;
 		unsigned long heap;
 		unsigned long alias;
 		unsigned long index_list;
@@ -68,7 +68,7 @@ struct _base {
 		uint8_t size;
 	} pager;
 	struct {
-		__be64 index;
+		__be64 zero;
 		__be64 heap;
 		__be64 alias;
 		__be64 index_list;
