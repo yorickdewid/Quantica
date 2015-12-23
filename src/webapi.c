@@ -426,6 +426,21 @@ http_status_t api_gen_quid(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_gen_rand(char **response, http_request_t *req) {
+	bool range = FALSE;
+	char *param_range = get_param(req, "range");
+	if (param_range) {
+		range = TRUE;
+	}
+
+	int number = generate_random_number(range ? atoi(param_range) : 0);
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+	snprintf(*response, RESPONSE_SIZE, "{\"number\":%d,\"description\":\"Random number\",\"status\":\"SUCCEEDED\",\"success\":true}", number);
+	return HTTP_OK;
+}
+
 http_status_t api_shutdown(char **response, http_request_t *req) {
 	unused(req);
 	run = 0;
@@ -862,6 +877,7 @@ static const struct webroute route[] = {
 	{"/sha256",			api_sha256,			FALSE, 	"SHA256 hash function"},
 	{"/sha512",			api_sha512,			FALSE, 	"SHA512 hash function"},
 	{"/quid",			api_gen_quid,		FALSE,	"Generate random QUID"},
+	{"/random",			api_gen_rand,		FALSE,	"Generate random number"},
 	{"/base64/enc",		api_base64_enc,		FALSE,	"Base64 encode function"},
 	{"/base64/dec",		api_base64_dec,		FALSE, 	"Base64 decode function"},
 	{"/hmac/sha256",	api_hmac_sha256,	FALSE,	"Generate HMAC-SHA256 signature"},

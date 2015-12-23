@@ -130,3 +130,14 @@ uint32_t arc4random() {
 
 	return rnd;
 }
+
+int arc4random_uniform(int range) {
+	uint32_t rnd;
+
+	arc4_check_init();
+	arc4_check_stir();
+	rnd = arc4_getword(&rs);
+	rnd %= range;
+
+	return rnd;
+}

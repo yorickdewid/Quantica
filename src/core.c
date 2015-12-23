@@ -20,6 +20,7 @@
 #include "marshall.h"
 #include "dict_marshall.h"
 #include "slay_marshall.h"
+#include "arc4random.h"
 #include "base.h"
 #include "pager.h"
 #include "engine.h"
@@ -222,6 +223,10 @@ unsigned long int stat_indexsize() {
 
 sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 	return sql_exec(query, len);
+}
+
+int generate_random_number(int range) {
+	return (!range) ? (int)arc4random() : arc4random_uniform(range);
 }
 
 void quid_generate(char *quid) {
