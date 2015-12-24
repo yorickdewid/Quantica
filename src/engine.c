@@ -17,9 +17,9 @@
 #include "core.h"
 #include "engine.h"
 
-#define TABLE_SIZE	((4096 - 1) / sizeof(struct _engine_item))
+#define TABLE_SIZE	((4096 - 1) / sizeof(struct _engine_item))//TODO defined size
 
-static int delete_larger = 0;
+static int delete_larger = 0;//TODO define
 
 struct _engine_item {
 	quid_t quid;

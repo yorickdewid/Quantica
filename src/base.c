@@ -212,6 +212,7 @@ void base_sync(base_t *base) {
 
 void base_init(base_t *base) {
 	nullify(base, sizeof(base_t));
+	zassert(DEFAULT_PAGE_SIZE > 0 && DEFAULT_PAGE_SIZE < 19);
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */

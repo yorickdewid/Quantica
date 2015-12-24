@@ -15,10 +15,15 @@
 #define DEFAULT_RESULT_SIZE		10
 
 struct _root_super {
+	long int root;
+	long int freelist;
+	bool unique_keys;
+};
+/*struct _root_super {
 	__be64 root;
 	__be64 freelist;
 	char unique_keys;
-};
+};*/
 
 static void get_node(btree_t *index, long int offset, node_t *pnode) {
 	if (offset == index->root) {
@@ -87,18 +92,17 @@ static void storage_read(btree_t *index) {
 		lprint("[erro] Failed to read disk\n");
 
 	get_node(index, super.root, &index->rootnode);
-	index->root = from_be64(super.root);
-	index->freelist = from_be64(super.freelist);
+	index->root = super.root;
+	index->freelist = super.freelist;
 	index->unique_keys = super.unique_keys;
 }
 
 static void storage_write(btree_t *index) {
 	struct _root_super super;
 	nullify(&super, sizeof(struct _root_super));
-	// int fd = pager_get_fd(base, &offset);
 
-	super.root = to_be64(index->root);
-	super.freelist = to_be64(index->freelist);
+	super.root = index->root;
+	super.freelist = index->freelist;
 	super.unique_keys = index->unique_keys;
 	if (fseek(index->fp, 0, SEEK_SET)) {
 		lprint("[erro] Failed to write disk\n");
