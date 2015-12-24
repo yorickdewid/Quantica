@@ -16,19 +16,20 @@ bool diag_exerr(base_t *base) {
 	engine_t engine;
 
 	lprint("[info] Failure on exit, run diagnostics\n");
-	engine_init(&engine, get_zero_key(), base->bindata);
+	// engine_init(&engine, get_zero_key(), base->bindata);
+	engine_init(base, &engine);
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
 	char *bindata = generate_bindata_name(base);
 
-	engine_recover_storage(&engine);
-	if (engine_vacuum(&engine, tmp_key, bindata) < 0) {
+	engine_recover_storage(base, &engine);
+	if (engine_vacuum(base, &engine) < 0) {
 		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
 	}
 	memcpy(&base->zero_key, &key, sizeof(quid_t));
 	strcpy(base->bindata, bindata);
 
-	engine_close(&engine);
+	engine_close(base, &engine);
 	return TRUE;
 }

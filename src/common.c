@@ -184,3 +184,10 @@ char *get_version_string() {
 long get_version() {
 	return sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR + sizeof(int) * VERSION_PATCH;
 }
+
+size_t page_align(size_t val) {
+	size_t i = 1;
+	while (i < val)
+		i <<= 1;
+	return i;
+}

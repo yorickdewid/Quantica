@@ -93,5 +93,6 @@ uint64_t from_be64(__be64 x);
 int file_exists(const char *path);
 char *get_version_string();
 long get_version();
+size_t page_align(size_t val);
 
 #endif // UTIL_H_INCLUDED

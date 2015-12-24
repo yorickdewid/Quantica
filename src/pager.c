@@ -167,7 +167,7 @@ void pager_init(base_t *base) {
 
 		unsigned short list_size = from_be16(list.size);
 		if (i == 0 && list_size == 0) {
-			lprint("[info] Creating database heap\n");
+			lprint("[info] Creating dataheap\n");
 
 			page_core->allocated = DEFAULT_PAGE_ALLOC;
 			page_core->pages = (page_t **)tree_zcalloc(page_core->allocated, sizeof(page_t *), page_core);

@@ -58,33 +58,28 @@ struct metadata {
 };
 
 struct engine_cache {
-	uint64_t offset;
+	unsigned long long offset;
 	struct _engine_table *table;
 };
 
 struct engine_dbcache {
 	unsigned int len;
-	uint64_t offset;
+	unsigned long long offset;
 };
 
-struct engine_stats { //TODO deprecated by base.stats
-	uint64_t keys;
-	uint64_t free_tables;
-	uint64_t list_size;
-	uint64_t index_list_size;
+struct engine_stats {
+	unsigned long long keys;
+	unsigned long long free_tables;
+	unsigned long long list_size;//DEPRECATED
+	unsigned long long index_list_size;//DEPRECATED
 };
 
 typedef struct {
-	uint64_t top;
-	uint64_t free_top;
-	uint64_t alloc;
-	uint64_t db_alloc;
-	uint64_t list_top;
-	uint64_t index_list_top;
-	int fd;
-	int db_fd;
+	unsigned long long top;
+	unsigned long long free_top;
+	unsigned long long last_block;
 	bool lock;
-	base_t *base; //TODO overgangsregeling :)
+	// base_t *base; //TODO overgangsregeling :)
 	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];
@@ -95,44 +90,46 @@ bool engine_keytype_hasdata(enum key_type type);
 /*
  * Open or Creat an existing database file.
  */
-void engine_init(engine_t *e, const char *fname, const char *dbname);
+// void engine_init(engine_t *engine, const char *fname, const char *dbname);
+void engine_init(base_t *base, engine_t *engine);
 
 /*
  * Close a database file opened with engine_create() or engine_open().
  */
-void engine_close(engine_t *e);
+void engine_close(base_t *base, engine_t *engine);
 
 /*
  * Insert a new item with key 'quid' with the contents in 'data' to the
  * database file.
  */
-int engine_insert_data(engine_t *e, quid_t *quid, const void *data, size_t len);
-int engine_insert_meta_data(engine_t *e, quid_t *quid, struct metadata *meta, const void *data, size_t len);
-int engine_insert_meta(engine_t *e, quid_t *quid, struct metadata *meta);
-int engine_insert(engine_t *e, quid_t *quid);
+int engine_insert_data(base_t *base, engine_t *engine, quid_t *quid, const void *data, size_t len);
+int engine_insert_meta_data(base_t *base, engine_t *engine, quid_t *quid, struct metadata *meta, const void *data, size_t len);
+int engine_insert_meta(base_t *base, engine_t *engine, quid_t *quid, struct metadata *meta);
+int engine_insert(base_t *base, engine_t *engine, quid_t *quid);
 
 /*
  * Look up item with the given key 'quid' in the database file. Length of the
  * item is stored in 'len'. Returns a pointer to the contents of the item.
  * The returned pointer should be released with free() after use.
  */
-uint64_t engine_get(engine_t *e, const quid_t *quid, struct metadata *meta);
-void *get_data_block(engine_t *e, uint64_t offset, size_t *len);
+void *get_data_block(base_t *base, engine_t *engine, unsigned long long offset, size_t *len);
+unsigned long long engine_get(base_t *base, engine_t *engine, const quid_t *quid, struct metadata *meta);
 
 /*
  * Remove item with the given key 'quid' from the database file.
  */
-int engine_purge(engine_t *e, quid_t *quid);
+int engine_purge(base_t *base, engine_t *engine, quid_t *quid);
 
-void engine_sync(engine_t *e);
+void engine_sync(base_t *base, engine_t *engine);
 
-int engine_setmeta(engine_t *e, const quid_t *quid, const struct metadata *data);
+int engine_setmeta(base_t *base, engine_t *engine, const quid_t *quid, const struct metadata *data);
 
-int engine_delete(engine_t *e, const quid_t *quid);
+int engine_delete(base_t *base, engine_t *engine, const quid_t *quid);
 
-int engine_recover_storage(engine_t *e);
-int engine_vacuum(engine_t *e, const char *fname, const char *nfname);
-int engine_update_data(engine_t *e, const quid_t *quid, const void *data, size_t len);
+void engine_traverse(base_t *base, engine_t *engine, unsigned long long table_offset);
+int engine_recover_storage(base_t *base, engine_t *engine);
+int engine_vacuum(base_t *base, engine_t *engine);
+int engine_update_data(base_t *base, engine_t *engine, const quid_t *quid, const void *data, size_t len);
 
 char *get_str_lifecycle(enum key_lifecycle lifecycle);
 char *get_str_type(enum key_type key_type);

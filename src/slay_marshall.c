@@ -85,7 +85,7 @@ static void *slay_unwrap(void *arrp, void **name, size_t *namelen, size_t *len, 
 	return data;
 }
 
-void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
+void *slay_put(base_t *base, marshall_t *marshall, size_t *len, slay_result_t *rs) {
 	void *slay = NULL;
 
 	if (marshall_type_hasdata(marshall->type)) {
@@ -137,14 +137,14 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 				size_t _len = 0;
 				slay_result_t _rs;
 				char squid[QUID_LENGTH + 1];
-				void *_slay = slay_put(marshall->child[i], &_len, &_rs);
+				void *_slay = slay_put(base, marshall->child[i], &_len, &_rs);
 
 				/* Insert subgroup in database */
 				quid_t key;
 				quid_create(&key);
 				quidtostr(squid, &key);
 
-				if (engine_insert_data(get_current_engine(), &key, _slay, _len) < 0) {
+				if (engine_insert_data(base, get_current_engine(), &key, _slay, _len) < 0) {
 					zfree(_slay);
 					continue;
 				}
@@ -167,27 +167,27 @@ void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs) {
 	return slay;
 }
 
-static marshall_t *get_child_record(char *quid, void *parent) {
+static marshall_t *get_child_record(base_t *base, char *quid, void *parent) {
 	quid_t key;
 	strtoquid(quid, &key);
 	engine_t *engine = get_current_engine();
 
 	size_t len;
 	struct metadata meta;
-	uint64_t offset = engine_get(engine, &key, &meta);
+	uint64_t offset = engine_get(base, engine, &key, &meta);
 	if (!offset)
 		return NULL;
 
-	void *data = get_data_block(engine, offset, &len);
+	void *data = get_data_block(base, engine, offset, &len);
 	if (!data)
 		return NULL;
 
-	marshall_t *dataobj = slay_get(data, parent, TRUE);
+	marshall_t *dataobj = slay_get(base, data, parent, TRUE);
 	zfree(data);
 	return dataobj;
 }
 
-marshall_t *slay_get(void *data, void *parent, bool descent) {
+marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 	marshall_t *marshall = NULL;
 	uint64_t elements;
 	schema_t schema;
@@ -209,7 +209,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 			}
 
 			if (val_dt == MTYPE_QUID && descent) {
-				marshall = get_child_record(val_data, NULL);
+				marshall = get_child_record(base, val_data, NULL);
 				if (!marshall) {
 					marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
 					marshall->type = MTYPE_NULL;
@@ -251,7 +251,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				}
 
 				if (val_dt == MTYPE_QUID && descent) {
-					marshall->child[marshall->size] = get_child_record(val_data, marshall);
+					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 						marshall->child[marshall->size]->type = MTYPE_NULL;
@@ -295,7 +295,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				}
 
 				if (val_dt == MTYPE_QUID && descent) {
-					marshall->child[marshall->size] = get_child_record(val_data, marshall);
+					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 						marshall->child[marshall->size]->type = MTYPE_NULL;
@@ -346,7 +346,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				((uint8_t *)val_data)[val_len] = '\0';
 
 				if (descent) {
-					marshall->child[marshall->size] = get_child_record(val_data, marshall);
+					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
 				} else {
 					marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 					marshall->child[marshall->size]->type = val_dt;
@@ -376,7 +376,7 @@ marshall_t *slay_get(void *data, void *parent, bool descent) {
 				((uint8_t *)val_data)[val_len] = '\0';
 
 				if (descent) {
-					marshall->child[marshall->size] = get_child_record(val_data, marshall);
+					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
 				} else {
 					marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 					marshall->child[marshall->size]->type = val_dt;

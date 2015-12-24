@@ -4,6 +4,7 @@
 #include <config.h>
 #include <common.h>
 
+#include "base.h"
 #include "marshall.h"
 
 typedef enum {
@@ -31,8 +32,8 @@ typedef struct {
 	schema_t schema;
 } slay_result_t;
 
-void *slay_put(marshall_t *marshall, size_t *len, slay_result_t *rs);
-marshall_t *slay_get(void *data, void *parent, bool descent);
+void *slay_put(base_t *base, marshall_t *marshall, size_t *len, slay_result_t *rs);
+marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent);
 marshall_type_t slay_get_type(void *data);
 schema_t slay_get_schema(void *data);
 char *slay_get_strschema(void *data);

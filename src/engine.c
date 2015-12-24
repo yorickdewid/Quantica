@@ -13,13 +13,13 @@
 #include "quid.h"
 #include "dict.h"
 #include "marshall.h"
+#include "pager.h"
 #include "core.h"
 #include "engine.h"
 
 #define TABLE_SIZE	((4096 - 1) / sizeof(struct _engine_item))
 
 static int delete_larger = 0;
-static uint64_t last_blob = 0;
 
 struct _engine_item {
 	quid_t quid;
@@ -30,7 +30,7 @@ struct _engine_item {
 
 struct _engine_table {
 	struct _engine_item items[TABLE_SIZE];
-	uint16_t size;
+	unsigned short size;
 } __attribute__((packed));
 
 struct _blob_info {
@@ -43,14 +43,9 @@ struct _engine_super {
 	__be32 version;
 	__be64 top;
 	__be64 free_top;
-	__be64 nkey; //DEPRECATED almost
-	__be64 nfree_table;
-	__be64 crc_zero_key;
-	__be64 list_top; //DEPRECATED
-	__be64 list_size; //DEPRECATED
-	__be64 index_list_top; //DEPRECATED
-	__be64 index_list_size; //DEPRECATED
-	char instance[INSTANCE_LENGTH];
+	__be64 nkey; //DEPRECATED
+	__be64 nfree_table; //DEPRECATED
+	char instance[INSTANCE_LENGTH]; //DEPRECATED
 } __attribute__((packed));
 
 struct _engine_dbsuper {
@@ -71,9 +66,9 @@ struct {
 	{MD_TYPE_GROUP,		TRUE},
 };
 
-static void flush_super(engine_t *engine, bool fast);
-static void flush_dbsuper(engine_t *engine);
-static uint64_t remove_table(engine_t *engine, struct _engine_table *table, size_t i, quid_t *quid);
+static void flush_super(base_t *base, engine_t *engine);
+static void flush_dbsuper(base_t *base, engine_t *engine);
+static unsigned long long remove_table(base_t *base, engine_t *engine, struct _engine_table *table, size_t i, quid_t *quid);
 
 /*
  * Does marshall type require additional data
@@ -86,7 +81,7 @@ bool engine_keytype_hasdata(enum key_type type) {
 	return FALSE;
 }
 
-static struct _engine_table *get_table(engine_t *engine, uint64_t offset) {
+static struct _engine_table *get_table(base_t *base, engine_t *engine, unsigned long long offset) {
 	zassert(offset != 0);
 
 	/* take from cache */
@@ -103,12 +98,13 @@ static struct _engine_table *get_table(engine_t *engine, uint64_t offset) {
 		return NULL;
 	}
 
-	if (lseek(engine->fd, offset, SEEK_SET) < 0) {
+	int fd = pager_get_fd(base, &offset);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		zfree(table);
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
-	if (read(engine->fd, table, sizeof(struct _engine_table)) != sizeof(struct _engine_table)) {
+	if (read(fd, table, sizeof(struct _engine_table)) != sizeof(struct _engine_table)) {
 		zfree(table);
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
@@ -117,7 +113,7 @@ static struct _engine_table *get_table(engine_t *engine, uint64_t offset) {
 }
 
 /* Free a table or put it into the cache */
-static void put_table(engine_t *engine, struct _engine_table *table, uint64_t offset) {
+static void put_table(engine_t *engine, struct _engine_table *table, unsigned long long offset) {
 	zassert(offset != 0);
 
 	/* overwrite cache */
@@ -130,100 +126,81 @@ static void put_table(engine_t *engine, struct _engine_table *table, uint64_t of
 }
 
 /* Write a table and free it */
-static void flush_table(engine_t *engine, struct _engine_table *table, uint64_t offset) {
+static void flush_table(base_t *base, engine_t *engine, struct _engine_table *table, unsigned long long offset) {
 	zassert(offset != 0);
 
-	if (lseek(engine->fd, offset, SEEK_SET) < 0) {
+	int fd = pager_get_fd(base, &offset);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
-	if (write(engine->fd, table, sizeof(struct _engine_table)) != sizeof(struct _engine_table)) {
+	if (write(fd, table, sizeof(struct _engine_table)) != sizeof(struct _engine_table)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 	put_table(engine, table, offset);
 }
 
-static int engine_open(engine_t *engine, const char *idxname, const char *dbname) {
+static int engine_open(base_t *base, engine_t *engine, unsigned long long zero_offset, unsigned long long heap_offset) {
 	memset(engine, 0, sizeof(engine_t));
-	engine->fd = open(idxname, O_RDWR | O_BINARY);
-	engine->db_fd = open(dbname, O_RDWR | O_BINARY);
-	if (engine->fd < 0 || engine->db_fd < 0)
-		return -1;
-
 	struct _engine_super super;
-	if (read(engine->fd, &super, sizeof(struct _engine_super)) != sizeof(struct _engine_super)) {
+
+	int fd = pager_get_fd(base, &zero_offset);
+	if (lseek(fd, zero_offset, SEEK_SET) < 0) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return -1;
+	}
+	if (read(fd, &super, sizeof(struct _engine_super)) != sizeof(struct _engine_super)) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
+
 	engine->top = from_be64(super.top);
 	engine->free_top = from_be64(super.free_top);
 	engine->stats.keys = from_be64(super.nkey);
 	engine->stats.free_tables = from_be64(super.nfree_table);
-	engine->stats.list_size = from_be64(super.list_size);
-	engine->stats.index_list_size = from_be64(super.index_list_size);
-	engine->list_top = from_be64(super.list_top);
-	engine->index_list_top = from_be64(super.index_list_top);
 	zassert(from_be64(super.version) == VERSION_MAJOR);
 
-	uint64_t crc64sum;
-	if (!crc_file(engine->fd, &crc64sum)) {
-		lprint("[erro] Failed to calculate CRC\n");
-		return -1;
-	}
-	/* TODO: run the diagnose process */
-	if (from_be64(super.crc_zero_key) != crc64sum)
-		lprint("[erro] Index CRC doenst match\n");
-
 	struct _engine_dbsuper dbsuper;
-	if (read(engine->db_fd, &dbsuper, sizeof(struct _engine_dbsuper)) != sizeof(struct _engine_dbsuper)) {
+	int fdh = pager_get_fd(base, &heap_offset);
+	if (lseek(fd, heap_offset, SEEK_SET) < 0) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return -1;
+	}
+	if (read(fdh, &dbsuper, sizeof(struct _engine_dbsuper)) != sizeof(struct _engine_dbsuper)) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return -1;
 	}
+
 	zassert(from_be64(dbsuper.version) == VERSION_MAJOR);
-	last_blob = from_be64(dbsuper.last);
-
-	long _alloc = lseek(engine->fd, 0, SEEK_END);
-	long _db_alloc = lseek(engine->db_fd, 0, SEEK_END);
-
-	if (_alloc < 0 || _db_alloc < 0) {
-		error_throw_fatal("a7df40ba3075", "Failed to read disk");
-		return -1;
-	}
-
-	engine->alloc = _alloc;
-	engine->db_alloc = _db_alloc;
+	engine->last_block = from_be64(dbsuper.last);
 	return 0;
 }
 
-static int engine_create(engine_t *engine, const char *idxname, const char *dbname) {
+static int engine_create(base_t *base, engine_t *engine) {
 	memset(engine, 0, sizeof(engine_t));
-	engine->fd = open(idxname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	engine->db_fd = open(dbname, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
-	if (engine->fd < 0 || engine->db_fd < 0)
-		return -1;
+	engine->last_block = 0;
 
-	last_blob = 0;
-	flush_super(engine, TRUE);
-	flush_dbsuper(engine);
+	lprint("[info] Creating core index\n");
+	flush_super(base, engine);
+	flush_dbsuper(base, engine);
 
-	engine->alloc = sizeof(struct _engine_super);
-	engine->db_alloc = sizeof(struct _engine_dbsuper);
+	base->offset.zero = pager_alloc(base, sizeof(struct _engine_super));
+	base->offset.heap = pager_alloc(base, sizeof(struct _engine_dbsuper));
 	return 0;
 }
 
-void engine_init(engine_t *engine, const char *fname, const char *dbname) {
-	if (file_exists(fname) && file_exists(dbname)) {
-		engine_open(engine, fname, dbname);
+void engine_init(base_t *base, engine_t *engine) {
+	if (base->offset.zero != 0) {
+		engine_open(base, engine, base->offset.zero, base->offset.heap);
 	} else {
-		engine_create(engine, fname, dbname);
+		engine_create(base, engine);
 	}
 }
 
-void engine_close(engine_t *engine) {
-	engine_sync(engine);
-	close(engine->fd);
-	close(engine->db_fd);
+void engine_close(base_t *base, engine_t *engine) {
+	flush_super(base, engine);
+	flush_dbsuper(base, engine);
 
 	for (size_t i = 0; i < CACHE_SLOTS; ++i) {
 		if (engine->cache[i].offset) {
@@ -232,39 +209,19 @@ void engine_close(engine_t *engine) {
 	}
 }
 
-void engine_sync(engine_t *engine) {
-	flush_super(engine, FALSE);
-	flush_dbsuper(engine);
-}
-
-/* Return a value that is greater or equal to 'val' and is power-of-two. */
-static size_t page_align(size_t val) {
-	size_t i = 1;
-	while (i < val)
-		i <<= 1;
-	return i;
-}
-
-static uint64_t page_swap(engine_t *engine, size_t len) {
-	len = page_align(len);
-	uint64_t offset = engine->alloc;
-
-	/* this is important to performance */
-	if (offset & (len - 1)) {
-		offset += len - (offset & (len - 1));
-	}
-	engine->alloc = offset + len;
-	return offset;
+void engine_sync(base_t *base, engine_t *engine) {
+	flush_super(base, engine);
+	flush_dbsuper(base, engine);
 }
 
 /* Allocate a chunk from the index file for new table */
-static uint64_t alloc_table_chunk(engine_t *engine, size_t len) {
+static unsigned long long alloc_table_chunk(base_t *base, engine_t *engine, size_t len) {
 	zassert(len > 0);
 
 	/* Use blocks from freelist instead of allocation */
 	if (engine->free_top) {
-		uint64_t offset = engine->free_top;
-		struct _engine_table *table = get_table(engine, offset);
+		unsigned long long offset = engine->free_top;
+		struct _engine_table *table = get_table(base, engine, offset);
 		engine->free_top = from_be64(table->items[0].child);
 		engine->stats.free_tables--;
 
@@ -272,39 +229,33 @@ static uint64_t alloc_table_chunk(engine_t *engine, size_t len) {
 		return offset;
 	}
 
-	return page_swap(engine, len);
+	return pager_alloc(base, len);
 }
 
 /* Allocate a chunk from the database file */
-static uint64_t alloc_dbchunk(engine_t *engine, size_t len) {
+static unsigned long long alloc_dbchunk(base_t *base, engine_t *engine, size_t len) {
 	zassert(len > 0);
 
-	if (!engine->dbcache[DBCACHE_SLOTS - 1].len)
-		goto new_block;
-
-	for (int i = 0; i < DBCACHE_SLOTS; ++i) {
-		struct engine_dbcache *slot = &engine->dbcache[i];
-		if (len <= slot->len) {
-			int diff = (((double)(len) / (double)slot->len) * 100);
-			if (diff >= DBCACHE_DENSITY) {
-				slot->len = 0;
-				return slot->offset;
+	if (engine->dbcache[DBCACHE_SLOTS - 1].len) {
+		for (int i = 0; i < DBCACHE_SLOTS; ++i) {
+			struct engine_dbcache *slot = &engine->dbcache[i];
+			if (len <= slot->len) {
+				int diff = (((double)(len) / (double)slot->len) * 100);
+				if (diff >= DBCACHE_DENSITY) {
+					slot->len = 0;
+					return slot->offset;
+				}
 			}
 		}
 	}
 
-new_block:
-	len = page_align(sizeof(struct _blob_info) + len);
-
-	uint64_t offset = engine->db_alloc;
-	engine->db_alloc = offset + len;
-	return offset;
+	return pager_alloc(base, sizeof(struct _blob_info) + len);
 }
 
 /* Mark a chunk as unused in the database file */
-static void free_index_chunk(engine_t *engine, uint64_t offset) {
+static void free_index_chunk(base_t *base, engine_t *engine, unsigned long long offset) {
 	zassert(offset > 0);
-	struct _engine_table *table = get_table(engine, offset);
+	struct _engine_table *table = get_table(base, engine, offset);
 
 	quid_t quid;
 	memset(&quid, 0, sizeof(quid_t));
@@ -314,19 +265,20 @@ static void free_index_chunk(engine_t *engine, uint64_t offset) {
 	table->items[0].offset = 0;
 	table->items[0].child = to_be64(engine->free_top);
 
-	flush_table(engine, table, offset);
+	flush_table(base, engine, table, offset);
 	engine->free_top = offset;
 	engine->stats.free_tables++;
 }
 
-static void free_dbchunk(engine_t *engine, uint64_t offset) {
+static void free_dbchunk(base_t *base, engine_t *engine, unsigned long long offset) {
 	struct _blob_info info;
 
-	if (lseek(engine->db_fd, offset, SEEK_SET) < 0) {
+	int fd = pager_get_fd(base, &offset);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return;
 	}
-	if (read(engine->db_fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
+	if (read(fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return;
 	}
@@ -350,71 +302,57 @@ static void free_dbchunk(engine_t *engine, uint64_t offset) {
 		}
 	}
 
-	if (lseek(engine->db_fd, offset, SEEK_SET) < 0) {
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
-	if (write(engine->db_fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
+	if (write(fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
 
-static void flush_super(engine_t *engine, bool fast_flush) {
-	uint64_t crc64sum;
+static void flush_super(base_t *base, engine_t *engine) {
 	struct _engine_super super;
 	memset(&super, 0, sizeof(struct _engine_super));
+	unsigned long long offset = base->offset.zero;
+	int fd = pager_get_fd(base, &offset);
 
 	super.version = to_be64(VERSION_MAJOR);
 	super.top = to_be64(engine->top);
 	super.free_top = to_be64(engine->free_top);
 	super.nkey = to_be64(engine->stats.keys);
 	super.nfree_table = to_be64(engine->stats.free_tables);
-	super.list_size = to_be64(engine->stats.list_size);
-	super.index_list_size = to_be64(engine->stats.index_list_size);
-	super.list_top = to_be64(engine->list_top);
-	super.index_list_top = to_be64(engine->index_list_top);
-	if (fast_flush)
-		goto flush_disk;
 
-	if (lseek(engine->fd, sizeof(struct _engine_super), SEEK_SET) < 0) {
-		lprint("[erro] Failed to calculate CRC\n");
-		return;
-	}
-	if (!crc_file(engine->fd, &crc64sum)) {
-		lprint("[erro] Failed to calculate CRC\n");
-		return;
-	}
-	super.crc_zero_key = to_be64(crc64sum);
-
-flush_disk:
-	if (lseek(engine->fd, 0, SEEK_SET) < 0) {
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
-	if (write(engine->fd, &super, sizeof(struct _engine_super)) != sizeof(struct _engine_super)) {
+	if (write(fd, &super, sizeof(struct _engine_super)) != sizeof(struct _engine_super)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
 
-static void flush_dbsuper(engine_t *engine) {
+static void flush_dbsuper(base_t *base, engine_t *engine) {
 	struct _engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct _engine_dbsuper));
-	dbsuper.version = to_be64(VERSION_MAJOR);
-	dbsuper.last = to_be64(last_blob);
+	unsigned long long offset = base->offset.heap;
+	int fd = pager_get_fd(base, &offset);
 
-	if (lseek(engine->db_fd, 0, SEEK_SET) < 0) {
+	dbsuper.version = to_be64(VERSION_MAJOR);
+	dbsuper.last = to_be64(engine->last_block);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
-	if (write(engine->db_fd, &dbsuper, sizeof(struct _engine_dbsuper)) != sizeof(struct _engine_dbsuper)) {
+	if (write(fd, &dbsuper, sizeof(struct _engine_dbsuper)) != sizeof(struct _engine_dbsuper)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
 	}
 }
 
-static uint64_t insert_data(engine_t *engine, const void *data, size_t len) {
+static unsigned long long insert_data(base_t *base, engine_t *engine, const void *data, size_t len) {
 	if (!data || len == 0) {
 		error_throw("e8880046e019", "No data provided");
 		return len;
@@ -425,29 +363,30 @@ static uint64_t insert_data(engine_t *engine, const void *data, size_t len) {
 	info.len = to_be32(len);
 	info.free = 0;
 
-	uint64_t offset = alloc_dbchunk(engine, len);
-	info.next = to_be64(last_blob);
-	last_blob = offset;
+	unsigned long long offset = alloc_dbchunk(base, engine, len);
+	info.next = to_be64(engine->last_block);
+	engine->last_block = offset;
 
-	if (lseek(engine->db_fd, offset, SEEK_SET) < 0) {
+	int fd = pager_get_fd(base, &offset);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
-	if (write(engine->db_fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
+	if (write(fd, &info, sizeof(struct _blob_info)) != sizeof(struct _blob_info)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
-	if (write(engine->db_fd, data, len) != (ssize_t)len) {
+	if (write(fd, data, len) != (ssize_t)len) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return 0;
 	}
 
-	return offset;
+	return engine->last_block;
 }
 
 /* Split a table. The pivot item is stored to 'quid' and 'offset'.
    Returns offset to the new table. */
-static uint64_t split_table(engine_t *engine, struct _engine_table *table, quid_t *quid, uint64_t *offset) {
+static unsigned long long split_table(base_t *base, engine_t *engine, struct _engine_table *table, quid_t *quid, unsigned long long *offset) {
 	memcpy(quid, &table->items[TABLE_SIZE / 2].quid, sizeof(quid_t));
 	*offset = from_be64(table->items[TABLE_SIZE / 2].offset);
 
@@ -462,85 +401,85 @@ static uint64_t split_table(engine_t *engine, struct _engine_table *table, quid_
 	table->size = TABLE_SIZE / 2;
 	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct _engine_item));
 
-	uint64_t new_table_offset = alloc_table_chunk(engine, sizeof(struct _engine_table));
-	flush_table(engine, new_table, new_table_offset);
+	unsigned long long new_table_offset = alloc_table_chunk(base, engine, sizeof(struct _engine_table));
+	flush_table(base, engine, new_table, new_table_offset);
 
 	return new_table_offset;
 }
 
 /* Try to table_rejoin the given table. Returns a new table offset. */
-static uint64_t table_join(engine_t *engine, uint64_t table_offset) {
-	struct _engine_table *table = get_table(engine, table_offset);
+static unsigned long long table_join(base_t *base, engine_t *engine, unsigned long long offset) {
+	struct _engine_table *table = get_table(base, engine, offset);
 	if (table->size == 0) {
-		uint64_t ret = from_be64(table->items[0].child);
-		free_index_chunk(engine, table_offset);
+		unsigned long long ret = from_be64(table->items[0].child);
+		free_index_chunk(base, engine, offset);
 
 		zfree(table);
 		return ret;
 	}
-	put_table(engine, table, table_offset);
-	return table_offset;
+	put_table(engine, table, offset);
+	return offset;
 }
 
 /* Find and remove the smallest item from the given table. The key of the item
    is stored to 'quid'. Returns offset to the item */
-static uint64_t take_smallest(engine_t *engine, uint64_t table_offset, quid_t *quid) {
-	struct _engine_table *table = get_table(engine, table_offset);
+static unsigned long long take_smallest(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid) {
+	struct _engine_table *table = get_table(base, engine, table_offset);
 	zassert(table->size > 0);
 
-	uint64_t offset = 0;
-	uint64_t child = from_be64(table->items[0].child);
+	unsigned long long offset = 0;
+	unsigned long long child = from_be64(table->items[0].child);
 	if (child == 0) {
-		offset = remove_table(engine, table, 0, quid);
+		offset = remove_table(base, engine, table, 0, quid);
 	} else {
 		/* recursion */
-		offset = take_smallest(engine, child, quid);
-		table->items[0].child = to_be64(table_join(engine, child));
+		offset = take_smallest(base, engine, child, quid);
+		table->items[0].child = to_be64(table_join(base, engine, child));
 	}
-	flush_table(engine, table, table_offset);
+	flush_table(base, engine, table, table_offset);
 	return offset;
 }
 
 /* Find and remove the largest item from the given table. The key of the item
    is stored to 'quid'. Returns offset to the item */
-static uint64_t take_largest(engine_t *engine, uint64_t table_offset, quid_t *quid) {
-	struct _engine_table *table = get_table(engine, table_offset);
+static unsigned long long take_largest(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid) {
+	struct _engine_table *table = get_table(base, engine, table_offset);
 	zassert(table->size > 0);
 
-	uint64_t offset = 0;
-	uint64_t child = from_be64(table->items[table->size].child);
+	unsigned long long offset = 0;
+	unsigned long long child = from_be64(table->items[table->size].child);
 	if (child == 0) {
-		offset = remove_table(engine, table, table->size - 1, quid);
+		offset = remove_table(base, engine, table, table->size - 1, quid);
 	} else {
 		/* recursion */
-		offset = take_largest(engine, child, quid);
-		table->items[table->size].child = to_be64(table_join(engine, child));
+		offset = take_largest(base, engine, child, quid);
+		table->items[table->size].child = to_be64(table_join(base, engine, child));
 	}
-	flush_table(engine, table, table_offset);
+	flush_table(base, engine, table, table_offset);
 	return offset;
 }
 
 /* Remove an item in position 'i' from the given table. The key of the
    removed item is stored to 'quid'. Returns offset to the item. */
-static uint64_t remove_table(engine_t *engine, struct _engine_table *table, size_t i, quid_t *quid) {
+static unsigned long long remove_table(base_t *base, engine_t *engine, struct _engine_table *table, size_t i, quid_t *quid) {
 	zassert(i < table->size);
 
 	if (quid)
 		memcpy(quid, &table->items[i].quid, sizeof(quid_t));
 
-	uint64_t offset = from_be64(table->items[i].offset);
-	uint64_t left_child = from_be64(table->items[i].child);
-	uint64_t right_child = from_be64(table->items[i + 1].child);
+	unsigned long long offset = from_be64(table->items[i].offset);
+	unsigned long long left_child = from_be64(table->items[i].child);
+	unsigned long long right_child = from_be64(table->items[i + 1].child);
 
 	if (left_child != 0 && right_child != 0) {
 		/* replace the removed item by taking an item from one of the child tables */
-		uint64_t new_offset;
+		unsigned long long new_offset;
 		if (arc4random() & 1) {
-			new_offset = take_largest(engine, left_child, &table->items[i].quid);
-			table->items[i].child = to_be64(table_join(engine, left_child));
+			new_offset = take_largest(base, engine, left_child, &table->items[i].quid);
+			table->items[i].child = to_be64(table_join(base, engine, left_child));
 		} else {
-			new_offset = take_smallest(engine, right_child, &table->items[i].quid);
-			table->items[i + 1].child = to_be64(table_join(engine, right_child));
+			new_offset = take_smallest(base, engine, right_child, &table->items[i].quid);
+			table->items[i + 1].child = to_be64(table_join(base, engine, right_child));
 		}
 		table->items[i].offset = to_be64(new_offset);
 	} else {
@@ -558,8 +497,8 @@ static uint64_t remove_table(engine_t *engine, struct _engine_table *table, size
 
 /* Insert a new item with key 'quid' with the contents in 'data' to the given table.
    Returns offset to the new item. */
-static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
-	struct _engine_table *table = get_table(engine, table_offset);
+static unsigned long long insert_table(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
+	struct _engine_table *table = get_table(base, engine, table_offset);
 	zassert(table->size < TABLE_SIZE - 1);
 
 	size_t left = 0, right = table->size;
@@ -568,7 +507,7 @@ static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 		int cmp = quidcmp(quid, &table->items[i].quid);
 		if (cmp == 0) {
 			/* already in the table */
-			uint64_t ret = from_be64(table->items[i].offset);
+			unsigned long long ret = from_be64(table->items[i].offset);
 			put_table(engine, table, table_offset);
 			error_throw("a475446c70e8", "Key exists");
 			return ret;
@@ -581,16 +520,16 @@ static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 	}
 
 	size_t i = left;
-	uint64_t offset = 0;
-	uint64_t left_child = from_be64(table->items[i].child);
-	uint64_t right_child = 0; /* after insertion */
-	uint64_t ret = 0;
+	unsigned long long offset = 0;
+	unsigned long long left_child = from_be64(table->items[i].child);
+	unsigned long long right_child = 0; /* after insertion */
+	unsigned long long ret = 0;
 	if (left_child != 0) {
 		/* recursion */
-		ret = insert_table(engine, left_child, quid, meta, data, len);
+		ret = insert_table(base, engine, left_child, quid, meta, data, len);
 
 		/* check if we need to split */
-		struct _engine_table *child = get_table(engine, left_child);
+		struct _engine_table *child = get_table(base, engine, left_child);
 		if (child->size < TABLE_SIZE - 1) {
 			/* nothing to do */
 			put_table(engine, table, table_offset);
@@ -598,12 +537,12 @@ static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 			return ret;
 		}
 		/* overwrites QUID */
-		right_child = split_table(engine, child, quid, &offset);
+		right_child = split_table(base, engine, child, quid, &offset);
 		/* flush just in case changes happened */
-		flush_table(engine, child, left_child);
+		flush_table(base, engine, child, left_child);
 	} else {
 		if (data && len > 0) {
-			ret = offset = insert_data(engine, data, len);
+			ret = offset = insert_data(base, engine, data, len);
 		}
 	}
 
@@ -615,7 +554,7 @@ static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 	table->items[i].child = to_be64(left_child);
 	table->items[i + 1].child = to_be64(right_child);
 
-	flush_table(engine, table, table_offset);
+	flush_table(base, engine, table, table_offset);
 	return ret;
 }
 
@@ -624,12 +563,12 @@ static uint64_t insert_table(engine_t *engine, uint64_t table_offset, quid_t *qu
  * removed item is returned.
  * Please note that 'quid' is overwritten when called inside the allocator.
  */
-static uint64_t delete_table(engine_t *engine, uint64_t table_offset, quid_t *quid) {
+static unsigned long long delete_table(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid) {
 	if (!table_offset) {
 		error_throw("6ef42da7901f", "Record not found");
 		return 0;
 	}
-	struct _engine_table *table = get_table(engine, table_offset);
+	struct _engine_table *table = get_table(base, engine, table_offset);
 
 	size_t left = 0, right = table->size;
 	while (left < right) {
@@ -642,8 +581,8 @@ static uint64_t delete_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 				put_table(engine, table, table_offset);
 				return 0;
 			}
-			uint64_t ret = remove_table(engine, table, i, quid);
-			flush_table(engine, table, table_offset);
+			unsigned long long ret = remove_table(base, engine, table, i, quid);
+			flush_table(base, engine, table, table_offset);
 			return ret;
 		}
 		if (cmp < 0) {
@@ -655,43 +594,43 @@ static uint64_t delete_table(engine_t *engine, uint64_t table_offset, quid_t *qu
 
 	/* not found - recursion */
 	size_t i = left;
-	uint64_t child = from_be64(table->items[i].child);
-	uint64_t ret = delete_table(engine, child, quid);
+	unsigned long long child = from_be64(table->items[i].child);
+	unsigned long long ret = delete_table(base, engine, child, quid);
 	if (ret != 0)
-		table->items[i].child = to_be64(table_join(engine, child));
+		table->items[i].child = to_be64(table_join(base, engine, child));
 
 	if (ret == 0 && delete_larger && i < table->size) {
 		/* remove the next largest */
-		ret = remove_table(engine, table, i, quid);
+		ret = remove_table(base, engine, table, i, quid);
 	}
 	if (ret != 0) {
 		/* flush just in case changes happened */
-		flush_table(engine, table, table_offset);
+		flush_table(base, engine, table, table_offset);
 	} else {
 		put_table(engine, table, table_offset);
 	}
 	return ret;
 }
 
-static uint64_t insert_toplevel(engine_t *engine, uint64_t *table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
-	uint64_t offset = 0;
-	uint64_t ret = 0;
-	uint64_t right_child = 0;
+static unsigned long long insert_toplevel(base_t *base, engine_t *engine, unsigned long long *table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
+	unsigned long long offset = 0;
+	unsigned long long ret = 0;
+	unsigned long long right_child = 0;
 	if (*table_offset != 0) {
-		ret = insert_table(engine, *table_offset, quid, meta, data, len);
+		ret = insert_table(base, engine, *table_offset, quid, meta, data, len);
 
 		/* check if we need to split */
-		struct _engine_table *table = get_table(engine, *table_offset);
+		struct _engine_table *table = get_table(base, engine, *table_offset);
 		if (table->size < TABLE_SIZE - 1) {
 			/* nothing to do */
 			put_table(engine, table, *table_offset);
 			return ret;
 		}
-		right_child = split_table(engine, table, quid, &offset);
-		flush_table(engine, table, *table_offset);
+		right_child = split_table(base, engine, table, quid, &offset);
+		flush_table(base, engine, table, *table_offset);
 	} else {
 		if (data && len > 0) {
-			ret = offset = insert_data(engine, data, len);
+			ret = offset = insert_data(base, engine, data, len);
 		}
 	}
 
@@ -709,14 +648,14 @@ static uint64_t insert_toplevel(engine_t *engine, uint64_t *table_offset, quid_t
 	new_table->items[0].child = to_be64(*table_offset);
 	new_table->items[1].child = to_be64(right_child);
 
-	uint64_t new_table_offset = alloc_table_chunk(engine, sizeof(struct _engine_table));
-	flush_table(engine, new_table, new_table_offset);
+	unsigned long long new_table_offset = alloc_table_chunk(base, engine, sizeof(struct _engine_table));
+	flush_table(base, engine, new_table, new_table_offset);
 
 	*table_offset = new_table_offset;
 	return ret;
 }
 
-int engine_insert_data(engine_t *engine, quid_t *quid, const void *data, size_t len) {
+int engine_insert_data(base_t *base, engine_t *engine, quid_t *quid, const void *data, size_t len) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
@@ -726,8 +665,8 @@ int engine_insert_data(engine_t *engine, quid_t *quid, const void *data, size_t 
 	memset(&meta, 0, sizeof(struct metadata));
 	meta.importance = MD_IMPORTANT_NORMAL;
 
-	insert_toplevel(engine, &engine->top, quid, &meta, data, len);
-	flush_super(engine, TRUE);
+	insert_toplevel(base, engine, &engine->top, quid, &meta, data, len);
+	flush_super(base, engine);
 	if (iserror())
 		return -1;
 
@@ -735,14 +674,14 @@ int engine_insert_data(engine_t *engine, quid_t *quid, const void *data, size_t 
 	return 0;
 }
 
-int engine_insert_meta_data(engine_t *engine, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
+int engine_insert_meta_data(base_t *base, engine_t *engine, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
-	insert_toplevel(engine, &engine->top, quid, meta, data, len);
-	flush_super(engine, TRUE);
+	insert_toplevel(base, engine, &engine->top, quid, meta, data, len);
+	flush_super(base, engine);
 	if (iserror())
 		return -1;
 
@@ -750,7 +689,7 @@ int engine_insert_meta_data(engine_t *engine, quid_t *quid, struct metadata *met
 	return 0;
 }
 
-int engine_insert(engine_t *engine, quid_t *quid) {
+int engine_insert(base_t *base, engine_t *engine, quid_t *quid) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
@@ -761,8 +700,8 @@ int engine_insert(engine_t *engine, quid_t *quid) {
 	meta.nodata = TRUE;
 	meta.importance = MD_IMPORTANT_NORMAL;
 
-	insert_toplevel(engine, &engine->top, quid, &meta, NULL, 0);
-	flush_super(engine, TRUE);
+	insert_toplevel(base, engine, &engine->top, quid, &meta, NULL, 0);
+	flush_super(base, engine);
 	if (iserror())
 		return -1;
 
@@ -770,14 +709,14 @@ int engine_insert(engine_t *engine, quid_t *quid) {
 	return 0;
 }
 
-int engine_insert_meta(engine_t *engine, quid_t *quid, struct metadata *meta) {
+int engine_insert_meta(base_t *base, engine_t *engine, quid_t *quid, struct metadata *meta) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
-	insert_toplevel(engine, &engine->top, quid, meta, NULL, 0);
-	flush_super(engine, TRUE);
+	insert_toplevel(base, engine, &engine->top, quid, meta, NULL, 0);
+	flush_super(base, engine);
 	if (iserror())
 		return -1;
 
@@ -789,9 +728,9 @@ int engine_insert_meta(engine_t *engine, quid_t *quid, struct metadata *meta) {
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static uint64_t lookup_key(engine_t *engine, uint64_t table_offset, const quid_t *quid, bool *nodata, struct metadata *meta) {
+static unsigned long long lookup_key(base_t *base, engine_t *engine, unsigned long long table_offset, const quid_t *quid, bool *nodata, struct metadata *meta) {
 	while (table_offset) {
-		struct _engine_table *table = get_table(engine, table_offset);
+		struct _engine_table *table = get_table(base, engine, table_offset);
 		size_t left = 0, right = table->size;
 		while (left < right) {
 			size_t i;
@@ -804,7 +743,7 @@ static uint64_t lookup_key(engine_t *engine, uint64_t table_offset, const quid_t
 					put_table(engine, table, table_offset);
 					return 0;
 				}
-				uint64_t ret = from_be64(table->items[i].offset);
+				unsigned long long ret = from_be64(table->items[i].offset);
 				*nodata = table->items[i].meta.nodata;
 				memcpy(meta, &table->items[i].meta, sizeof(struct metadata));
 				put_table(engine, table, table_offset);
@@ -816,7 +755,7 @@ static uint64_t lookup_key(engine_t *engine, uint64_t table_offset, const quid_t
 				left = i + 1;
 			}
 		}
-		uint64_t child = from_be64(table->items[left].child);
+		unsigned long long child = from_be64(table->items[left].child);
 		put_table(engine, table, table_offset);
 		table_offset = child;
 	}
@@ -824,14 +763,15 @@ static uint64_t lookup_key(engine_t *engine, uint64_t table_offset, const quid_t
 	return 0;
 }
 
-static void *get_data(engine_t *engine, uint64_t offset, size_t *len) {
+static void *get_data(base_t *base, unsigned long long offset, size_t *len) {
 	struct _blob_info info;
 
-	if (lseek(engine->db_fd, offset, SEEK_SET) < 0) {
+	int fd = pager_get_fd(base, &offset);
+	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
-	if (read(engine->db_fd, &info, sizeof(struct _blob_info)) != (ssize_t)sizeof(struct _blob_info)) {
+	if (read(fd, &info, sizeof(struct _blob_info)) != (ssize_t)sizeof(struct _blob_info)) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		return NULL;
 	}
@@ -846,7 +786,7 @@ static void *get_data(engine_t *engine, uint64_t offset, size_t *len) {
 		return NULL;
 	}
 
-	if (read(engine->db_fd, data, *len) != (ssize_t) *len) {
+	if (read(fd, data, *len) != (ssize_t) *len) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
 		zfree(data);
 		data = NULL;
@@ -856,7 +796,7 @@ static void *get_data(engine_t *engine, uint64_t offset, size_t *len) {
 	return data;
 }
 
-void *get_data_block(engine_t *engine, uint64_t offset, size_t *len) {
+void *get_data_block(base_t *base, engine_t *engine, unsigned long long offset, size_t *len) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return NULL;
@@ -865,17 +805,18 @@ void *get_data_block(engine_t *engine, uint64_t offset, size_t *len) {
 	if (!offset)
 		return NULL;
 
-	return get_data(engine, offset, len);
+	return get_data(base, offset, len);
 }
 
-uint64_t engine_get(engine_t *engine, const quid_t *quid, struct metadata *meta) {
+unsigned long long engine_get(base_t *base, engine_t *engine, const quid_t *quid, struct metadata *meta) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return 0;
 	}
+
 	bool nodata = 0;
 	memset(meta, 0, sizeof(struct metadata));
-	uint64_t offset = lookup_key(engine, engine->top, quid, &nodata, meta);
+	unsigned long long offset = lookup_key(base, engine, engine->top, quid, &nodata, meta);
 	if (iserror())
 		return 0;
 
@@ -885,27 +826,27 @@ uint64_t engine_get(engine_t *engine, const quid_t *quid, struct metadata *meta)
 	return offset;
 }
 
-int engine_purge(engine_t *engine, quid_t *quid) {
+int engine_purge(base_t *base, engine_t *engine, quid_t *quid) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
-	uint64_t offset = delete_table(engine, engine->top, quid);
+	unsigned long long offset = delete_table(base, engine, engine->top, quid);
 	if (iserror())
 		return -1;
 
-	engine->top = table_join(engine, engine->top);
+	engine->top = table_join(base, engine, engine->top);
 	engine->stats.keys--;
 
-	free_dbchunk(engine, offset);
-	flush_super(engine, TRUE);
+	free_dbchunk(base, engine, offset);
+	flush_super(base, engine);
 	return 0;
 }
 
-static int set_meta(engine_t *engine, uint64_t table_offset, const quid_t *quid, const struct metadata *md) {
+static int set_meta(base_t *base, engine_t *engine, unsigned long long table_offset, const quid_t *quid, const struct metadata *md) {
 	while (table_offset) {
-		struct _engine_table *table = get_table(engine, table_offset);
+		struct _engine_table *table = get_table(base, engine, table_offset);
 		size_t left = 0, right = table->size;
 		while (left < right) {
 			size_t i = (right - left) / 2 + left;
@@ -917,7 +858,7 @@ static int set_meta(engine_t *engine, uint64_t table_offset, const quid_t *quid,
 					return -1;
 				}
 				memcpy(&table->items[i].meta, md, sizeof(struct metadata));
-				flush_table(engine, table, table_offset);
+				flush_table(base, engine, table, table_offset);
 				return 0;
 			}
 			if (cmp < 0) {
@@ -926,7 +867,7 @@ static int set_meta(engine_t *engine, uint64_t table_offset, const quid_t *quid,
 				left = i + 1;
 			}
 		}
-		uint64_t child = from_be64(table->items[left].child);
+		unsigned long long child = from_be64(table->items[left].child);
 		put_table(engine, table, table_offset);
 		table_offset = child;
 	}
@@ -934,19 +875,19 @@ static int set_meta(engine_t *engine, uint64_t table_offset, const quid_t *quid,
 	return -1;
 }
 
-int engine_setmeta(engine_t *engine, const quid_t *quid, const struct metadata *data) {
+int engine_setmeta(base_t *base, engine_t *engine, const quid_t *quid, const struct metadata *data) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
-	set_meta(engine, engine->top, quid, data);
+	set_meta(base, engine, engine->top, quid, data);
 	if (iserror())
 		return -1;
 	return 0;
 }
 
-int engine_delete(engine_t *engine, const quid_t *quid) {
+int engine_delete(base_t *base, engine_t *engine, const quid_t *quid) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
@@ -954,21 +895,21 @@ int engine_delete(engine_t *engine, const quid_t *quid) {
 
 	bool nodata = 0;
 	struct metadata meta;
-	lookup_key(engine, engine->top, quid, &nodata, &meta);
+	lookup_key(base, engine, engine->top, quid, &nodata, &meta);
 	if (iserror())
 		return -1;
 
 	meta.lifecycle = MD_LIFECYCLE_RECYCLE;
-	set_meta(engine, engine->top, quid, &meta);
+	set_meta(base, engine, engine->top, quid, &meta);
 	if (iserror())
 		return -1;
 
-	flush_super(engine, TRUE);
+	flush_super(base, engine);
 	return 0;
 }
 
-int engine_recover_storage(engine_t *engine) {
-	uint64_t offset = last_blob;
+int engine_recover_storage(base_t *base, engine_t *engine) {
+	unsigned long long offset = engine->last_block;
 	struct _blob_info info;
 	int cnt = 0;
 
@@ -985,17 +926,18 @@ int engine_recover_storage(engine_t *engine) {
 
 	while (1) {
 		cnt++;
-		if (lseek(engine->db_fd, offset, SEEK_SET) < 0) {
+		int fd = pager_get_fd(base, &offset);
+		if (lseek(fd, offset, SEEK_SET) < 0) {
 			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return -1;
 		}
-		if (read(engine->db_fd, &info, sizeof(struct _blob_info)) != (ssize_t) sizeof(struct _blob_info)) {
+		if (read(fd, &info, sizeof(struct _blob_info)) != (ssize_t)sizeof(struct _blob_info)) {
 			error_throw_fatal("a7df40ba3075", "Failed to read disk");
 			return -1;
 		}
 
 		size_t len = from_be32(info.len);
-		uint64_t next = from_be64(info.next);
+		unsigned long long next = from_be64(info.next);
 		zassert(len > 0);
 		if (next)
 			offset = next;
@@ -1006,35 +948,53 @@ int engine_recover_storage(engine_t *engine) {
 	return 0;
 }
 
-//TODO Copy over other keytypes, indexes, aliasses..
-static void engine_copy(engine_t *engine, engine_t *new_engine, uint64_t table_offset) {
-	struct _engine_table *table = get_table(engine, table_offset);
+void engine_traverse(base_t *base, engine_t *engine, unsigned long long table_offset) {
+	struct _engine_table *table = get_table(base, engine, table_offset);
 	size_t sz = table->size;
 	for (int i = 0; i < (int)sz; ++i) {
-		uint64_t child = from_be64(table->items[i].child);
-		uint64_t right = from_be64(table->items[i + 1].child);
-		uint64_t dboffset = from_be64(table->items[i].offset);
+		unsigned long long child = from_be64(table->items[i].child);
+		unsigned long long right = from_be64(table->items[i + 1].child);
+		unsigned long long dboffset = from_be64(table->items[i].offset);
 
-		size_t len;
-		void *data = get_data(engine, dboffset, &len);
+		printf("Location %d data offset: %llu\n", i, dboffset);
 
-		/* Only copy active keys */
-		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
-			insert_toplevel(new_engine, &new_engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
-			new_engine->stats.keys++;
-			flush_super(new_engine, TRUE);
-		}
-
-		zfree(data);
 		if (child)
-			engine_copy(engine, new_engine, child);
+			engine_traverse(base, engine, child);
 		if (right)
-			engine_copy(engine, new_engine, right);
+			engine_traverse(base, engine, right);
 	}
 	put_table(engine, table, table_offset);
 }
 
-int engine_vacuum(engine_t *engine, const char *fname, const char *dbname) {
+//TODO Copy over other keytypes, indexes, aliasses..
+static void engine_copy(base_t *base, engine_t *engine, engine_t *new_engine, unsigned long long table_offset) {
+	struct _engine_table *table = get_table(base, engine, table_offset);
+	size_t sz = table->size;
+	for (int i = 0; i < (int)sz; ++i) {
+		unsigned long long child = from_be64(table->items[i].child);
+		unsigned long long right = from_be64(table->items[i + 1].child);
+		unsigned long long dboffset = from_be64(table->items[i].offset);
+
+		size_t len;
+		void *data = get_data(base, dboffset, &len);
+
+		/* Only copy active keys */
+		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
+			insert_toplevel(base, new_engine, &new_engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
+			new_engine->stats.keys++;
+			flush_super(base, new_engine);
+		}
+
+		zfree(data);
+		if (child)
+			engine_copy(base, engine, new_engine, child);
+		if (right)
+			engine_copy(base, engine, new_engine, right);
+	}
+	put_table(engine, table, table_offset);
+}
+
+int engine_vacuum(base_t *base, engine_t *engine) {
 	engine_t new_engine;
 	engine_t tmp;
 
@@ -1048,26 +1008,26 @@ int engine_vacuum(engine_t *engine, const char *fname, const char *dbname) {
 
 	lprint("[info] Start vacuum process\n");
 	engine->lock = LOCK;
-	engine_create(&new_engine, fname, dbname);
-	engine_copy(engine, &new_engine, engine->top);
+	engine_create(base, &new_engine);
+	engine_copy(base, engine, &new_engine, engine->top);
 
 	memcpy(&tmp, engine, sizeof(engine_t));
 	memcpy(engine, &new_engine, sizeof(engine_t));
-	engine_close(&tmp);
+	engine_close(base, &tmp);
 
 	return 0;
 }
 
-int engine_update_data(engine_t *engine, const quid_t *quid, const void *data, size_t len) {
+int engine_update_data(base_t *base, engine_t *engine, const quid_t *quid, const void *data, size_t len) {
 	if (engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
 		return -1;
 	}
 
-	uint64_t offset = 0;
-	uint64_t table_offset = engine->top;
+	unsigned long long offset = 0;
+	unsigned long long table_offset = engine->top;
 	while (table_offset) {
-		struct _engine_table *table = get_table(engine, table_offset);
+		struct _engine_table *table = get_table(base, engine, table_offset);
 		size_t left = 0, right = table->size;
 		while (left < right) {
 			size_t i = (right - left) / 2 + left;
@@ -1079,11 +1039,11 @@ int engine_update_data(engine_t *engine, const quid_t *quid, const void *data, s
 					return -1;
 				}
 				offset = from_be64(table->items[i].offset);
-				free_dbchunk(engine, offset);
-				offset = insert_data(engine, data, len);
+				free_dbchunk(base, engine, offset);
+				offset = insert_data(base, engine, data, len);
 				table->items[i].offset = to_be64(offset);
-				flush_table(engine, table, table_offset);
-				flush_super(engine, TRUE);
+				flush_table(base, engine, table, table_offset);
+				flush_super(base, engine);
 				return 0;
 			}
 			if (cmp < 0) {
@@ -1092,7 +1052,7 @@ int engine_update_data(engine_t *engine, const quid_t *quid, const void *data, s
 				left = i + 1;
 			}
 		}
-		uint64_t child = from_be64(table->items[left].child);
+		unsigned long long child = from_be64(table->items[left].child);
 		put_table(engine, table, table_offset);
 		table_offset = child;
 	}

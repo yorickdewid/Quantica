@@ -18,8 +18,8 @@ typedef struct {
 	unsigned long long int value;
 } index_keyval_t;
 
-int index_btree_create_table(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
-int index_btree_create_set(char *squid, const char *element, marshall_t *marshall, index_result_t *result);
-marshall_t *index_btree_all(quid_t *key, bool descent);
+int index_btree_create_table(base_t *base, char *squid, const char *element, marshall_t *marshall, index_result_t *result);
+int index_btree_create_set(base_t *base, char *squid, const char *element, marshall_t *marshall, index_result_t *result);
+marshall_t *index_btree_all(base_t *base, quid_t *key, bool descent);
 
 #endif // CORE_H_INCLUDED

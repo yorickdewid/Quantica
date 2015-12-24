@@ -12,7 +12,7 @@
 #define PAGE_LIST_SIZE	10
 
 #define MIN_PAGE_SIZE		4096 // 4 kb
-#define DEFAULT_PAGE_SIZE	10 // 4 Mb
+#define DEFAULT_PAGE_SIZE	2//10 // 4 Mb
 
 struct _page_list_item {
 	quid_short_t page_key;

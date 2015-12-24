@@ -131,7 +131,7 @@ uint32_t arc4random() {
 	return rnd;
 }
 
-int arc4random_uniform(int range) {
+int arc4random_range(int range) {
 	uint32_t rnd;
 
 	arc4_check_init();
