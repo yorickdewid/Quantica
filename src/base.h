@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <common.h>
+#include "endian.h"
 #include "quid.h"
 
 #define DBNAME_SIZE		64

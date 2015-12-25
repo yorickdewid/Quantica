@@ -29,7 +29,7 @@ struct _engine_item {
 
 struct _engine_table {
 	struct _engine_item items[TABLE_SIZE];
-	unsigned short size;
+	__be16 size;
 } __attribute__((packed));
 
 struct _blob_info {
@@ -255,7 +255,7 @@ static void free_index_chunk(base_t *base, engine_t *engine, unsigned long long 
 	memset(&quid, 0, sizeof(quid_t));
 
 	memcpy(&table->items[0].quid, &quid, sizeof(quid_t));
-	table->size++;
+	table->size = incr_be16(table->size);
 	table->items[0].offset = 0;
 	table->items[0].child = to_be64(engine->free_top);
 
@@ -388,10 +388,10 @@ static unsigned long long split_table(base_t *base, engine_t *engine, struct _en
 		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return 0;
 	}
-	new_table->size = table->size - TABLE_SIZE / 2 - 1;
+	new_table->size = to_be16(from_be16(table->size) - TABLE_SIZE / 2 - 1);
 
-	table->size = TABLE_SIZE / 2;
-	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (new_table->size + 1) * sizeof(struct _engine_item));
+	table->size = to_be16(TABLE_SIZE / 2);
+	memcpy(new_table->items, &table->items[TABLE_SIZE / 2 + 1], (from_be16(new_table->size) + 1) * sizeof(struct _engine_item));
 
 	unsigned long long new_table_offset = alloc_table_chunk(base, engine, sizeof(struct _engine_table));
 	flush_table(base, engine, new_table, new_table_offset);
@@ -402,7 +402,7 @@ static unsigned long long split_table(base_t *base, engine_t *engine, struct _en
 /* Try to table_rejoin the given table. Returns a new table offset. */
 static unsigned long long table_join(base_t *base, engine_t *engine, unsigned long long offset) {
 	struct _engine_table *table = get_table(base, engine, offset);
-	if (table->size == 0) {
+	if (from_be16(table->size) == 0) {
 		unsigned long long ret = from_be64(table->items[0].child);
 		free_index_chunk(base, engine, offset);
 
@@ -417,7 +417,7 @@ static unsigned long long table_join(base_t *base, engine_t *engine, unsigned lo
    is stored to 'quid'. Returns offset to the item */
 static unsigned long long take_smallest(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid) {
 	struct _engine_table *table = get_table(base, engine, table_offset);
-	zassert(table->size > 0);
+	zassert(from_be16(table->size) > 0);
 
 	unsigned long long offset = 0;
 	unsigned long long child = from_be64(table->items[0].child);
@@ -436,16 +436,16 @@ static unsigned long long take_smallest(base_t *base, engine_t *engine, unsigned
    is stored to 'quid'. Returns offset to the item */
 static unsigned long long take_largest(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid) {
 	struct _engine_table *table = get_table(base, engine, table_offset);
-	zassert(table->size > 0);
+	zassert(from_be16(table->size) > 0);
 
 	unsigned long long offset = 0;
-	unsigned long long child = from_be64(table->items[table->size].child);
+	unsigned long long child = from_be64(table->items[from_be16(table->size)].child);
 	if (child == 0) {
-		offset = remove_table(base, engine, table, table->size - 1, quid);
+		offset = remove_table(base, engine, table, from_be16(table->size) - 1, quid);
 	} else {
 		/* recursion */
 		offset = take_largest(base, engine, child, quid);
-		table->items[table->size].child = to_be64(table_join(base, engine, child));
+		table->items[from_be16(table->size)].child = to_be64(table_join(base, engine, child));
 	}
 	flush_table(base, engine, table, table_offset);
 	return offset;
@@ -454,7 +454,7 @@ static unsigned long long take_largest(base_t *base, engine_t *engine, unsigned 
 /* Remove an item in position 'i' from the given table. The key of the
    removed item is stored to 'quid'. Returns offset to the item. */
 static unsigned long long remove_table(base_t *base, engine_t *engine, struct _engine_table *table, size_t i, quid_t *quid) {
-	zassert(i < table->size);
+	zassert(i < from_be16(table->size));
 
 	if (quid)
 		memcpy(quid, &table->items[i].quid, sizeof(quid_t));
@@ -475,8 +475,8 @@ static unsigned long long remove_table(base_t *base, engine_t *engine, struct _e
 		}
 		table->items[i].offset = to_be64(new_offset);
 	} else {
-		memmove(&table->items[i], &table->items[i + 1], (table->size - i) * sizeof(struct _engine_item));
-		table->size--;
+		memmove(&table->items[i], &table->items[i + 1], (from_be16(table->size) - i) * sizeof(struct _engine_item));
+		table->size = decr_be16(table->size);
 
 		if (left_child != 0) {
 			table->items[i].child = to_be64(left_child);
@@ -491,9 +491,9 @@ static unsigned long long remove_table(base_t *base, engine_t *engine, struct _e
    Returns offset to the new item. */
 static unsigned long long insert_table(base_t *base, engine_t *engine, unsigned long long table_offset, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
 	struct _engine_table *table = get_table(base, engine, table_offset);
-	zassert(table->size < TABLE_SIZE - 1);
+	zassert(from_be16(table->size) < TABLE_SIZE - 1);
 
-	size_t left = 0, right = table->size;
+	size_t left = 0, right = from_be16(table->size);
 	while (left < right) {
 		size_t i = (right - left) / 2 + left;
 		int cmp = quidcmp(quid, &table->items[i].quid);
@@ -522,7 +522,7 @@ static unsigned long long insert_table(base_t *base, engine_t *engine, unsigned 
 
 		/* check if we need to split */
 		struct _engine_table *child = get_table(base, engine, left_child);
-		if (child->size < TABLE_SIZE - 1) {
+		if (from_be16(child->size) < TABLE_SIZE - 1) {
 			/* nothing to do */
 			put_table(engine, table, table_offset);
 			put_table(engine, child, left_child);
@@ -538,8 +538,8 @@ static unsigned long long insert_table(base_t *base, engine_t *engine, unsigned 
 		}
 	}
 
-	table->size++;
-	memmove(&table->items[i + 1], &table->items[i], (table->size - i) * sizeof(struct _engine_item));
+	table->size = incr_be16(table->size);
+	memmove(&table->items[i + 1], &table->items[i], (from_be16(table->size) - i) * sizeof(struct _engine_item));
 	memcpy(&table->items[i].quid, quid, sizeof(quid_t));
 	table->items[i].offset = to_be64(offset);
 	memcpy(&table->items[i].meta, meta, sizeof(struct metadata));
@@ -562,7 +562,7 @@ static unsigned long long delete_table(base_t *base, engine_t *engine, unsigned 
 	}
 	struct _engine_table *table = get_table(base, engine, table_offset);
 
-	size_t left = 0, right = table->size;
+	size_t left = 0, right = from_be16(table->size);
 	while (left < right) {
 		size_t i = (right - left) / 2 + left;
 		int cmp = quidcmp(quid, &table->items[i].quid);
@@ -591,7 +591,7 @@ static unsigned long long delete_table(base_t *base, engine_t *engine, unsigned 
 	if (ret != 0)
 		table->items[i].child = to_be64(table_join(base, engine, child));
 
-	if (ret == 0 && TABLE_DELETE_LARGE && i < table->size) {
+	if (ret == 0 && TABLE_DELETE_LARGE && i < from_be16(table->size)) {
 		/* remove the next largest */
 		ret = remove_table(base, engine, table, i, quid);
 	}
@@ -613,7 +613,7 @@ static unsigned long long insert_toplevel(base_t *base, engine_t *engine, unsign
 
 		/* check if we need to split */
 		struct _engine_table *table = get_table(base, engine, *table_offset);
-		if (table->size < TABLE_SIZE - 1) {
+		if (from_be16(table->size) < TABLE_SIZE - 1) {
 			/* nothing to do */
 			put_table(engine, table, *table_offset);
 			return ret;
@@ -633,7 +633,7 @@ static unsigned long long insert_toplevel(base_t *base, engine_t *engine, unsign
 		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
 		return 0;
 	}
-	new_table->size = 1;
+	new_table->size = to_be16(1);
 	memcpy(&new_table->items[0].quid, quid, sizeof(quid_t));
 	new_table->items[0].offset = to_be64(offset);
 	memcpy(&new_table->items[0].meta, meta, sizeof(struct metadata));
@@ -723,7 +723,7 @@ int engine_insert_meta(base_t *base, engine_t *engine, quid_t *quid, struct meta
 static unsigned long long lookup_key(base_t *base, engine_t *engine, unsigned long long table_offset, const quid_t *quid, bool *nodata, struct metadata *meta) {
 	while (table_offset) {
 		struct _engine_table *table = get_table(base, engine, table_offset);
-		size_t left = 0, right = table->size;
+		size_t left = 0, right = from_be16(table->size);
 		while (left < right) {
 			size_t i;
 			i = (right - left) / 2 + left;
@@ -839,7 +839,7 @@ int engine_purge(base_t *base, engine_t *engine, quid_t *quid) {
 static int set_meta(base_t *base, engine_t *engine, unsigned long long table_offset, const quid_t *quid, const struct metadata *md) {
 	while (table_offset) {
 		struct _engine_table *table = get_table(base, engine, table_offset);
-		size_t left = 0, right = table->size;
+		size_t left = 0, right = from_be16(table->size);
 		while (left < right) {
 			size_t i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
@@ -940,9 +940,10 @@ int engine_recover_storage(base_t *base, engine_t *engine) {
 	return 0;
 }
 
+#ifdef DEBUG
 void engine_traverse(base_t *base, engine_t *engine, unsigned long long table_offset) {
 	struct _engine_table *table = get_table(base, engine, table_offset);
-	size_t sz = table->size;
+	size_t sz = from_be16(table->size);
 	for (int i = 0; i < (int)sz; ++i) {
 		unsigned long long child = from_be64(table->items[i].child);
 		unsigned long long right = from_be64(table->items[i + 1].child);
@@ -957,11 +958,12 @@ void engine_traverse(base_t *base, engine_t *engine, unsigned long long table_of
 	}
 	put_table(engine, table, table_offset);
 }
+#endif
 
 //TODO Copy over other keytypes, indexes, aliasses..
 static void engine_copy(base_t *base, engine_t *engine, engine_t *new_engine, unsigned long long table_offset) {
 	struct _engine_table *table = get_table(base, engine, table_offset);
-	size_t sz = table->size;
+	size_t sz = from_be16(table->size);
 	for (int i = 0; i < (int)sz; ++i) {
 		unsigned long long child = from_be64(table->items[i].child);
 		unsigned long long right = from_be64(table->items[i + 1].child);
@@ -973,7 +975,7 @@ static void engine_copy(base_t *base, engine_t *engine, engine_t *new_engine, un
 		/* Only copy active keys */
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
 			insert_toplevel(base, new_engine, &new_engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
-			// new_engine->stats.keys++;
+			//TODO new_engine->stats.keys++;
 			flush_super(base, new_engine);
 		}
 
@@ -1020,7 +1022,7 @@ int engine_update_data(base_t *base, engine_t *engine, const quid_t *quid, const
 	unsigned long long table_offset = engine->top;
 	while (table_offset) {
 		struct _engine_table *table = get_table(base, engine, table_offset);
-		size_t left = 0, right = table->size;
+		size_t left = 0, right = from_be16(table->size);
 		while (left < right) {
 			size_t i = (right - left) / 2 + left;
 			int cmp = quidcmp(quid, &table->items[i].quid);
