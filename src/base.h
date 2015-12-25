@@ -25,47 +25,43 @@ struct _page_list {
 } __attribute__((packed));
 
 typedef struct {
-	quid_t instance_key;
-	quid_t zero_key;
-	void *core;
 	char instance_name[INSTANCE_LENGTH];
+	quid_t instance_key;
+	void *core;
 	bool lock;
 	unsigned short version;
 	int fd;
-	char bindata[BINDATA_LENGTH];
-	int bincnt;
 	struct {
 		unsigned short sequence;
 		unsigned long long offset;
-		// unsigned long long offset_free;
 		unsigned char size;
 	} pager;
 	struct {
-		unsigned long zero;
-		unsigned long heap;
-		unsigned long alias;
-		unsigned long index_list;
+		unsigned long long zero;
+		unsigned long long heap;
+		unsigned long long alias;
+		unsigned long long index_list;
 	} offset;
 	struct {
-		unsigned long alias_size;
-		unsigned long index_list_size;
+		unsigned long long zero_size;
+		unsigned long long zero_free_size;
+		unsigned long long alias_size;
+		unsigned long long index_list_size;
 	} stats;
 	unsigned short page_list_count;
 } base_t;
 
 struct _base {
 	char instance_name[INSTANCE_LENGTH];
-	char bindata[BINDATA_LENGTH];	/* Will be obsolete when pager works*/
-	char magic[MAGIC_LENGTH];
 	quid_t instance_key;
-	quid_t zero_key;
+	char magic[MAGIC_LENGTH];
+	char lock;
+	char exitstatus;
 	__be16 version;
-	__be32	bincnt;
 	struct {
 		__be32 sequence;
 		__be64 offset;
-		// __be64 offset_free;
-		uint8_t size;
+		char size;
 	} pager;
 	struct {
 		__be64 zero;
@@ -74,12 +70,12 @@ struct _base {
 		__be64 index_list;
 	} offset;
 	struct {
+		__be64 zero_size;
+		__be64 zero_free_size;
 		__be64 alias_size;
 		__be64 index_list_size;
 	} stats;
 	__be16 page_list_count;
-	uint8_t lock;
-	uint8_t exitstatus;
 } __attribute__((packed));
 
 char *generate_bindata_name(base_t *base);

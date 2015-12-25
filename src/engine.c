@@ -17,9 +17,8 @@
 #include "core.h"
 #include "engine.h"
 
-#define TABLE_SIZE	((4096 - 1) / sizeof(struct _engine_item))//TODO defined size
-
-static int delete_larger = 0;//TODO define
+#define TABLE_SIZE			128
+#define TABLE_DELETE_LARGE	1
 
 struct _engine_item {
 	quid_t quid;
@@ -43,9 +42,6 @@ struct _engine_super {
 	__be32 version;
 	__be64 top;
 	__be64 free_top;
-	__be64 nkey; //DEPRECATED
-	__be64 nfree_table; //DEPRECATED
-	char instance[INSTANCE_LENGTH]; //DEPRECATED
 } __attribute__((packed));
 
 struct _engine_dbsuper {
@@ -157,8 +153,6 @@ static int engine_open(base_t *base, engine_t *engine, unsigned long long zero_o
 
 	engine->top = from_be64(super.top);
 	engine->free_top = from_be64(super.free_top);
-	engine->stats.keys = from_be64(super.nkey);
-	engine->stats.free_tables = from_be64(super.nfree_table);
 	zassert(from_be64(super.version) == VERSION_MAJOR);
 
 	struct _engine_dbsuper dbsuper;
@@ -223,7 +217,7 @@ static unsigned long long alloc_table_chunk(base_t *base, engine_t *engine, size
 		unsigned long long offset = engine->free_top;
 		struct _engine_table *table = get_table(base, engine, offset);
 		engine->free_top = from_be64(table->items[0].child);
-		engine->stats.free_tables--;
+		base->stats.zero_free_size--;
 
 		zfree(table);
 		return offset;
@@ -267,7 +261,7 @@ static void free_index_chunk(base_t *base, engine_t *engine, unsigned long long 
 
 	flush_table(base, engine, table, offset);
 	engine->free_top = offset;
-	engine->stats.free_tables++;
+	base->stats.zero_free_size++;
 }
 
 static void free_dbchunk(base_t *base, engine_t *engine, unsigned long long offset) {
@@ -321,8 +315,6 @@ static void flush_super(base_t *base, engine_t *engine) {
 	super.version = to_be64(VERSION_MAJOR);
 	super.top = to_be64(engine->top);
 	super.free_top = to_be64(engine->free_top);
-	super.nkey = to_be64(engine->stats.keys);
-	super.nfree_table = to_be64(engine->stats.free_tables);
 
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
@@ -599,7 +591,7 @@ static unsigned long long delete_table(base_t *base, engine_t *engine, unsigned 
 	if (ret != 0)
 		table->items[i].child = to_be64(table_join(base, engine, child));
 
-	if (ret == 0 && delete_larger && i < table->size) {
+	if (ret == 0 && TABLE_DELETE_LARGE && i < table->size) {
 		/* remove the next largest */
 		ret = remove_table(base, engine, table, i, quid);
 	}
@@ -670,7 +662,7 @@ int engine_insert_data(base_t *base, engine_t *engine, quid_t *quid, const void 
 	if (iserror())
 		return -1;
 
-	engine->stats.keys++;
+	base->stats.zero_size++;
 	return 0;
 }
 
@@ -685,7 +677,7 @@ int engine_insert_meta_data(base_t *base, engine_t *engine, quid_t *quid, struct
 	if (iserror())
 		return -1;
 
-	engine->stats.keys++;
+	base->stats.zero_size++;
 	return 0;
 }
 
@@ -705,7 +697,7 @@ int engine_insert(base_t *base, engine_t *engine, quid_t *quid) {
 	if (iserror())
 		return -1;
 
-	engine->stats.keys++;
+	base->stats.zero_size++;
 	return 0;
 }
 
@@ -720,7 +712,7 @@ int engine_insert_meta(base_t *base, engine_t *engine, quid_t *quid, struct meta
 	if (iserror())
 		return -1;
 
-	engine->stats.keys++;
+	base->stats.zero_size++;
 	return 0;
 }
 
@@ -837,7 +829,7 @@ int engine_purge(base_t *base, engine_t *engine, quid_t *quid) {
 		return -1;
 
 	engine->top = table_join(base, engine, engine->top);
-	engine->stats.keys--;
+	base->stats.zero_size--;
 
 	free_dbchunk(base, engine, offset);
 	flush_super(base, engine);
@@ -944,7 +936,7 @@ int engine_recover_storage(base_t *base, engine_t *engine) {
 		else
 			break;
 	}
-	lprintf("[info] Lost %d records\n", engine->stats.keys - cnt);
+	lprintf("[info] Lost %d records\n", base->stats.zero_size - cnt);
 	return 0;
 }
 
@@ -981,7 +973,7 @@ static void engine_copy(base_t *base, engine_t *engine, engine_t *new_engine, un
 		/* Only copy active keys */
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
 			insert_toplevel(base, new_engine, &new_engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
-			new_engine->stats.keys++;
+			// new_engine->stats.keys++;
 			flush_super(base, new_engine);
 		}
 
@@ -1003,7 +995,7 @@ int engine_vacuum(base_t *base, engine_t *engine) {
 		return -1;
 	}
 
-	if (!engine->stats.keys)
+	if (!base->stats.zero_size)
 		return 0;
 
 	lprint("[info] Start vacuum process\n");

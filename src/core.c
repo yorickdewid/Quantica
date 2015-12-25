@@ -36,12 +36,6 @@ static uint8_t ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
 
-char *get_zero_key() {
-	static char buf[QUID_LENGTH + 1];
-	quidtostr(buf, &control.zero_key);
-	return buf;
-}
-
 void start_core() {
 	/* Start the logger */
 	start_log();
@@ -52,11 +46,10 @@ void start_core() {
 	pager_init(&control);
 
 	/* Initialize engine */
-	// engine_init(&btx, get_zero_key(), control.bindata);
 	engine_init(&control, &btx);
 
 	/* Bootstrap database if not exist */
-	// bootstrap(&control, &btx);
+	bootstrap(&control, &btx);
 
 	/* Server ready */
 	uptime = get_timestamp();
@@ -104,10 +97,6 @@ char *get_session_key() {
 	static char buf[QUID_LENGTH + 1];
 	quidtostr(buf, &sessionid);
 	return buf;
-}
-
-char *get_dataheap_name() {
-	return control.bindata;
 }
 
 engine_t *get_current_engine() {
@@ -207,19 +196,19 @@ char *crypto_base64_dec(const char *data) {
 }
 
 unsigned long int stat_getkeys() {
-	return btx.stats.keys;
+	return control.stats.zero_size;
 }
 
 unsigned long int stat_getfreekeys() {
-	return btx.stats.free_tables;
+	return control.stats.zero_free_size;
 }
 
 unsigned long int stat_tablesize() {
-	return btx.stats.list_size;
+	return control.stats.alias_size;
 }
 
 unsigned long int stat_indexsize() {
-	return btx.stats.index_list_size;
+	return control.stats.index_list_size;
 }
 
 sqlresult_t *exec_sqlquery(const char *query, size_t *len) {

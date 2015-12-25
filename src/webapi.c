@@ -231,7 +231,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char *hostname = get_system_fqdn();
 
 	*response = zrealloc(*response, RESPONSE_SIZE * 2);
-	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"core\":\"%s\",\"dataheap\":\"%s\",\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_zero_key(), get_dataheap_name(), get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	zfree(hostname);
 	return HTTP_OK;
 }
@@ -1427,7 +1427,6 @@ int start_webapi() {
 	lprint("[info] Starting daemon\n");
 	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 	lprintf("[info] Current time: %lld\n", get_timestamp());
-	lprintf("[info] Storage core %s\n", get_zero_key());
 	lprintf("[info] Instance %s %s\n", get_instance_name(), get_instance_key());
 
 	struct addrinfo hints, *servinfo, *p;

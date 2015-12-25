@@ -16,7 +16,7 @@ script:
   - make debug clean
   - make qcli clean
 #  - make test
-  - ./bin/quantica_test
+#  - ./bin/quantica_test
   - ./test/dupquid.sh
 
 sudo:

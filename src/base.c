@@ -42,7 +42,7 @@ static char *generate_instance_name() {
 	return buf;
 }
 
-char *generate_bindata_name(base_t *base) {
+/*char *generate_bindata_name(base_t *base) {
 	static char buf[BINDATA_LENGTH];
 	char *pdot = strchr(buf, '.');
 	if (!pdot) {
@@ -54,7 +54,7 @@ char *generate_bindata_name(base_t *base) {
 
 	}
 	return buf;
-}
+}*/
 
 #ifdef DEBUG
 void base_list(base_t *base) {
@@ -178,26 +178,24 @@ write_page:
 void base_sync(base_t *base) {
 	struct _base super;
 	nullify(&super, sizeof(struct _base));
-	super.zero_key = base->zero_key;
+
 	super.instance_key = base->instance_key;
 	super.lock = base->lock;
 	super.version = to_be16(VERSION_MAJOR);
-	super.bincnt = to_be32(base->bincnt);
 	super.exitstatus = exit_status;
 	super.page_list_count = to_be16(base->page_list_count);
 	super.pager.size = base->pager.size;
 	super.pager.sequence = to_be32(base->pager.sequence);
 	super.pager.offset = to_be64(base->pager.offset);
-	// super.pager.offset_free = to_be64(base->pager.offset_free);
 	super.offset.alias = to_be64(base->offset.alias);
 	super.offset.zero = to_be64(base->offset.zero);
 	super.offset.heap = to_be64(base->offset.heap);
 	super.offset.index_list = to_be64(base->offset.index_list);
+	super.stats.zero_size = to_be64(base->stats.zero_size);
+	super.stats.zero_free_size = to_be64(base->stats.zero_free_size);
 	super.stats.alias_size = to_be64(base->stats.alias_size);
 	super.stats.index_list_size = to_be64(base->stats.index_list_size);
-
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
-	strlcpy(super.bindata, base->bindata, BINDATA_LENGTH);
 	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
 	if (lseek(base->fd, 0, SEEK_SET) < 0) {
@@ -227,26 +225,22 @@ void base_init(base_t *base) {
 			return;
 		}
 
-		base->zero_key = super.zero_key;
 		base->instance_key = super.instance_key;
 		base->lock = super.lock;
-		base->bincnt = from_be32(super.bincnt);
 		base->page_list_count = from_be16(super.page_list_count);
 		base->pager.size = super.pager.size;
 		base->pager.sequence = from_be32(super.pager.sequence);
 		base->pager.offset = from_be64(super.pager.offset);
-		// base->pager.offset_free = from_be64(super.pager.offset_free);
 		base->offset.alias = from_be64(super.offset.alias);
 		base->offset.zero = from_be64(super.offset.zero);
 		base->offset.heap = from_be64(super.offset.heap);
 		base->offset.index_list = from_be64(super.offset.index_list);
+		base->stats.zero_size = from_be64(super.stats.zero_size);
+		base->stats.zero_free_size = from_be64(super.stats.zero_free_size);
 		base->stats.alias_size = from_be64(super.stats.alias_size);
 		base->stats.index_list_size = from_be64(super.stats.index_list_size);
-
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
-		super.bindata[BINDATA_LENGTH - 1] = '\0';
 		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
-		strlcpy(base->bindata, super.bindata, BINDATA_LENGTH);
 
 		zassert(from_be16(super.version) == VERSION_MAJOR);
 		zassert(!strcmp(super.magic, BASE_MAGIC));
@@ -265,13 +259,11 @@ void base_init(base_t *base) {
 
 		/* Create new database */
 		quid_create(&base->instance_key);
-		quid_create(&base->zero_key);
 		base->pager.sequence = 1;
 		base->pager.size = DEFAULT_PAGE_SIZE;
 		exit_status = EXSTAT_INVALID;
 
 		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
-		strlcpy(base->bindata, BINDATA, BINDATA_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		if (base->fd < 0) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");

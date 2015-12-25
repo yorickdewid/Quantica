@@ -67,20 +67,11 @@ struct engine_dbcache {
 	unsigned long long offset;
 };
 
-struct engine_stats {
-	unsigned long long keys;
-	unsigned long long free_tables;
-	unsigned long long list_size;//DEPRECATED
-	unsigned long long index_list_size;//DEPRECATED
-};
-
 typedef struct {
 	unsigned long long top;
 	unsigned long long free_top;
 	unsigned long long last_block;
 	bool lock;
-	// base_t *base; //TODO overgangsregeling :)
-	struct engine_stats stats;
 	struct engine_cache cache[CACHE_SLOTS];
 	struct engine_dbcache dbcache[DBCACHE_SLOTS];
 } engine_t;
