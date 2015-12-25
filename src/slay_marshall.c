@@ -144,7 +144,7 @@ void *slay_put(base_t *base, marshall_t *marshall, size_t *len, slay_result_t *r
 				quid_create(&key);
 				quidtostr(squid, &key);
 
-				if (engine_insert_data(base, get_current_engine(), &key, _slay, _len) < 0) {
+				if (engine_insert_data(base, &key, _slay, _len) < 0) {
 					zfree(_slay);
 					continue;
 				}
@@ -170,15 +170,14 @@ void *slay_put(base_t *base, marshall_t *marshall, size_t *len, slay_result_t *r
 static marshall_t *get_child_record(base_t *base, char *quid, void *parent) {
 	quid_t key;
 	strtoquid(quid, &key);
-	engine_t *engine = get_current_engine();
 
 	size_t len;
 	struct metadata meta;
-	uint64_t offset = engine_get(base, engine, &key, &meta);
+	uint64_t offset = engine_get(base, &key, &meta);
 	if (!offset)
 		return NULL;
 
-	void *data = get_data_block(base, engine, offset, &len);
+	void *data = get_data_block(base, offset, &len);
 	if (!data)
 		return NULL;
 

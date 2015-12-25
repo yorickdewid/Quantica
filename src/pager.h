@@ -6,13 +6,15 @@
 #include "base.h"
 #include "quid.h"
 
+typedef struct base base_t;
+
 typedef struct {
 	unsigned int sequence;
 	quid_short_t page_key;
 	int fd;
 } page_t;
 
-typedef struct {
+typedef struct pager {
 	unsigned int count;
 	unsigned int allocated;
 	page_t **pages;

@@ -21,11 +21,11 @@ struct _page {
 
 #ifdef DEBUG
 void pager_list(base_t *base) {
-	for (unsigned int i = 0; i < ((pager_t *)base->core)->count; ++i) {
+	for (unsigned int i = 0; i < base->core->count; ++i) {
 		char name[SHORT_QUID_LENGTH + 1];
-		quid_shorttostr(name, &((pager_t *)base->core)->pages[i]->page_key);
+		quid_shorttostr(name, &base->core->pages[i]->page_key);
 
-		printf("Location %d fd: %d, key: %s, sequence: %u\n", i, ((pager_t *)base->core)->pages[i]->fd, name, ((pager_t *)base->core)->pages[i]->sequence);
+		printf("Location %d fd: %d, key: %s, sequence: %u\n", i, base->core->pages[i]->fd, name, base->core->pages[i]->sequence);
 	}
 }
 #endif
@@ -112,9 +112,9 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 
 	/* Create new page */
 	if ((offset % page_size) + len >= page_size) {
-		create_page(base, (pager_t *)base->core);
+		create_page(base, base->core);
 
-		offset = ((((pager_t *)base->core)->count - 1) * page_size);
+		offset = ((base->core->count - 1) * page_size);
 		offset += sizeof(struct _page);
 		flush = TRUE;
 	}
@@ -131,17 +131,17 @@ int pager_get_fd(base_t *base, unsigned long long *offset) {
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 
-	zassert(page <= (((pager_t *)base->core)->count - 1));
+	zassert(page <= (base->core->count - 1));
 	*offset %= page_size;
-	return ((pager_t *)base->core)->pages[page]->fd;
+	return base->core->pages[page]->fd;
 }
 
 unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(offset / page_size);
 
-	zassert(page <= (((pager_t *)base->core)->count - 1));
-	return ((pager_t *)base->core)->pages[page]->sequence;
+	zassert(page <= (base->core->count - 1));
+	return base->core->pages[page]->sequence;
 }
 
 /*
@@ -152,7 +152,6 @@ void pager_init(base_t *base) {
 	nullify(&list, sizeof(struct _page_list));
 
 	base->core = (pager_t *)tree_zcalloc(1, sizeof(pager_t), NULL);
-	pager_t *page_core = (pager_t *)base->core;
 
 	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
 		unsigned long offset = sizeof(struct _base) * (i + 1);
@@ -169,16 +168,16 @@ void pager_init(base_t *base) {
 		if (i == 0 && list_size == 0) {
 			lprint("[info] Creating dataheap\n");
 
-			page_core->allocated = DEFAULT_PAGE_ALLOC;
-			page_core->pages = (page_t **)tree_zcalloc(page_core->allocated, sizeof(page_t *), page_core);
-			create_page(base, page_core);
+			base->core->allocated = DEFAULT_PAGE_ALLOC;
+			base->core->pages = (page_t **)tree_zcalloc(base->core->allocated, sizeof(page_t *), base->core);
+			create_page(base, base->core);
 			base->pager.offset = sizeof(struct _page);
 			goto flush_base;
 		} else {
-			page_core->allocated = list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size + DEFAULT_PAGE_ALLOC;
-			page_core->pages = (page_t **)tree_zcalloc(page_core->allocated, sizeof(page_t *), page_core);
+			base->core->allocated = list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size + DEFAULT_PAGE_ALLOC;
+			base->core->pages = (page_t **)tree_zcalloc(base->core->allocated, sizeof(page_t *), base->core);
 			for (unsigned short x = 0; x < list_size; ++x) {
-				open_page(&list.item[x].page_key, page_core);
+				open_page(&list.item[x].page_key, base->core);
 			}
 		}
 	}
@@ -188,9 +187,9 @@ flush_base:
 }
 
 void pager_close(base_t *base) {
-	for (unsigned int i = 0; i < ((pager_t *)base->core)->count; ++i) {
-		flush_page(((pager_t *)base->core)->pages[i]);
-		close(((pager_t *)base->core)->pages[i]->fd);
+	for (unsigned int i = 0; i < base->core->count; ++i) {
+		flush_page(base->core->pages[i]);
+		close(base->core->pages[i]->fd);
 	}
 	tree_zfree(base->core);
 }

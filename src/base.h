@@ -3,12 +3,12 @@
 
 #include <config.h>
 #include <common.h>
+
 #include "endian.h"
 #include "quid.h"
+#include "engine.h"
 
-#define DBNAME_SIZE		64
 #define INSTANCE_LENGTH	32
-#define BINDATA_LENGTH	16
 #define MAGIC_LENGTH	10
 #define PAGE_LIST_SIZE	10
 
@@ -25,10 +25,14 @@ struct _page_list {
 	__be16 size;
 } __attribute__((packed));
 
-typedef struct {
+typedef struct engine engine_t;
+typedef struct pager pager_t;
+
+typedef struct base {
 	char instance_name[INSTANCE_LENGTH];
 	quid_t instance_key;
-	void *core;
+	pager_t *core;		/* Pager */
+	engine_t *engine;	/* Core engine */
 	bool lock;
 	unsigned short version;
 	int fd;
@@ -85,7 +89,7 @@ void base_list_add(base_t *base, quid_short_t *key);
 void base_list_delete(base_t *base, quid_short_t *key);
 
 void base_sync(base_t *base);
-void base_init(base_t *base);
+void base_init(base_t *base, engine_t *engine);
 void base_close(base_t *base);
 
 #endif // BASE_H_INCLUDED

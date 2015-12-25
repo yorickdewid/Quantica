@@ -13,18 +13,17 @@
 bool diag_exerr(base_t *base) {
 	char tmp_key[QUID_LENGTH + 1];
 	quid_t key;
-	engine_t engine;
 
 	lprint("[info] Failure on exit, run diagnostics\n");
-	engine_init(base, &engine);
+	engine_init(base);
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
 
-	engine_recover_storage(base, &engine);
-	if (engine_vacuum(base, &engine) < 0) {
+	engine_recover_storage(base);
+	if (engine_vacuum(base) < 0) {
 		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
 	}
-	engine_close(base, &engine);
+	engine_close(base);
 	return TRUE;
 }

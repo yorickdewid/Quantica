@@ -10,17 +10,15 @@
 #include "index.h"
 
 static marshall_t *get_record(base_t *base, quid_t *key) {
-	engine_t *engine = get_current_engine();
-
 	size_t len;
 	struct metadata meta;
-	uint64_t offset = engine_get(base, engine, key, &meta);
+	uint64_t offset = engine_get(base, key, &meta);
 	if (iserror()) {
 		error_clear();
 		return NULL;
 	}
 
-	void *data = get_data_block(base, engine, offset, &len);
+	void *data = get_data_block(base, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -47,7 +45,7 @@ int index_btree_create_table(base_t *base, char *squid, const char *element, mar
 		if (!rowobj)
 			continue;
 
-		uint64_t offset = engine_get(base, get_current_engine(), &key, &meta);
+		uint64_t offset = engine_get(base, &key, &meta);
 		for (unsigned int j = 0; j < rowobj->size; ++j) {
 			if (!rowobj->child[j])
 				continue;
@@ -94,7 +92,7 @@ int index_btree_create_set(base_t *base, char *squid, const char *element, marsh
 		if (!rowobj)
 			continue;
 
-		uint64_t offset = engine_get(base, get_current_engine(), &key, &meta);
+		uint64_t offset = engine_get(base, &key, &meta);
 		if (array_index <= (rowobj->size - 1)) {
 			size_t value_len;
 			if (!rowobj->child[array_index])
@@ -130,7 +128,7 @@ marshall_t *index_btree_all(base_t *base, quid_t *key, bool descent) {
 		index_keyval_t *kv = (index_keyval_t *)(vector_at(rskv, i));
 
 		size_t len;
-		char *data = get_data_block(base, get_current_engine(), kv->value, &len);
+		char *data = get_data_block(base, kv->value, &len);
 		if (!data) {
 			zfree(kv->key);
 			zfree(kv);

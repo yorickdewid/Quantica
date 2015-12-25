@@ -32,7 +32,7 @@
 
 static engine_t btx;
 static base_t control;
-static uint8_t ready = FALSE;
+static bool ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
 
@@ -42,14 +42,14 @@ void start_core() {
 	error_clear();
 
 	quid_create(&sessionid);
-	base_init(&control);
+	base_init(&control, &btx);
 	pager_init(&control);
 
 	/* Initialize engine */
-	engine_init(&control, &btx);
+	engine_init(&control);
 
 	/* Bootstrap database if not exist */
-	bootstrap(&control, &btx);
+	bootstrap(&control);
 
 	/* Server ready */
 	uptime = get_timestamp();
@@ -61,7 +61,7 @@ void detach_core() {
 		return;
 
 	/* Close all databases */
-	engine_close(&control, &btx);
+	engine_close(&control);
 	pager_close(&control);
 	base_close(&control);
 
@@ -97,10 +97,6 @@ char *get_session_key() {
 	static char buf[QUID_LENGTH + 1];
 	quidtostr(buf, &sessionid);
 	return buf;
-}
-
-engine_t *get_current_engine() {
-	return &btx;
 }
 
 /*
@@ -232,7 +228,7 @@ void quid_generate_short(char *quid) {
 }
 
 void filesync() {
-	engine_sync(&control, &btx);
+	engine_sync(&control);
 	base_sync(&control);
 }
 
@@ -252,13 +248,11 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_insert_data(&control, &btx, &key, dataslay, len) < 0) {
+	if (engine_insert_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
 	}
-	// engine_recover_storage(&control, &btx);
-	// engine_traverse(&control, &btx, btx.top);
 
 	zfree(dataslay);
 	marshall_free(dataobj);
@@ -268,7 +262,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		alias_add(&control, &key, quid, QUID_LENGTH);
 
 		struct metadata meta;
-		engine_get(&control, &btx, &key, &meta);
+		engine_get(&control, &key, &meta);
 		if (meta.type != MD_TYPE_RECORD) {
 			error_throw("1e933eea602c", "Invalid record type");
 			return -1;
@@ -276,7 +270,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 		meta.type = MD_TYPE_GROUP;
 		meta.alias = 1;
-		if (engine_setmeta(&control, &btx, &key, &meta) < 0)
+		if (engine_setmeta(&control, &key, &meta) < 0)
 			return -1;
 	}
 
@@ -294,11 +288,11 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&control, &btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
@@ -337,13 +331,13 @@ char *db_get_type(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
-	void *data = get_data_block(&control, &btx, offset, &len);
+	void *data = get_data_block(&control, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -361,13 +355,13 @@ char *db_get_schema(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
-	void *data = get_data_block(&control, &btx, offset, &len);
+	void *data = get_data_block(&control, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -392,11 +386,11 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *descentdata = get_data_block(&control, &btx, offset, &_len);
+				void *descentdata = get_data_block(&control, offset, &_len);
 				if (!descentdata)
 					break;
 
@@ -409,7 +403,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 				for (unsigned int i = 0; i < descentobj->size; ++i) {
 					quid_t _key;
 					strtoquid(descentobj->child[i]->data, &_key);
-					engine_delete(&control, &btx, &_key);
+					engine_delete(&control, &_key);
 					error_clear();
 				}
 				marshall_free(descentobj);
@@ -428,7 +422,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 
 	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&control, &btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
@@ -443,7 +437,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 
 			meta.type = MD_TYPE_GROUP;
 			meta.alias = 1;
-			if (engine_setmeta(&control, &btx, &key, &meta) < 0)
+			if (engine_setmeta(&control, &key, &meta) < 0)
 				return -1;
 		}
 	} else {
@@ -469,7 +463,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP:
@@ -480,7 +474,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 			break;
 	}
 
-	void *descentdata = get_data_block(&control, &btx, offset, &_len);
+	void *descentdata = get_data_block(&control, offset, &_len);
 	if (!descentdata)
 		return 0;
 
@@ -494,7 +488,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 
 	void *dataslay = slay_put(&control, descentobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_insert_data(&control, &btx, &nkey, dataslay, len) < 0) {
+	if (engine_insert_data(&control, &nkey, dataslay, len) < 0) {
 		zfree(descentdata);
 		zfree(dataslay);
 		marshall_free(descentobj);
@@ -538,7 +532,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				_meta.nodata = 1;
 				_meta.type = MD_TYPE_INDEX;
 				_meta.alias = 1;
-				engine_insert_meta(&control, &btx, &inrs.index, &_meta);
+				engine_insert_meta(&control, &inrs.index, &_meta);
 
 				/* Add index to alias list */
 				alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
@@ -558,7 +552,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 		meta.alias = 1;
 	}
 
-	if (engine_setmeta(&control, &btx, &nkey, &meta) < 0) {
+	if (engine_setmeta(&control, &nkey, &meta) < 0) {
 		zfree(descentdata);
 		return -1;
 	}
@@ -580,10 +574,10 @@ int db_count_group(char *quid) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&control, &btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return -1;
 
@@ -619,11 +613,11 @@ int db_delete(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *data = get_data_block(&control, &btx, offset, &_len);
+				void *data = get_data_block(&control, offset, &_len);
 				if (!data)
 					break;
 
@@ -636,7 +630,7 @@ int db_delete(char *quid, bool descent) {
 				for (unsigned int i = 0; i < dataobj->size; ++i) {
 					quid_t _key;
 					strtoquid(dataobj->child[i]->data, &_key);
-					engine_delete(&control, &btx, &_key);
+					engine_delete(&control, &_key);
 					error_clear();
 				}
 				marshall_free(dataobj);
@@ -664,7 +658,7 @@ int db_delete(char *quid, bool descent) {
 			break;
 	}
 
-	if (engine_delete(&control, &btx, &key) < 0)
+	if (engine_delete(&control, &key) < 0)
 		return -1;
 
 	return 0;
@@ -679,11 +673,11 @@ int db_purge(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *data = get_data_block(&control, &btx, offset, &_len);
+				void *data = get_data_block(&control, offset, &_len);
 				if (!data)
 					break;
 
@@ -696,7 +690,7 @@ int db_purge(char *quid, bool descent) {
 				for (unsigned int i = 0; i < dataobj->size; ++i) {
 					quid_t _key;
 					strtoquid(dataobj->child[i]->data, &_key);
-					engine_purge(&control, &btx, &_key);
+					engine_purge(&control, &_key);
 					error_clear();
 				}
 				marshall_free(dataobj);
@@ -724,7 +718,7 @@ int db_purge(char *quid, bool descent) {
 			break;
 	}
 
-	if (engine_purge(&control, &btx, &key) < 0)
+	if (engine_purge(&control, &key) < 0)
 		return -1;
 
 	return 0;
@@ -741,11 +735,11 @@ void *db_select(char *quid, const char *element) {
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&control, &btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
@@ -812,11 +806,11 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&control, &btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
 				return -1;
@@ -847,7 +841,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 
 	void *dataslay = slay_put(&control, newobject, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&control, &btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(mergeobj);
 		marshall_free(newobject);
@@ -855,7 +849,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	}
 
 	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&control, &btx, offset, &_len);
+		void *descentdata = get_data_block(&control, offset, &_len);
 		if (!descentdata) {
 			marshall_free(mergeobj);
 			marshall_free(newobject);
@@ -873,7 +867,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		for (unsigned int i = 0; i < descentobj->size; ++i) {
 			quid_t _key;
 			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&control, &btx, &_key);
+			engine_delete(&control, &_key);
 			error_clear();
 		}
 		marshall_free(descentobj);
@@ -906,11 +900,11 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&control, &btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
 				return -1;
@@ -948,7 +942,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 	void *dataslay = slay_put(&control, filterobject, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&control, &btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(mergeobj);
 		marshall_free(filterobject);
@@ -956,7 +950,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	}
 
 	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&control, &btx, offset, &_len);
+		void *descentdata = get_data_block(&control, offset, &_len);
 		if (!descentdata) {
 			zfree(dataslay);
 			marshall_free(mergeobj);
@@ -976,7 +970,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		for (unsigned int i = 0; i < descentobj->size; ++i) {
 			quid_t _key;
 			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&control, &btx, &_key);
+			engine_delete(&control, &_key);
 			error_clear();
 		}
 		marshall_free(descentobj);
@@ -1000,7 +994,7 @@ int db_vacuum() {
 		return -1;
 
 	//char *bindata = generate_bindata_name(&control);
-	if (engine_vacuum(&control, &btx) < 0)
+	if (engine_vacuum(&control) < 0)
 		return -1;
 
 	//memcpy(&control.zero_key, &key, sizeof(quid_t));
@@ -1016,7 +1010,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
 
-	engine_get(&control, &btx, &key, &meta);
+	engine_get(&control, &key, &meta);
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
 	status->freeze = meta.freeze;
@@ -1049,7 +1043,7 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	meta.freeze = status->freeze;
 	meta.importance = status->importance;
 	meta.lifecycle = get_meta_lifecycle(status->lifecycle);
-	if (engine_setmeta(&control, &btx, &key, &meta) < 0)
+	if (engine_setmeta(&control, &key, &meta) < 0)
 		return -1;
 
 	return 0;
@@ -1081,12 +1075,12 @@ int db_alias_update(char *quid, const char *name) {
 	error_clear();
 
 	/* Check if key has alias */
-	engine_get(&control, &btx, &key, &meta);
+	engine_get(&control, &key, &meta);
 	if (!meta.alias) {
 		alias_add(&control, &key, name, strlen(name));
 
 		meta.alias = 1;
-		if (engine_setmeta(&control, &btx, &key, &meta) < 0)
+		if (engine_setmeta(&control, &key, &meta) < 0)
 			return -1;
 		return 0;
 	}
@@ -1135,11 +1129,11 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (alias_get_key(&control, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&control, &btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
@@ -1186,13 +1180,13 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	quid_create(&nrs.index);
 	quidtostr(index_quid, &nrs.index);
 
-	uint64_t offset = engine_get(&control, &btx, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (meta.type != MD_TYPE_GROUP) {
 		error_throw("1e933eea602c", "Invalid record type");
 		return -1;
 	}
 
-	void *data = get_data_block(&control, &btx, offset, &_len);
+	void *data = get_data_block(&control, offset, &_len);
 	if (!data)
 		return -1;
 
@@ -1227,7 +1221,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
 	meta.alias = 1;
-	engine_insert_meta(&control, &btx, &nrs.index, &meta);
+	engine_insert_meta(&control, &nrs.index, &meta);
 
 	/* Add index to alias list */
 	alias_add(&control, &nrs.index, index_quid, QUID_LENGTH);

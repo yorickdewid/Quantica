@@ -42,20 +42,6 @@ static char *generate_instance_name() {
 	return buf;
 }
 
-/*char *generate_bindata_name(base_t *base) {
-	static char buf[BINDATA_LENGTH];
-	char *pdot = strchr(buf, '.');
-	if (!pdot) {
-		sprintf(buf, "%s.%d", base->bindata, ++base->bincnt);
-	} else {
-		char *k = buf;
-		char *token = strsep(&k , ".");
-		sprintf(buf, "%s.%d", token, ++base->bincnt);
-
-	}
-	return buf;
-}*/
-
 #ifdef DEBUG
 void base_list(base_t *base) {
 	struct _page_list list;
@@ -208,9 +194,11 @@ void base_sync(base_t *base) {
 	}
 }
 
-void base_init(base_t *base) {
+void base_init(base_t *base, engine_t *engine) {
 	nullify(base, sizeof(base_t));
 	zassert(DEFAULT_PAGE_SIZE > 0 && DEFAULT_PAGE_SIZE < 19);
+
+	base->engine = engine;
 	if (file_exists(BASECONTROL)) {
 
 		/* Open existing database */
