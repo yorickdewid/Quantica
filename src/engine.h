@@ -11,9 +11,7 @@
 #include "marshall.h"
 #include "base.h"
 
-#define DBNAME_SIZE	64
 #define INSTANCE_LENGTH 32
-#define LIST_NAME_LENGTH 48 // deprecated by alias
 
 typedef struct base base_t;
 

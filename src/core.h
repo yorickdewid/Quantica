@@ -9,17 +9,18 @@
 
 #define STATUS_LIFECYCLE_SIZE 10
 #define STATUS_TYPE_SIZE 12
+#define STATUS_ALIAS_LENGTH 48
 
 struct record_status {
 	char lifecycle[STATUS_LIFECYCLE_SIZE];
 	int importance;
-	uint8_t syslock;
-	uint8_t exec;
-	uint8_t freeze;
-	uint8_t nodata;
+	bool syslock;
+	bool exec;
+	bool freeze;
+	bool nodata;
+	bool has_alias;
 	char type[STATUS_TYPE_SIZE];
-	uint8_t has_alias;
-	char alias[LIST_NAME_LENGTH];
+	char alias[STATUS_ALIAS_LENGTH];
 };
 
 /*
@@ -79,6 +80,7 @@ char *db_alias_get_name(char *quid);
 int db_alias_update(char *quid, const char *name);
 char *db_alias_all();
 char *db_index_all();
+char *db_pager_all();
 void *db_alias_get_data(char *name, size_t *len, bool descent);
 
 int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey);

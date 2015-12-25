@@ -30,7 +30,7 @@
 #include "sql.h"
 #include "core.h"
 
-static engine_t btx;
+static engine_t zero;
 static base_t control;
 static bool ready = FALSE;
 static long long uptime;
@@ -42,7 +42,7 @@ void start_core() {
 	error_clear();
 
 	quid_create(&sessionid);
-	base_init(&control, &btx);
+	base_init(&control, &zero);
 	pager_init(&control);
 
 	/* Initialize engine */
@@ -288,7 +288,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -331,7 +331,7 @@ char *db_get_type(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
@@ -355,7 +355,7 @@ char *db_get_schema(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
@@ -386,7 +386,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -463,7 +463,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP:
@@ -574,7 +574,7 @@ int db_count_group(char *quid) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			void *data = get_data_block(&control, offset, &_len);
@@ -613,7 +613,7 @@ int db_delete(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -673,7 +673,7 @@ int db_purge(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -735,7 +735,7 @@ void *db_select(char *quid, const char *element) {
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -806,7 +806,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -900,7 +900,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -1021,7 +1021,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	if (meta.alias) {
 		status->has_alias = 1;
 		char *name = alias_get_val(&control, &key);
-		strlcpy(status->alias, name, LIST_NAME_LENGTH);
+		strlcpy(status->alias, name, STATUS_ALIAS_LENGTH);
 		zfree(name);
 	}
 	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), STATUS_LIFECYCLE_SIZE);
@@ -1116,6 +1116,20 @@ char *db_index_all() {
 	return buf;
 }
 
+char *db_pager_all() {
+	if (!ready)
+		return NULL;
+
+	marshall_t *dataobj = pager_all(&control);
+	if (!dataobj) {
+		return NULL;
+	}
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
 void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	quid_t key;
 	size_t _len;
@@ -1129,7 +1143,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (alias_get_key(&control, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -1180,7 +1194,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	quid_create(&nrs.index);
 	quidtostr(index_quid, &nrs.index);
 
-	uint64_t offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (meta.type != MD_TYPE_GROUP) {
 		error_throw("1e933eea602c", "Invalid record type");
 		return -1;

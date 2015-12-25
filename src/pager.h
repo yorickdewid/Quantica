@@ -11,6 +11,7 @@ typedef struct base base_t;
 typedef struct {
 	unsigned int sequence;
 	quid_short_t page_key;
+	enum exit_status exit_status;
 	int fd;
 } page_t;
 
@@ -25,5 +26,6 @@ int pager_get_fd(base_t *base, unsigned long long *offset);
 unsigned int pager_get_sequence(base_t *base, unsigned long long offset);
 void pager_init(base_t *base);
 void pager_close(base_t *base);
+marshall_t *pager_all(base_t *base);
 
 #endif // PAGE_H_INCLUDED

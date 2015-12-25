@@ -17,6 +17,7 @@
 
 struct _page {
 	__be32 sequence;
+	char exit_status;
 } __attribute__((packed));
 
 #ifdef DEBUG
@@ -35,6 +36,7 @@ static void flush_page(page_t *page) {
 	nullify(&super, sizeof(struct _page));
 
 	super.sequence = to_be32(page->sequence);
+	super.exit_status = page->exit_status;
 	if (lseek(page->fd, 0, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
@@ -61,6 +63,7 @@ static void create_page(base_t *base, pager_t *core) {
 	}
 
 	super.sequence = to_be32(page->sequence);
+	super.exit_status = EXSTAT_INVALID;
 	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
@@ -71,6 +74,7 @@ static void create_page(base_t *base, pager_t *core) {
 		core->pages = (page_t **)tree_zrealloc(core->pages, core->allocated * sizeof(page_t *));
 	}
 
+	page->exit_status = EXSTAT_CHECKPOINT;
 	core->pages[core->count++] = page;
 	base_list_add(base, &page->page_key);
 	flush_page(page);
@@ -96,6 +100,13 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 
 	page->page_key = *page_key;
 	page->sequence = from_be32(super.sequence);
+	page->exit_status = EXSTAT_CHECKPOINT;
+	if (super.exit_status != EXSTAT_SUCCESS) {
+		lprintf("[erro] Page %d corrupt\n", page->sequence);
+		//TODO we should do something
+		return;
+	}
+
 	if (core->count >= core->allocated) {
 		core->allocated += DEFAULT_PAGE_ALLOC;
 		core->pages = (page_t **)tree_zrealloc(core->pages, core->allocated * sizeof(page_t *));
@@ -188,8 +199,36 @@ flush_base:
 
 void pager_close(base_t *base) {
 	for (unsigned int i = 0; i < base->core->count; ++i) {
+		base->core->pages[i]->exit_status = EXSTAT_SUCCESS;
 		flush_page(base->core->pages[i]);
 		close(base->core->pages[i]->fd);
 	}
 	tree_zfree(base->core);
+}
+
+marshall_t *pager_all(base_t *base) {
+	if (!base->core->count)
+		return NULL;
+
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(base->core->count, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_OBJECT;
+
+	for (unsigned int i = 0; i < base->core->count; ++i) {
+		char name[SHORT_QUID_LENGTH + 1];
+		quid_shorttostr(name, &base->core->pages[i]->page_key);
+		char *seq = itoa(base->core->pages[i]->sequence);
+		size_t len = strlen(seq);
+
+		marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+		marshall->child[marshall->size]->type = MTYPE_INT;
+		marshall->child[marshall->size]->name = tree_zstrdup(name, marshall);
+		marshall->child[marshall->size]->name_len = SHORT_QUID_LENGTH;
+		marshall->child[marshall->size]->data = tree_zstrdup(seq, marshall);
+		marshall->child[marshall->size]->data_len = len;
+		marshall->size++;
+	}
+
+	return marshall;
 }

@@ -181,7 +181,7 @@ void strtoquid(const char *s, quid_t *u) {
 /*
  * Determine QUID format
  */
-uint8_t strquid_format(const char *s) {
+char strquid_format(const char *s) {
 	size_t ssz = strlen(s);
 	int phyp, nhyp = 0;
 	if (ssz == QUID_LENGTH) {

@@ -814,22 +814,22 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
 	unused(req);
 	size_t len = 0, resplen;
 
-	char *table = db_alias_all();
+	char *list = db_alias_all();
 	if (iserror()) {
 		return response_internal_error(response);
 	}
 
-	if (!table)
-		table = zstrdup("null");
+	if (!list)
+		list = zstrdup("null");
 
-	len = strlen(table);
+	len = strlen(list);
 	resplen = RESPONSE_SIZE;
 	if (len > (RESPONSE_SIZE / 2)) {
 		resplen = RESPONSE_SIZE + len;
 		*response = zrealloc(*response, resplen);
 	}
-	snprintf(*response, resplen, "{\"aliasses\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", table);
-	zfree(table);
+	snprintf(*response, resplen, "{\"aliasses\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
+	zfree(list);
 	return HTTP_OK;
 }
 
@@ -852,6 +852,29 @@ http_status_t api_index_all(char **response, http_request_t *req) {
 		*response = zrealloc(*response, resplen);
 	}
 	snprintf(*response, resplen, "{\"indexes\":%s,\"description\":\"Listening indexes\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
+	zfree(list);
+	return HTTP_OK;
+}
+
+http_status_t api_page_all(char **response, http_request_t *req) {
+	unused(req);
+	size_t len = 0, resplen;
+
+	char *list = db_pager_all();
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+
+	if (!list)
+		list = zstrdup("null");
+
+	len = strlen(list);
+	resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE / 2)) {
+		resplen = RESPONSE_SIZE + len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"pages\":%s,\"description\":\"Listening pages\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
 	zfree(list);
 	return HTTP_OK;
 }
@@ -915,6 +938,8 @@ static const struct webroute route[] = {
 	/* Database index operations				*/
 	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
 	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
+
+	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},
 };
 
 http_status_t api_help(char **response, http_request_t *req) {

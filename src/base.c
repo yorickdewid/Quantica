@@ -17,14 +17,7 @@
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 
-#define INIT_PAGE_ALLOC	5
-
-static enum {
-	EXSTAT_ERROR,
-	EXSTAT_INVALID,
-	EXSTAT_CHECKPOINT,
-	EXSTAT_SUCCESS
-} exit_status;
+static enum exit_status exit_status;
 
 static char *generate_instance_name() {
 	static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
