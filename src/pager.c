@@ -14,10 +14,14 @@
 #include "pager.h"
 
 #define DEFAULT_PAGE_ALLOC	10
+#define PAGE_MAGIC			"$OYPTTRL$"
+#define MAGIC_LENGTH		10
 
 struct _page {
 	__be32 sequence;
 	char exit_status;
+	char magic[MAGIC_LENGTH];
+	__be16 version;
 } __attribute__((packed));
 
 #ifdef DEBUG
@@ -36,7 +40,9 @@ static void flush_page(page_t *page) {
 	nullify(&super, sizeof(struct _page));
 
 	super.sequence = to_be32(page->sequence);
+	super.version = to_be16(VERSION_MAJOR);
 	super.exit_status = page->exit_status;
+	strlcpy(super.magic, PAGE_MAGIC, MAGIC_LENGTH);
 	if (lseek(page->fd, 0, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
@@ -63,7 +69,9 @@ static void create_page(base_t *base, pager_t *core) {
 	}
 
 	super.sequence = to_be32(page->sequence);
+	super.version = to_be16(VERSION_MAJOR);
 	super.exit_status = EXSTAT_INVALID;
+	strlcpy(super.magic, PAGE_MAGIC, MAGIC_LENGTH);
 	if (write(page->fd, &super, sizeof(struct _page)) != sizeof(struct _page)) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
 		return;
@@ -101,6 +109,8 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 	page->page_key = *page_key;
 	page->sequence = from_be32(super.sequence);
 	page->exit_status = EXSTAT_CHECKPOINT;
+	zassert(from_be16(super.version) == VERSION_MAJOR);
+	zassert(!strcmp(super.magic, PAGE_MAGIC));
 	if (super.exit_status != EXSTAT_SUCCESS) {
 		lprintf("[erro] Page %d corrupt\n", page->sequence);
 		//TODO we should do something
@@ -209,7 +219,6 @@ void pager_close(base_t *base) {
 marshall_t *pager_all(base_t *base) {
 	if (!base->core->count)
 		return NULL;
-
 
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(base->core->count, sizeof(marshall_t *), marshall);
