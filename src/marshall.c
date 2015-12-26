@@ -470,13 +470,38 @@ arr_again:
 	return marshall;
 }
 
+marshall_t *marshall_copy(marshall_t *marshall, void *parent) {
+	marshall_t *new_marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+	if (marshall->size > 0)
+		new_marshall->child = (marshall_t **)tree_zcalloc(marshall->size, sizeof(marshall_t *), new_marshall);
+	new_marshall->type = marshall->type;
+	if (marshall->name) {
+		new_marshall->name = tree_zstrndup(marshall->name, marshall->name_len, new_marshall);
+		new_marshall->name_len = marshall->name_len;
+	}
+	if (marshall->data) {
+		new_marshall->data = tree_zstrndup(marshall->data, marshall->data_len, new_marshall);
+		new_marshall->data_len = marshall->data_len;
+	}
+	new_marshall->size = marshall->size;
+
+	if (marshall->type == MTYPE_ARRAY || marshall->type == MTYPE_OBJECT) {
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			new_marshall->child[i] = marshall_copy(marshall->child[i], new_marshall);
+		}
+	}
+
+	return new_marshall;
+}
+
 #ifdef DEBUG
-void marshall_dump(marshall_t *marshall, int depth) {
+void marshall_dump(const marshall_t *marshall, int depth) {
 	if (!marshall) {
 		puts("no marshall");
 		return;
 	}
 
+	printf("%*s%d addr: %p\n", (depth * 4), " ", depth, (void *)marshall);
 	printf("%*s%d type: %s\n", (depth * 4), " ", depth, marshall_get_strtype(marshall->type));
 	printf("%*s%d name: %s[%zu]\n", (depth * 4), " ", depth, marshall->name, marshall->name_len);
 	printf("%*s%d data: %s[%zu]\n", (depth * 4), " ", depth, (char *)marshall->data, marshall->data_len);
