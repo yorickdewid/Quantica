@@ -148,7 +148,7 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	return offset;
 }
 
-int pager_get_fd(base_t *base, unsigned long long *offset) {
+int pager_get_fd(const base_t *base, unsigned long long *offset) {
 	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 

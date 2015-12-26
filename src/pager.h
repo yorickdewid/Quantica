@@ -22,7 +22,7 @@ typedef struct pager {
 } pager_t;
 
 unsigned long long pager_alloc(base_t *base, size_t len);
-int pager_get_fd(base_t *base, unsigned long long *offset);
+int pager_get_fd(const base_t *base, unsigned long long *offset);
 unsigned int pager_get_sequence(base_t *base, unsigned long long offset);
 void pager_init(base_t *base);
 void pager_close(base_t *base);

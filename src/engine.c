@@ -77,7 +77,7 @@ bool engine_keytype_hasdata(enum key_type type) {
 	return FALSE;
 }
 
-static struct _engine_table *get_table(base_t *base, unsigned long long offset) {
+static struct _engine_table *get_table(const base_t *base, unsigned long long offset) {
 	zassert(offset != 0);
 
 	/* take from cache */
@@ -649,11 +649,18 @@ static unsigned long long insert_toplevel(base_t *base, unsigned long long *tabl
 	return ret;
 }
 
-int engine_insert_data(base_t *base, quid_t *quid, const void *data, size_t len) {
+static bool islocked(base_t *base) {
 	if (base->engine->lock == LOCK) {
 		error_throw("986154f80058", "Database locked");
-		return -1;
+		return TRUE;
 	}
+
+	return FALSE;
+}
+
+int engine_insert_data(base_t *base, quid_t *quid, const void *data, size_t len) {
+	if (islocked(base))
+		return -1;
 
 	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
@@ -669,10 +676,9 @@ int engine_insert_data(base_t *base, quid_t *quid, const void *data, size_t len)
 }
 
 int engine_insert_meta_data(base_t *base, quid_t *quid, struct metadata *meta, const void *data, size_t len) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
+
 	insert_toplevel(base, &base->engine->top, quid, meta, data, len);
 	flush_super(base);
 	if (iserror())
@@ -683,10 +689,8 @@ int engine_insert_meta_data(base_t *base, quid_t *quid, struct metadata *meta, c
 }
 
 int engine_insert(base_t *base, quid_t *quid) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	struct metadata meta;
 	memset(&meta, 0, sizeof(struct metadata));
@@ -703,10 +707,8 @@ int engine_insert(base_t *base, quid_t *quid) {
 }
 
 int engine_insert_meta(base_t *base, quid_t *quid, struct metadata *meta) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	insert_toplevel(base, &base->engine->top, quid, meta, NULL, 0);
 	flush_super(base);
@@ -790,10 +792,8 @@ static void *get_data(base_t *base, unsigned long long offset, size_t *len) {
 }
 
 void *get_data_block(base_t *base, unsigned long long offset, size_t *len) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return NULL;
-	}
 
 	if (!offset)
 		return NULL;
@@ -802,10 +802,8 @@ void *get_data_block(base_t *base, unsigned long long offset, size_t *len) {
 }
 
 unsigned long long engine_get(base_t *base, const quid_t *quid, struct metadata *meta) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return 0;
-	}
 
 	bool nodata = 0;
 	memset(meta, 0, sizeof(struct metadata));
@@ -820,10 +818,8 @@ unsigned long long engine_get(base_t *base, const quid_t *quid, struct metadata 
 }
 
 int engine_purge(base_t *base, quid_t *quid) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	unsigned long long offset = delete_table(base, base->engine->top, quid);
 	if (iserror())
@@ -869,10 +865,8 @@ static int set_meta(base_t *base, unsigned long long table_offset, const quid_t 
 }
 
 int engine_setmeta(base_t *base, const quid_t *quid, const struct metadata *data) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	set_meta(base, base->engine->top, quid, data);
 	if (iserror())
@@ -881,10 +875,8 @@ int engine_setmeta(base_t *base, const quid_t *quid, const struct metadata *data
 }
 
 int engine_delete(base_t *base, const quid_t *quid) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	bool nodata = 0;
 	struct metadata meta;
@@ -906,10 +898,8 @@ int engine_recover_storage(base_t *base) {
 	struct _blob_info info;
 	int cnt = 0;
 
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	lprint("[info] Start recovery process\n");
 	if (!offset) {
@@ -942,7 +932,7 @@ int engine_recover_storage(base_t *base) {
 }
 
 #ifdef DEBUG
-void engine_traverse(base_t *base, unsigned long long table_offset) {
+void engine_traverse(const base_t *base, unsigned long long table_offset) {
 	struct _engine_table *table = get_table(base, table_offset);
 	size_t sz = from_be16(table->size);
 	for (int i = 0; i < (int)sz; ++i) {
@@ -994,10 +984,8 @@ int engine_vacuum(base_t *base) {
 	engine_t new_engine;
 	engine_t tmp;
 
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	if (!base->stats.zero_size)
 		return 0;
@@ -1015,10 +1003,8 @@ int engine_vacuum(base_t *base) {
 }
 
 int engine_update_data(base_t *base, const quid_t *quid, const void *data, size_t len) {
-	if (base->engine->lock == LOCK) {
-		error_throw("986154f80058", "Database locked");
+	if (islocked(base))
 		return -1;
-	}
 
 	unsigned long long offset = 0;
 	unsigned long long table_offset = base->engine->top;
