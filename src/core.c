@@ -212,7 +212,7 @@ sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 }
 
 int generate_random_number(int range) {
-	return (!range) ? (int)arc4random() : arc4random_range(range);
+	return (!range) ? (int)arc4random() : (int)arc4random_uniform(range);
 }
 
 void quid_generate(char *quid) {

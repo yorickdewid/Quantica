@@ -10,6 +10,7 @@
 
 #include "arc4random.h"
 
+#ifdef LINUX
 typedef struct {
 	uint8_t i;
 	uint8_t j;
@@ -131,7 +132,7 @@ uint32_t arc4random() {
 	return rnd;
 }
 
-int arc4random_range(int range) {
+uint32_t arc4random_uniform(uint32_t range) {
 	uint32_t rnd;
 
 	arc4_check_init();
@@ -141,3 +142,4 @@ int arc4random_range(int range) {
 
 	return rnd;
 }
+#endif // LINUX
