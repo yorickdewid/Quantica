@@ -18,6 +18,7 @@ struct _engine_index_list {
 		quid_t index;
 		quid_t group;
 		__be32 element_len;
+		__be64 offset;
 		char element[64]; //TODO this could be any sz
 	} items[INDEX_LIST_SIZE];
 	uint16_t size;
@@ -60,7 +61,7 @@ static void flush_index_list(base_t *base, struct _engine_index_list *list, unsi
 	zfree(list);
 }
 
-int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element) {
+int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, unsigned long long offset) {
 	/* Does list exist */
 	if (base->offset.index_list != 0) {
 		struct _engine_index_list *list = get_index_list(base, base->offset.index_list);
@@ -71,6 +72,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		memcpy(&list->items[list->size].group, group, sizeof(quid_t));
 		memcpy(&list->items[list->size].element, element, psz);
 		list->items[list->size].element_len = to_be32(psz);
+		list->items[list->size].offset = to_be64(offset);
 		list->size++;
 
 		base->stats.index_list_size++;
@@ -108,6 +110,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		memcpy(&new_list->items[0].group, group, sizeof(quid_t));
 		memcpy(&new_list->items[0].element, element, psz);
 		new_list->items[0].element_len = to_be32(psz);
+		new_list->items[0].offset = to_be64(offset);
 
 		unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _engine_index_list));
 		flush_index_list(base, new_list, new_list_offset);
@@ -183,6 +186,31 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 	return marshall;
 }
 
+unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_quid) {
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(list->size <= INDEX_LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			if (!list->items[i].element_len)
+				continue;
+
+			int cmp = quidcmp(c_quid, &list->items[i].index);
+			if (cmp == 0) {
+				unsigned long long index_offset = from_be64(list->items[i].offset);
+				zfree(list);
+				return index_offset;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("e553d927706a", "Index not found");
+	return 0;
+}
+
 int index_list_delete(base_t *base, const quid_t *index) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
@@ -199,6 +227,7 @@ int index_list_delete(base_t *base, const quid_t *index) {
 				memset(&list->items[i].group, 0, sizeof(quid_t));
 				memset(&list->items[i].element, 0, 64);
 				list->items[i].element_len = 0;
+				list->items[i].offset = 0;
 				flush_index_list(base, list, offset);
 				base->stats.index_list_size--;
 				return 0;

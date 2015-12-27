@@ -3,9 +3,10 @@
 
 #include "marshall.h"
 
-int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element);
+int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, unsigned long long offset);
 quid_t *index_list_get_index(base_t *base, const quid_t *c_quid);
 marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid);
+unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_quid);
 int index_list_delete(base_t *base, const quid_t *index);
 marshall_t *index_list_all(base_t *base);
 

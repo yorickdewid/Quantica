@@ -30,10 +30,10 @@ static marshall_t *get_record(base_t *base, quid_t *key) {
 /*
  * Create btree index on table structure
  */
-int index_btree_create_table(base_t *base, char *squid, const char *element, marshall_t *marshall, index_result_t *result) {
+int index_btree_create_table(base_t *base, const char *element, marshall_t *marshall, index_result_t *result) {
 	btree_t index;
 
-	btree_init(&index, squid);
+	result->offset = btree_create(base, &index);
 	btree_set_unique(&index, FALSE);
 
 	for (unsigned int i = 0; i < marshall->size; ++i) {
@@ -45,7 +45,7 @@ int index_btree_create_table(base_t *base, char *squid, const char *element, mar
 		if (!rowobj)
 			continue;
 
-		uint64_t offset = engine_get(base, &key, &meta);
+		unsigned long long offset = engine_get(base, &key, &meta);
 		for (unsigned int j = 0; j < rowobj->size; ++j) {
 			if (!rowobj->child[j])
 				continue;
@@ -56,7 +56,7 @@ int index_btree_create_table(base_t *base, char *squid, const char *element, mar
 			if (!strcmp(rowobj->child[j]->name, element)) {
 				size_t value_len;
 				char *value = marshall_strdata(rowobj->child[j], &value_len);
-				btree_insert(&index, value, value_len, offset);
+				btree_insert(base, &index, value, value_len, offset);
 				result->index_elements++;
 				result->element = j;
 			}
@@ -64,14 +64,14 @@ int index_btree_create_table(base_t *base, char *squid, const char *element, mar
 		marshall_free(rowobj);
 	}
 
-	btree_close(&index);
+	btree_close(base, &index);
 	return 0;
 }
 
 /*
  * Create btree index on set
  */
-int index_btree_create_set(base_t *base, char *squid, const char *element, marshall_t *marshall, index_result_t *result) {
+int index_btree_create_set(base_t *base, const char *element, marshall_t *marshall, index_result_t *result) {
 	btree_t index;
 
 	if (!strisdigit((char *)element) || element[0] == '-') {
@@ -79,7 +79,7 @@ int index_btree_create_set(base_t *base, char *squid, const char *element, marsh
 		return -1;
 	}
 
-	btree_init(&index, squid);
+	result->offset = btree_create(base, &index);
 	btree_set_unique(&index, FALSE);
 
 	long int array_index = atol(element);
@@ -92,33 +92,30 @@ int index_btree_create_set(base_t *base, char *squid, const char *element, marsh
 		if (!rowobj)
 			continue;
 
-		uint64_t offset = engine_get(base, &key, &meta);
+		unsigned long long offset = engine_get(base, &key, &meta);
 		if (array_index <= (rowobj->size - 1)) {
 			size_t value_len;
 			if (!rowobj->child[array_index])
 				continue;
 
 			char *value = marshall_strdata(rowobj->child[array_index], &value_len);
-			btree_insert(&index, value, value_len, offset);
+			btree_insert(base, &index, value, value_len, offset);
 			result->index_elements++;
 			result->element = array_index;
 		}
 		marshall_free(rowobj);
 	}
 
-	btree_close(&index);
+	btree_close(base, &index);
 	return 0;
 }
 
-marshall_t *index_btree_all(base_t *base, quid_t *key, bool descent) {
-	char squid[QUID_LENGTH + 1];
+marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent) {
 	btree_t index;
 
-	quidtostr(squid, key);
+	btree_open(base, &index, offset);
 
-	btree_init(&index, squid);
-
-	vector_t *rskv = btree_get_all(&index);
+	vector_t *rskv = btree_get_all(base, &index);
 
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(rskv->size, sizeof(marshall_t *), marshall);
@@ -138,7 +135,7 @@ marshall_t *index_btree_all(base_t *base, quid_t *key, bool descent) {
 		marshall_t *dataobj = slay_get(base, data, marshall, TRUE);
 		if (!dataobj) {
 			zfree(data);
-			return NULL;
+			continue;
 		}
 
 		if (descent) {
@@ -160,7 +157,7 @@ marshall_t *index_btree_all(base_t *base, quid_t *key, bool descent) {
 	}
 
 	vector_free(rskv);
-	btree_close(&index);
+	btree_close(base, &index);
 
 	return marshall;
 }

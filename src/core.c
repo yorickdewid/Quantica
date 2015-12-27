@@ -304,7 +304,8 @@ void *db_get(char *quid, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&control, &key, descent);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
 		default:
@@ -521,9 +522,9 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 
 				/* Determine index based on dataschema */
 				if (nrs.schema == SCHEMA_TABLE)
-					index_btree_create_table(&control, index_quid, index_element->child[i]->data, _descentobj, &inrs);
+					index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
 				else if (nrs.schema == SCHEMA_SET)
-					index_btree_create_set(&control, index_quid, index_element->child[i]->data, _descentobj, &inrs);
+					index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
 				else
 					error_throw("ece28bc980db", "Invalid schema");
 
@@ -538,10 +539,9 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
 
 				/* Add index to index list */
-				index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data);
+				index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, inrs.offset);
 
 				marshall_free(_descentobj);
-
 			}
 			error_clear();
 			marshall_free(index_element);
@@ -590,7 +590,8 @@ int db_count_group(char *quid) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&control, &key, FALSE);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, FALSE);
 			break;
 		}
 		default:
@@ -751,7 +752,8 @@ void *db_select(char *quid, const char *element) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&control, &key, TRUE);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, TRUE);
 			break;
 		}
 		default:
@@ -1002,7 +1004,7 @@ int db_vacuum() {
 	return 0;
 }
 
-int db_record_get_meta(char *quid, struct record_status *status) {
+int db_record_get_meta(char *quid, struct record_status * status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -1029,7 +1031,7 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	return 0;
 }
 
-int db_record_set_meta(char *quid, struct record_status *status) {
+int db_record_set_meta(char *quid, struct record_status * status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -1159,7 +1161,8 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&control, &key, descent);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
 		default:
@@ -1213,19 +1216,17 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	/* Determine index based on dataschema */
 	schema_t group = slay_get_schema(data);
 	if (group == SCHEMA_TABLE)
-		index_btree_create_table(&control, index_quid, idxkey, dataobj, &nrs);
+		index_btree_create_table(&control, idxkey, dataobj, &nrs);
 	else if (group == SCHEMA_SET)
-		index_btree_create_set(&control, index_quid, idxkey, dataobj, &nrs);
+		index_btree_create_set(&control, idxkey, dataobj, &nrs);
 	else
 		error_throw("ece28bc980db", "Invalid schema");
 
 	marshall_free(dataobj);
 	zfree(data);
 
-	quidtostr(index_quid, &nrs.index); //TODO needed?
 	*items = nrs.index_elements;
-
-	if (*items < 2) {
+	if (*items < 2) { // TODO does the index know this as well?
 		error_throw("3d2a88a4502b", "Too few items for index");
 		return 0;
 	}
@@ -1241,6 +1242,6 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	alias_add(&control, &nrs.index, index_quid, QUID_LENGTH);
 
 	/* Add index to index list */
-	index_list_add(&control, &nrs.index, &key, (char *)idxkey);
+	index_list_add(&control, &nrs.index, &key, (char *)idxkey, nrs.offset);
 	return 0;
 }
