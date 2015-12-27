@@ -48,7 +48,6 @@ void btree_print(base_t *base, btree_t *index);
 #endif
 
 void btree_set_unique(btree_t *index, bool unique);
-// void btree_init(btree_t *index, char *name);
 unsigned long long btree_create(base_t *base, btree_t *index);
 void btree_open(base_t *base, btree_t *index, unsigned long long offset);
 void btree_close(base_t *base, btree_t *index);

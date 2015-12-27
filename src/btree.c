@@ -15,15 +15,10 @@
 #define DEFAULT_RESULT_SIZE		10
 
 struct _root_super {
-	long long root;
-	long long freelist;
-	bool unique_keys;
-};
-/*struct _root_super {
 	__be64 root;
 	__be64 freelist;
 	char unique_keys;
-};*/
+};
 
 static void get_node(base_t *base, btree_t *index, unsigned long long offset, node_t *pnode) {
 	if ((long long)offset == index->root) {
@@ -99,9 +94,9 @@ static void storage_read(base_t *base, btree_t *index) {
 		return;
 	}
 
-	get_node(base, index, super.root, &index->rootnode);
-	index->root = super.root;
-	index->freelist = super.freelist;
+	get_node(base, index, from_be64(super.root), &index->rootnode);
+	index->root = from_be64(super.root);
+	index->freelist = from_be64(super.freelist);
 	index->unique_keys = super.unique_keys;
 }
 
@@ -109,8 +104,8 @@ static void storage_write(base_t *base, btree_t *index) {
 	struct _root_super super;
 	nullify(&super, sizeof(struct _root_super));
 
-	super.root = index->root;
-	super.freelist = index->freelist;
+	super.root = to_be64(index->root);
+	super.freelist = to_be64(index->freelist);
 	super.unique_keys = index->unique_keys;
 
 	unsigned long long offset = index->offset;
@@ -126,7 +121,7 @@ static void storage_write(base_t *base, btree_t *index) {
 
 	/* If present flush root node to disk, this is ignored on index creation */
 	if (index->root != -1) {
-		flush_node(base, index, super.root, &index->rootnode);
+		flush_node(base, index, index->root, &index->rootnode);
 	}
 }
 

@@ -281,7 +281,7 @@ marshall_t *index_list_all(base_t *base) {
 
 			/* Indexed element */
 			marshall->child[marshall->size]->child[1] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child[1]->type = MTYPE_STRING;
+			marshall->child[marshall->size]->child[1]->type = strisdigit(list->items[i].element) ? MTYPE_INT : MTYPE_STRING;
 			marshall->child[marshall->size]->child[1]->name = tree_zstrdup("element", marshall);
 			marshall->child[marshall->size]->child[1]->name_len = 7;
 			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(list->items[i].element, marshall);
