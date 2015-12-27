@@ -132,13 +132,13 @@ marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descen
 			continue;
 		}
 
-		marshall_t *dataobj = slay_get(base, data, marshall, TRUE);
-		if (!dataobj) {
-			zfree(data);
-			continue;
-		}
-
 		if (descent) {
+			marshall_t *dataobj = slay_get(base, data, marshall, TRUE);
+			if (!dataobj) {
+				zfree(data);
+				continue;
+			}
+
 			marshall->child[marshall->size] = dataobj;
 			marshall->child[marshall->size]->name = tree_zstrdup(kv->key, marshall);
 			marshall->child[marshall->size]->name_len = kv->key_len;
@@ -146,7 +146,7 @@ marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descen
 			marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 			marshall->child[marshall->size]->data = tree_zstrdup(kv->key, marshall);
 			marshall->child[marshall->size]->data_len = kv->key_len;
-			marshall->child[marshall->size]->type = MTYPE_INT;
+			marshall->child[marshall->size]->type = MTYPE_STRING;
 			marshall->child[marshall->size]->size = 1;
 		}
 		marshall->size++;
