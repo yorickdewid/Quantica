@@ -40,7 +40,7 @@ long long timetots(struct tm *t) {
 	return (long long)mktime(t) - EPOCH_DIFF;
 }
 
-static void curr_time(int *days, int *secs, int *nanosecs) {
+static void current_time(int *days, int *secs, int *nanosecs) {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	*days = tv.tv_sec / 86400;
@@ -73,7 +73,7 @@ static void timename(int days, int secs, int nanosecs, char *str) {
 char *timename_now(char *str) {
 	int days, secs, nanosecs;
 
-	curr_time(&days, &secs, &nanosecs);
+	current_time(&days, &secs, &nanosecs);
 	timename(days, secs, nanosecs, str);
 
 	return str;

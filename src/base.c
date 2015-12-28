@@ -14,6 +14,7 @@
 #include "base.h"
 
 #define BASECONTROL		"base"
+#define BASECONTROLTMP	"~" BASECONTROL
 #define INSTANCE_RANDOM	5
 #define BASE_MAGIC		"$EOBCTRL$"
 
@@ -187,6 +188,10 @@ void base_sync(base_t *base) {
 	}
 }
 
+void base_lock(base_t *base) {
+	base->lock = TRUE;
+}
+
 void base_init(base_t *base, engine_t *engine) {
 	nullify(base, sizeof(base_t));
 	zassert(DEFAULT_PAGE_SIZE > 0 && DEFAULT_PAGE_SIZE < 19);
@@ -242,9 +247,9 @@ void base_init(base_t *base, engine_t *engine) {
 		quid_create(&base->instance_key);
 		base->pager.sequence = 1;
 		base->pager.size = DEFAULT_PAGE_SIZE;
+		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		exit_status = EXSTAT_INVALID;
 
-		strlcpy(base->instance_name, generate_instance_name(), INSTANCE_LENGTH);
 		base->fd = open(BASECONTROL, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
 		if (base->fd < 0) {
 			lprint("[erro] Failed to read " BASECONTROL "\n");
@@ -265,9 +270,41 @@ void base_init(base_t *base, engine_t *engine) {
 	}
 }
 
+void base_copy(base_t *base, base_t *new_base, engine_t *new_engine) {
+	nullify(new_base, sizeof(base_t));
+
+	/* Copy current config */
+	new_base->pager.sequence = 1;
+	new_base->pager.size = base->pager.size;
+	new_base->engine = new_engine;
+	new_base->instance_key = base->instance_key;
+	strlcpy(new_base->instance_name, base->instance_name, INSTANCE_LENGTH);
+
+	new_base->fd = open(BASECONTROLTMP, O_RDWR | O_TRUNC | O_CREAT | O_BINARY, 0644);
+	if (base->fd < 0) {
+		lprint("[erro] Failed to read " BASECONTROLTMP "\n");
+		return;
+	}
+
+	base_sync(new_base);
+
+	/* We'll need at least one page */
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
+	if (write(new_base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
+		lprint("[erro] Failed to write " BASECONTROLTMP "\n");
+		return;
+	}
+}
+
+void base_swap() {
+	unlink(BASECONTROL);
+	rename(BASECONTROLTMP, BASECONTROL);
+}
+
 void base_close(base_t *base) {
 	exit_status = EXSTAT_SUCCESS;
 	base_sync(base);
 	close(base->fd);
-	lprint("[info] Exist with EXSTAT_SUCCESS\n");
+	lprint("[info] Exit with EXSTAT_SUCCESS\n");
 }

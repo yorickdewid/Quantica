@@ -41,11 +41,11 @@ void start_core() {
 	start_log();
 	error_clear();
 
+	/* Daemon Session */
 	quid_create(&sessionid);
+
 	base_init(&control, &zero);
 	pager_init(&control);
-
-	/* Initialize engine */
 	engine_init(&control);
 
 	/* Bootstrap database if not exist */
@@ -987,20 +987,26 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 }
 
 int db_vacuum() {
-	//char tmp_key[QUID_LENGTH + 1];
-	//quid_t key;
-	//quid_create(&key);
-	//quidtostr(tmp_key, &key);
+	base_t new_control;
+	engine_t new_zero;
 
 	if (!ready)
 		return -1;
 
-	//char *bindata = generate_bindata_name(&control);
-	if (engine_vacuum(&control) < 0)
-		return -1;
+	base_lock(&control);
+	base_copy(&control, &new_control, &new_zero);
+	pager_init(&new_control);
+	engine_rebuild(&control, &new_control);
 
-	//memcpy(&control.zero_key, &key, sizeof(quid_t));
-	//strcpy(control.bindata, bindata);
+	engine_close(&control);
+	pager_close(&control);
+	base_close(&control);
+
+	base_swap();
+	memcpy(&zero, &new_zero, sizeof(engine_t));
+	memcpy(&control, &new_control, sizeof(base_t));
+	control.engine = &zero;
+
 	return 0;
 }
 

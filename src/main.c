@@ -66,11 +66,14 @@ int main(int argc, char *argv[]) {
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
+
+				/* Daemonize */
 				case 'D':
 				case 'd':
 					daemonize();
 					break;
 
+				/* Change working directory */
 				case 'S':
 				case 's':
 					if (i + 1 >= argc)
@@ -87,18 +90,21 @@ int main(int argc, char *argv[]) {
 					daemonize();
 					break;
 
+				/* Run in foreground */
 				case 'F':
 				case 'f':
 					lprint("[info] Running in foreground\n");
 					start_webapi();
 					break;
 
+				/* Show help */
 				case 'H':
 				case 'h':
 				case '?':
 					print_usage();
 					break;
 
+				/* Version info */
 				case 'V':
 				case 'v':
 					print_version();

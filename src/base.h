@@ -96,7 +96,10 @@ void base_list_add(base_t *base, quid_short_t *key);
 void base_list_delete(base_t *base, quid_short_t *key);
 
 void base_sync(base_t *base);
+void base_lock(base_t *base);
 void base_init(base_t *base, engine_t *engine);
+void base_copy(base_t *base, base_t *new_base, engine_t *new_engine);
+void base_swap();
 void base_close(base_t *base);
 
 #endif // BASE_H_INCLUDED

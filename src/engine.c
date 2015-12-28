@@ -667,11 +667,11 @@ int engine_insert_data(base_t *base, quid_t *quid, const void *data, size_t len)
 	meta.importance = MD_IMPORTANT_NORMAL;
 
 	insert_toplevel(base, &base->engine->top, quid, &meta, data, len);
-	flush_super(base);
 	if (iserror())
 		return -1;
 
 	base->stats.zero_size++;
+	flush_super(base);
 	return 0;
 }
 
@@ -680,11 +680,11 @@ int engine_insert_meta_data(base_t *base, quid_t *quid, struct metadata *meta, c
 		return -1;
 
 	insert_toplevel(base, &base->engine->top, quid, meta, data, len);
-	flush_super(base);
 	if (iserror())
 		return -1;
 
 	base->stats.zero_size++;
+	flush_super(base);
 	return 0;
 }
 
@@ -698,11 +698,11 @@ int engine_insert(base_t *base, quid_t *quid) {
 	meta.importance = MD_IMPORTANT_NORMAL;
 
 	insert_toplevel(base, &base->engine->top, quid, &meta, NULL, 0);
-	flush_super(base);
 	if (iserror())
 		return -1;
 
 	base->stats.zero_size++;
+	flush_super(base);
 	return 0;
 }
 
@@ -711,11 +711,11 @@ int engine_insert_meta(base_t *base, quid_t *quid, struct metadata *meta) {
 		return -1;
 
 	insert_toplevel(base, &base->engine->top, quid, meta, NULL, 0);
-	flush_super(base);
 	if (iserror())
 		return -1;
 
 	base->stats.zero_size++;
+	flush_super(base);
 	return 0;
 }
 
@@ -952,7 +952,7 @@ void engine_traverse(const base_t *base, unsigned long long table_offset) {
 #endif
 
 //TODO Copy over other keytypes, indexes, aliasses..
-static void engine_copy(base_t *base, engine_t *new_engine, unsigned long long table_offset) {
+static void engine_copy(base_t *base, base_t *new_base, unsigned long long table_offset) {
 	struct _engine_table *table = get_table(base, table_offset);
 	size_t sz = from_be16(table->size);
 	for (int i = 0; i < (int)sz; ++i) {
@@ -965,24 +965,24 @@ static void engine_copy(base_t *base, engine_t *new_engine, unsigned long long t
 
 		/* Only copy active keys */
 		if (table->items[i].meta.lifecycle == MD_LIFECYCLE_FINITE) {
-			insert_toplevel(base, &new_engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
-			//TODO new_engine->stats.keys++;
-			flush_super(base);
+			insert_toplevel(new_base, &new_base->engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
+			new_base->stats.zero_size++;
+			flush_super(new_base);
 		}
 
 		zfree(data);
 		if (child)
-			engine_copy(base, new_engine, child);
+			engine_copy(base, new_base, child);
 		if (right)
-			engine_copy(base, new_engine, right);
+			engine_copy(base, new_base, right);
 	}
 	put_table(base->engine, table, table_offset);
 }
 
 //TODO pretty fucked up vacuum process
 int engine_vacuum(base_t *base) {
-	engine_t new_engine;
-	engine_t tmp;
+	// engine_t new_engine;
+	// engine_t tmp;
 
 	if (islocked(base))
 		return -1;
@@ -990,14 +990,33 @@ int engine_vacuum(base_t *base) {
 	if (!base->stats.zero_size)
 		return 0;
 
-	lprint("[info] Start vacuum process\n");
-	base->engine->lock = LOCK;
-	engine_create(base);
-	engine_copy(base, &new_engine, base->engine->top);
+	/*	lprint("[info] Start vacuum process\n");
+		base->engine->lock = LOCK;
+		engine_create(base);
+		engine_copy(base, &new_engine, base->engine->top);
 
-	memcpy(&tmp, base->engine, sizeof(engine_t));
-	memcpy(base->engine, &new_engine, sizeof(engine_t));
-	engine_close(base);
+		memcpy(&tmp, base->engine, sizeof(engine_t));
+		memcpy(base->engine, &new_engine, sizeof(engine_t));
+		engine_close(base);*/
+
+	return 0;
+}
+
+int engine_rebuild(base_t *base, base_t *new_base) {
+	if (!base->offset.zero) {
+		lprint("[erro] Core does not exist");
+		//TODO throw something
+		return -1;
+	}
+
+	if (new_base->offset.zero) {
+		lprint("[erro] Core does exist");
+		//TODO throw something
+		return -1;
+	}
+
+	engine_create(new_base);
+	engine_copy(base, new_base, base->engine->top);
 
 	return 0;
 }
