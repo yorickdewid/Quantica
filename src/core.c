@@ -993,10 +993,14 @@ int db_vacuum() {
 	if (!ready)
 		return -1;
 
+	/* Copy current database */
 	base_lock(&control);
 	base_copy(&control, &new_control, &new_zero);
 	pager_init(&new_control);
+
+	/* Rebuild structures into order */
 	engine_rebuild(&control, &new_control);
+	alias_rebuild(&control, &new_control);
 
 	engine_close(&control);
 	pager_close(&control);

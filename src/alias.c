@@ -265,3 +265,24 @@ marshall_t *alias_all(base_t *base) {
 
 	return marshall;
 }
+
+void alias_rebuild(base_t *base, base_t *new_base) {
+	unsigned long long offset = base->offset.alias;
+	while (offset) {
+		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		zassert(list->size <= ALIAS_LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			size_t len = from_be32(list->items[i].len);
+			if (!len)
+				continue;
+			if (list->items[i].name[0] == '_')
+				continue;
+			list->items[i].name[len] = '\0';
+
+			alias_add(new_base, &list->items[i].quid, list->items[i].name, len);
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+}
