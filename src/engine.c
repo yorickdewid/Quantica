@@ -181,8 +181,8 @@ static int engine_create(base_t *base) {
 	flush_super(base);
 	flush_dbsuper(base);
 
-	base->offset.zero = pager_alloc(base, sizeof(struct _engine_super));
-	base->offset.heap = pager_alloc(base, sizeof(struct _engine_dbsuper));
+	base->offset.zero = palloc(base, sizeof(struct _engine_super));
+	base->offset.heap = palloc(base, sizeof(struct _engine_dbsuper));
 	return 0;
 }
 
@@ -225,7 +225,7 @@ static unsigned long long alloc_table_chunk(base_t *base, size_t len) {
 		return offset;
 	}
 
-	return pager_alloc(base, len);
+	return palloc(base, len);
 }
 
 /* Allocate a chunk from the database file */
@@ -245,7 +245,7 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 		}
 	}
 
-	return pager_alloc(base, sizeof(struct _blob_info) + len);
+	return palloc(base, sizeof(struct _blob_info) + len);
 }
 
 /* Mark a chunk as unused in the database file */

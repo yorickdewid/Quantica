@@ -1003,6 +1003,7 @@ int db_vacuum() {
 	alias_rebuild(&control, &new_control);
 
 	engine_close(&control);
+	pager_unlink_all(&control);
 	pager_close(&control);
 	base_close(&control);
 

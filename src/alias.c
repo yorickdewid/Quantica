@@ -96,7 +96,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 			}
 
 			new_list->link = to_be64(base->offset.alias);
-			unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _alias_list));
+			unsigned long long new_list_offset = palloc(base, sizeof(struct _alias_list));
 			flush_alias_list(base, new_list, new_list_offset);
 			base->offset.alias = new_list_offset;
 		} else {
@@ -116,7 +116,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		new_list->items[0].len = to_be32(len);
 		new_list->items[0].hash = to_be32(hash);
 
-		unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _alias_list));
+		unsigned long long new_list_offset = palloc(base, sizeof(struct _alias_list));
 		flush_alias_list(base, new_list, new_list_offset);
 
 		base->offset.alias = new_list_offset;

@@ -89,7 +89,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 			}
 
 			new_list->link = to_be64(base->offset.index_list);
-			unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _engine_index_list));
+			unsigned long long new_list_offset = palloc(base, sizeof(struct _engine_index_list));
 			flush_index_list(base, new_list, new_list_offset);
 
 			base->offset.index_list = new_list_offset;
@@ -112,7 +112,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		new_list->items[0].element_len = to_be32(psz);
 		new_list->items[0].offset = to_be64(offset);
 
-		unsigned long long new_list_offset = pager_alloc(base, sizeof(struct _engine_index_list));
+		unsigned long long new_list_offset = palloc(base, sizeof(struct _engine_index_list));
 		flush_index_list(base, new_list, new_list_offset);
 
 		base->offset.index_list = new_list_offset;

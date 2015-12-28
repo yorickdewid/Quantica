@@ -216,6 +216,14 @@ void pager_close(base_t *base) {
 	tree_zfree(base->core);
 }
 
+void pager_unlink_all(base_t *base) {
+	for (unsigned int i = 0; i < base->core->count; ++i) {
+		char name[SHORT_QUID_LENGTH + 1];
+		quid_shorttostr(name, &base->core->pages[i]->page_key);
+		unlink(name);
+	}
+}
+
 marshall_t *pager_all(base_t *base) {
 	if (!base->core->count)
 		return NULL;
