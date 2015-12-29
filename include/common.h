@@ -70,5 +70,6 @@ int file_exists(const char *path);
 char *get_version_string();
 long get_version();
 size_t page_align(size_t val);
+char *unit_bytes(double size, char *buf);
 
 #endif // COMMON_H_INCLUDED

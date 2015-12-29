@@ -99,6 +99,20 @@ char *get_session_key() {
 	return buf;
 }
 
+char *get_pager_total_size() {
+	static char buf[10];
+	unsigned long long total_size = (MIN_PAGE_SIZE << control.pager.size) * control.core->count;
+	return unit_bytes(total_size, buf);
+}
+
+unsigned int get_pager_page_size() {
+	return control.pager.size;
+}
+
+unsigned int get_pager_page_count() {
+	return control.core->count;
+}
+
 /*
  * Create instance key QUID from short QUID
  */
