@@ -381,7 +381,7 @@ http_status_t api_sql_query(char **response, http_request_t *req) {
 
 http_status_t api_vacuum(char **response, http_request_t *req) {
 	unused(req);
-	db_vacuum();
+	vacuum();
 	if (iserror()) {
 		return response_internal_error(response);
 	}

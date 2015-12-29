@@ -8,6 +8,8 @@
 #include <error.h>
 #include "zmalloc.h"
 #include "quid.h"
+#include "slay_marshall.h"
+#include "index.h"
 #include "pager.h"
 #include "index_list.h"
 
@@ -293,4 +295,52 @@ marshall_t *index_list_all(base_t *base) {
 	}
 
 	return marshall;
+}
+
+void index_list_rebuild(base_t *base, base_t *new_base) {
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(list->size <= INDEX_LIST_SIZE);
+
+		for (int i = 0; i < list->size; ++i) {
+			if (!list->items[i].element_len)
+				continue;
+
+
+			size_t len;
+			struct metadata meta;
+			unsigned long long index_offset = engine_get(new_base, &list->items[i].group, &meta);
+			if (meta.type != MD_TYPE_GROUP)
+				continue;
+
+			void *index_data = get_data_block(new_base, index_offset, &len);
+			if (!index_data)
+				continue;
+
+			marshall_t *index_obj = slay_get(new_base, index_data, NULL, FALSE);
+			if (!index_obj) {
+				zfree(index_data);
+				continue;
+			}
+
+			index_result_t nrs;
+			nullify(&nrs, sizeof(index_result_t));
+
+			schema_t group = slay_get_schema(index_data);
+			if (group == SCHEMA_TABLE)
+				index_btree_create_table(new_base, list->items[i].element, index_obj, &nrs);
+			else if (group == SCHEMA_SET)
+				index_btree_create_set(new_base, list->items[i].element, index_obj, &nrs);
+			else
+				continue;
+
+			marshall_free(index_obj);
+			zfree(index_data);
+
+			index_list_add(new_base, &list->items[i].index, &list->items[i].group, list->items[i].element, nrs.offset);
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
 }

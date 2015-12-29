@@ -55,6 +55,7 @@ int generate_random_number(int range);
 void quid_generate(char *quid);
 void quid_generate_short(char *quid);
 void filesync();
+int vacuum();
 
 /*
  * Database operations
@@ -71,7 +72,6 @@ int db_purge(char *quid, bool descent);
 void *db_select(char *quid, const char *element);
 int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len);
 int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len);
-int db_vacuum();
 
 int db_record_get_meta(char *quid, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);

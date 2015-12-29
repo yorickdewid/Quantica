@@ -232,6 +232,36 @@ void filesync() {
 	base_sync(&control);
 }
 
+int vacuum() {
+	base_t new_control;
+	engine_t new_zero;
+
+	if (!ready)
+		return -1;
+
+	/* Copy current database */
+	base_lock(&control);
+	base_copy(&control, &new_control, &new_zero);
+	pager_init(&new_control);
+
+	/* Rebuild structures into order */
+	engine_rebuild(&control, &new_control);
+	alias_rebuild(&control, &new_control);
+	index_list_rebuild(&control, &new_control);
+
+	engine_close(&control);
+	pager_unlink_all(&control);
+	pager_close(&control);
+	base_close(&control);
+
+	base_swap();
+	memcpy(&zero, &new_zero, sizeof(engine_t));
+	memcpy(&control, &new_control, sizeof(base_t));
+	control.engine = &zero;
+
+	return 0;
+}
+
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
@@ -982,35 +1012,6 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	zfree(dataslay);
 	marshall_free(mergeobj);
 	marshall_free(filterobject);
-
-	return 0;
-}
-
-int db_vacuum() {
-	base_t new_control;
-	engine_t new_zero;
-
-	if (!ready)
-		return -1;
-
-	/* Copy current database */
-	base_lock(&control);
-	base_copy(&control, &new_control, &new_zero);
-	pager_init(&new_control);
-
-	/* Rebuild structures into order */
-	engine_rebuild(&control, &new_control);
-	alias_rebuild(&control, &new_control);
-
-	engine_close(&control);
-	pager_unlink_all(&control);
-	pager_close(&control);
-	base_close(&control);
-
-	base_swap();
-	memcpy(&zero, &new_zero, sizeof(engine_t));
-	memcpy(&control, &new_control, sizeof(base_t));
-	control.engine = &zero;
 
 	return 0;
 }

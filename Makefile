@@ -8,7 +8,7 @@ CPPCHECK = cppcheck
 CPPCHECKFLAGS = --quiet --std=c1x
 VALFLAGS = --leak-check=full --track-origins=yes --show-reachable=yes
 WFLAGS = -pedantic-errors -std=c1x -Wall -Werror -Wextra -Winit-self -Wswitch-default -Wshadow
-CFLAGS = -g -O0 $(WFLAGS) -DX64 -DTN12
+CFLAGS = $(WFLAGS) -DX64 -DTN12
 LDFLAGS = -lm
 SOURCES = $(wildcard $(SRCDIR)/*.c)
 TEST_SOURCES = $(wildcard $(TESTDIR)/*.c)
@@ -56,8 +56,11 @@ endif
 
 all: debug
 
-debug: CFLAGS += -DDEBUG -DRESOLV -DDAEMON
+debug: CFLAGS += -g -O0 -DDEBUG -DRESOLV -DDAEMON
 debug: $(EXECUTABLE)
+
+release: CFLAGS += -O2 -DDAEMON
+release: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(BINDIR)/$@
