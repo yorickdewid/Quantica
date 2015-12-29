@@ -894,7 +894,7 @@ int engine_delete(base_t *base, const quid_t *quid) {
 }
 
 int engine_recover_storage(base_t *base) {
-	unsigned long long offset = base->engine->last_block;
+	unsigned long long offset = base->engine->last_block; //TODO read heap
 	struct _blob_info info;
 	int cnt = 0;
 
@@ -927,6 +927,7 @@ int engine_recover_storage(base_t *base) {
 		else
 			break;
 	}
+
 	lprintf("[info] Lost %d records\n", base->stats.zero_size - cnt);
 	return 0;
 }
@@ -951,7 +952,6 @@ void engine_traverse(const base_t *base, unsigned long long table_offset) {
 }
 #endif
 
-//TODO Copy over other keytypes, indexes, aliasses..
 static void engine_copy(base_t *base, base_t *new_base, unsigned long long table_offset) {
 	struct _engine_table *table = get_table(base, table_offset);
 	size_t sz = from_be16(table->size);
@@ -977,29 +977,6 @@ static void engine_copy(base_t *base, base_t *new_base, unsigned long long table
 			engine_copy(base, new_base, right);
 	}
 	put_table(base->engine, table, table_offset);
-}
-
-//TODO pretty fucked up vacuum process
-int engine_vacuum(base_t *base) {
-	// engine_t new_engine;
-	// engine_t tmp;
-
-	if (islocked(base))
-		return -1;
-
-	if (!base->stats.zero_size)
-		return 0;
-
-	/*	lprint("[info] Start vacuum process\n");
-		base->engine->lock = LOCK;
-		engine_create(base);
-		engine_copy(base, &new_engine, base->engine->top);
-
-		memcpy(&tmp, base->engine, sizeof(engine_t));
-		memcpy(base->engine, &new_engine, sizeof(engine_t));
-		engine_close(base);*/
-
-	return 0;
 }
 
 int engine_rebuild(base_t *base, base_t *new_base) {

@@ -13,7 +13,6 @@
 #define MAGIC_LENGTH	10
 
 #define MIN_PAGE_SIZE		4096 // 4 kb
-#define DEFAULT_PAGE_SIZE	2//10 // 4 Mb
 
 enum exit_status {
 	EXSTAT_ERROR,
