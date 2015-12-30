@@ -1,11 +1,4 @@
-#ifdef LINUX
-#if __STDC_VERSION__ >= 199901L
-#define _XOPEN_SOURCE 700
-#else
-#define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-#endif // LINUX
-
+#include <stdver.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -75,6 +68,7 @@ typedef struct {
 	char *uri;
 	hashtable_t *data;
 	hashtable_t *querystring;
+	hashtable_t *header;
 	http_method_t method;
 } http_request_t;
 
@@ -181,8 +175,11 @@ char *get_param(http_request_t *req, char *param_name) {
 		if (param)
 			return param;
 	}
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
+	if ((req->method == HTTP_POST || req->method == HTTP_PUT) && req->data->n > 0) {
 		return (char *)hashtable_get(req->data, param_name);
+	}
+	if (req->header->n > 0) {
+		return (char *)hashtable_get(req->header, param_name);
 	}
 	return NULL;
 }
@@ -1000,8 +997,9 @@ void handle_request(int sd, fd_set * set) {
 
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
 	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);
-	hashtable_t *postdata = NULL;
+	hashtable_t *postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 	hashtable_t *getdata = NULL;
+	hashtable_t *headdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE - 2, socket_stream);
@@ -1201,6 +1199,9 @@ void handle_request(int sd, fd_set * set) {
 				c_referer = colon;
 			} else if (!strcmp(str, "connection")) {
 				c_connection = colon;
+			} else {
+				if (strcmp(str, "accept"))
+					hashtable_put(&headdata, str, colon);
 			}
 		}
 	}
@@ -1328,7 +1329,6 @@ unsupported:
 		}
 		c_buf[total_read] = '\0';
 
-		postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 		char *var = strtok(c_buf, "&");
 		while (var != NULL) {
 			char *value = strchr(var, '=');
@@ -1362,6 +1362,7 @@ unsupported:
 	http_request_t req;
 	req.data = postdata;
 	req.querystring = getdata;
+	req.header = headdata;
 	req.method = request_type;
 	while (nsz-- > 0) {
 		if (route[nsz].require_quid) {
@@ -1380,10 +1381,6 @@ unsupported:
 
 			if (_pfilename) {
 				if (!strcmp(route[nsz].uri, _pfilename)) {
-					if (!postdata) {
-						postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
-						req.data = postdata;
-					}
 					hashtable_put(&req.data, "quid", squid);
 					req.uri = _pfilename;
 					status = route[nsz].api_handler(&resp_message, &req);
@@ -1427,9 +1424,8 @@ done:
 	if (getdata) {
 		free_hashtable(getdata);
 	}
-	if (postdata) {
-		free_hashtable(postdata);
-	}
+	free_hashtable(postdata);
+	free_hashtable(headdata);
 
 	if (keepalive) {
 		error_clear();

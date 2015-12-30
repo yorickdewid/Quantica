@@ -231,7 +231,10 @@ void base_init(base_t *base, engine_t *engine) {
 	zassert(DEFAULT_PAGE_SIZE > MIN_PAGE_SIZE && DEFAULT_PAGE_SIZE < MAX_PAGE_SIZE);
 
 	base->engine = engine;
-	if (file_exists(BASECONTROL)) {
+	if (file_access_exists(BASECONTROL) < 0) {
+		lprint("[erro] Cannot access " BASECONTROL "\n");
+		return;
+	} else if (file_access_exists(BASECONTROL) > 0) {
 
 		/* Open existing database */
 		base->fd = open(BASECONTROL, O_RDWR | O_BINARY);

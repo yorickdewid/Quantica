@@ -99,6 +99,17 @@ char *str_null() {
 	return "null";
 }
 
+int file_access_exists(const char *path) {
+	if (access(path, F_OK) < 0)
+		return 0;
+
+	if (access(path, R_OK) < 0 || !access(path, W_OK) < 0) {
+		return -1;
+	}
+
+	return 1;
+}
+
 int file_exists(const char *path) {
 	int fd = open(path, O_RDWR);
 	if (fd > -1) {
