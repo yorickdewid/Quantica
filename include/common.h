@@ -67,6 +67,7 @@ char *strsep(char ** stringp, const char *delim);
 int zprintf(const char *fmt, ...);
 
 int file_exists(const char *path);
+size_t file_size(int fd);
 char *get_version_string();
 long get_version();
 size_t page_align(size_t val);

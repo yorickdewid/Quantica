@@ -96,6 +96,40 @@ void base_list_delete(base_t *base, quid_short_t *key) {
 	}
 }
 
+void base_list_set_crc_sum(base_t *base, quid_short_t *key, unsigned long long sum) {
+	struct _page_list list;
+	nullify(&list, sizeof(struct _page_list));
+
+	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
+		unsigned long offset = sizeof(struct _base) * (i + 1);
+		if (lseek(base->fd, offset, SEEK_SET) < 0) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+		if (read(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
+			lprint("[erro] Failed to read " BASECONTROL "\n");
+			return;
+		}
+
+		for (unsigned short x = 0; x < from_be16(list.size); ++x) {
+			if (!quid_shortcmp(&list.item[x].page_key, key)) {
+				list.item[x].crc_sum = to_be64(sum);
+
+				if (lseek(base->fd, offset, SEEK_SET) < 0) {
+					lprint("[erro] Failed to read " BASECONTROL "\n");
+					return;
+				}
+				if (write(base->fd, &list, sizeof(struct _page_list)) != sizeof(struct _page_list)) {
+					lprint("[erro] Failed to write " BASECONTROL "\n");
+					return;
+				}
+				return;
+
+			}
+		}
+	}
+}
+
 void base_list_add(base_t *base, quid_short_t *key) {
 	struct _page_list list;
 	nullify(&list, sizeof(struct _page_list));

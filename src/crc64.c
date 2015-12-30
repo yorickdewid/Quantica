@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include <config.h>
 #include <common.h>
@@ -246,6 +247,10 @@ uint64_t crc64_combine(uint64_t crc1, uint64_t crc2, uintmax_t len2) {
 bool crc_file(int fd, uint64_t *rscrc64) {
 	unsigned char buf[CRC_BUFFER_SIZE];
 	uint64_t curpos = lseek(fd, 0, SEEK_CUR);
+	nullify(buf, CRC_BUFFER_SIZE);
+
+	if (lseek(fd, 0, SEEK_SET) < 0)
+		return FALSE;
 
 	*rscrc64 = 0;
 	while (read(fd, buf, CRC_BUFFER_SIZE) > 0) {

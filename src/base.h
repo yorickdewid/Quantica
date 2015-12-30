@@ -26,6 +26,7 @@ enum exit_status {
 struct _page_list_item {
 	quid_short_t page_key;
 	char free;
+	__be64 crc_sum;
 } __attribute__((packed));
 
 struct _page_list {
@@ -93,6 +94,7 @@ struct _base {
 
 char *generate_bindata_name(base_t *base);
 
+void base_list_set_crc_sum(base_t *base, quid_short_t *key, unsigned long long sum);
 void base_list_add(base_t *base, quid_short_t *key);
 void base_list_delete(base_t *base, quid_short_t *key);
 

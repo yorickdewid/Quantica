@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <config.h>
 #include <common.h>
@@ -105,6 +106,15 @@ int file_exists(const char *path) {
 		return 1;
 	}
 	return 0;
+}
+
+size_t file_size(int fd) {
+	struct stat stbuf;
+	if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+		puts("kaas");
+	}
+
+	return (size_t)stbuf.st_size;
 }
 
 char *get_version_string() {

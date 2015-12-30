@@ -10,6 +10,7 @@
 #include <log.h>
 #include <error.h>
 #include "zmalloc.h"
+#include "crc64.h"
 #include "base.h"
 #include "pager.h"
 
@@ -53,6 +54,15 @@ static void flush_page(page_t *page) {
 	}
 }
 
+static unsigned long long page_crc_sum(page_t *page) {
+	uint64_t crc64sum;
+	if (!crc_file(page->fd, &crc64sum)) {
+		lprint("[erro] Failed to calculate CRC\n");
+		return 0;
+	}
+	return crc64sum;
+}
+
 static void create_page(base_t *base, pager_t *core) {
 	struct _page super;
 	char name[SHORT_QUID_LENGTH + 1];
@@ -88,7 +98,7 @@ static void create_page(base_t *base, pager_t *core) {
 	flush_page(page);
 }
 
-static void open_page(quid_short_t *page_key, pager_t *core) {
+static void open_page(quid_short_t *page_key, pager_t *core, unsigned long long sum) {
 	struct _page super;
 	char name[SHORT_QUID_LENGTH + 1];
 	nullify(&super, sizeof(struct _page));
@@ -98,6 +108,18 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 	page->fd = open(name, O_RDWR | O_BINARY);
 	if (page->fd < 0) {
 		error_throw_fatal("65ccc95b60a6", "Failed to acquire descriptor");
+		return;
+	}
+
+	uint64_t crc64sum;
+	if (!crc_file(page->fd, &crc64sum)) {
+		lprint("[erro] Failed to calculate CRC\n");
+		return;
+	}
+
+	if (crc64sum != sum) {
+		lprintf("[erro] Page %d corrupt\n", page->sequence);
+		//TODO we should do something
 		return;
 	}
 
@@ -112,7 +134,7 @@ static void open_page(quid_short_t *page_key, pager_t *core) {
 	zassert(from_be16(super.version) == VERSION_MAJOR);
 	zassert(!strcmp(super.magic, PAGE_MAGIC));
 	if (super.exit_status != EXSTAT_SUCCESS) {
-		lprintf("[erro] Page %d corrupt\n", page->sequence);
+		lprintf("[warn] Page %d was not flushed on exit\n", page->sequence);
 		//TODO we should do something
 		return;
 	}
@@ -173,7 +195,6 @@ void pager_init(base_t *base) {
 	nullify(&list, sizeof(struct _page_list));
 
 	base->core = (pager_t *)tree_zcalloc(1, sizeof(pager_t), NULL);
-
 	for (unsigned int i = 0; i <= base->page_list_count; ++i) {
 		unsigned long offset = sizeof(struct _base) * (i + 1);
 		if (lseek(base->fd, offset, SEEK_SET) < 0) {
@@ -198,7 +219,7 @@ void pager_init(base_t *base) {
 			base->core->allocated = list_size < DEFAULT_PAGE_ALLOC ? DEFAULT_PAGE_ALLOC : list_size + DEFAULT_PAGE_ALLOC;
 			base->core->pages = (page_t **)tree_zcalloc(base->core->allocated, sizeof(page_t *), base->core);
 			for (unsigned short x = 0; x < list_size; ++x) {
-				open_page(&list.item[x].page_key, base->core);
+				open_page(&list.item[x].page_key, base->core, from_be64(list.item[x].crc_sum));
 			}
 		}
 	}
@@ -211,6 +232,7 @@ void pager_sync(base_t *base) {
 	for (unsigned int i = 0; i < base->core->count; ++i) {
 		base->core->pages[i]->exit_status = EXSTAT_SUCCESS;
 		flush_page(base->core->pages[i]);
+		base_list_set_crc_sum(base, &base->core->pages[i]->page_key, page_crc_sum(base->core->pages[i]));
 	}
 }
 
@@ -218,6 +240,7 @@ void pager_close(base_t *base) {
 	for (unsigned int i = 0; i < base->core->count; ++i) {
 		base->core->pages[i]->exit_status = EXSTAT_SUCCESS;
 		flush_page(base->core->pages[i]);
+		base_list_set_crc_sum(base, &base->core->pages[i]->page_key, page_crc_sum(base->core->pages[i]));
 		close(base->core->pages[i]->fd);
 	}
 	tree_zfree(base->core);
