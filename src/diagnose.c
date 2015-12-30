@@ -19,7 +19,7 @@ bool diag_exerr(base_t *base) {
 	quid_create(&key);
 	quidtostr(tmp_key, &key);
 
-	engine_recover_storage(base);
+	// engine_recover_storage(base);
 	//TODO call core:vacuum()
 	/*if (engine_vacuum(base) < 0) {
 		lprint("[erro] Failed to vacuum\n");

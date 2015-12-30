@@ -59,7 +59,7 @@ static long long alloc_node(base_t *base, btree_t *index) {
 
 	/* Check freelist */
 	if (index->freelist < 0) {
-		offset = palloc(base, sizeof(node_t));
+		offset = zpalloc(base, sizeof(node_t));
 		flush_node(base, index, offset, &node);
 	} else {
 		offset = index->freelist;
@@ -134,7 +134,7 @@ unsigned long long btree_create(base_t *base, btree_t *index) {
 	index->root = -1;
 	index->freelist = -1;
 	index->unique_keys = TRUE;
-	index->offset = palloc(base, sizeof(struct _root_super));
+	index->offset = zpalloc(base, sizeof(struct _root_super));
 	storage_write(base, index);
 
 	return index->offset;

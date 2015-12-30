@@ -121,7 +121,6 @@ int engine_delete(base_t *base, const quid_t *quid);
 void engine_traverse(const base_t *base, unsigned long long table_offset);
 #endif
 
-int engine_recover_storage(base_t *base);
 int engine_rebuild(base_t *base, base_t *new_base);
 int engine_update_data(base_t *base, const quid_t *quid, const void *data, size_t len);
 

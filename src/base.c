@@ -194,7 +194,7 @@ void base_lock(base_t *base) {
 
 void base_init(base_t *base, engine_t *engine) {
 	nullify(base, sizeof(base_t));
-	zassert(DEFAULT_PAGE_SIZE > 0 && DEFAULT_PAGE_SIZE < 19);
+	zassert(DEFAULT_PAGE_SIZE > MIN_PAGE_SIZE && DEFAULT_PAGE_SIZE < MAX_PAGE_SIZE);
 
 	base->engine = engine;
 	if (file_exists(BASECONTROL)) {
@@ -270,12 +270,15 @@ void base_init(base_t *base, engine_t *engine) {
 	}
 }
 
-void base_copy(base_t *base, base_t *new_base, engine_t *new_engine) {
+void base_copy(base_t *base, base_t *new_base, engine_t *new_engine, unsigned char page_size) {
 	nullify(new_base, sizeof(base_t));
+
+	if (page_size <= MIN_PAGE_SIZE || DEFAULT_PAGE_SIZE >= MAX_PAGE_SIZE)
+		return;
 
 	/* Copy current config */
 	new_base->pager.sequence = 1;
-	new_base->pager.size = base->pager.size;
+	new_base->pager.size = page_size;
 	new_base->engine = new_engine;
 	new_base->instance_key = base->instance_key;
 	strlcpy(new_base->instance_name, base->instance_name, INSTANCE_LENGTH);

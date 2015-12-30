@@ -12,7 +12,9 @@
 #define PAGE_LIST_SIZE	10
 #define MAGIC_LENGTH	10
 
-#define MIN_PAGE_SIZE		4096 // 4 kb
+#define BASE_PAGE_SIZE		4096 // 4 kb
+#define MIN_PAGE_SIZE		0
+#define MAX_PAGE_SIZE		19
 
 enum exit_status {
 	EXSTAT_ERROR,
@@ -97,7 +99,7 @@ void base_list_delete(base_t *base, quid_short_t *key);
 void base_sync(base_t *base);
 void base_lock(base_t *base);
 void base_init(base_t *base, engine_t *engine);
-void base_copy(base_t *base, base_t *new_base, engine_t *new_engine);
+void base_copy(base_t *base, base_t *new_base, engine_t *new_engine, unsigned char page_size);
 void base_swap();
 void base_close(base_t *base);
 

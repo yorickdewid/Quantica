@@ -58,7 +58,7 @@ int generate_random_number(int range);
 void quid_generate(char *quid);
 void quid_generate_short(char *quid);
 void filesync();
-int vacuum();
+int zvacuum(int page_size);
 
 /*
  * Database operations

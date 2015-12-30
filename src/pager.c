@@ -128,7 +128,7 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	zassert(len > 0);
 
 	bool flush = FALSE;
-	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
+	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
 	unsigned long long offset = base->pager.offset;
 
 	/* Create new page */
@@ -149,7 +149,7 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 }
 
 int pager_get_fd(const base_t *base, unsigned long long *offset) {
-	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
+	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 
 	zassert(page <= (base->core->count - 1));
@@ -158,7 +158,7 @@ int pager_get_fd(const base_t *base, unsigned long long *offset) {
 }
 
 unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
-	unsigned long long page_size = MIN_PAGE_SIZE << base->pager.size;
+	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(offset / page_size);
 
 	zassert(page <= (base->core->count - 1));

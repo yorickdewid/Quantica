@@ -6,7 +6,7 @@
 #include "base.h"
 #include "quid.h"
 
-#define palloc(b,s) \
+#define zpalloc(b,s) \
 	pager_alloc(b, s);
 
 typedef struct base base_t;

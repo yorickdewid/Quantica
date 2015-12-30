@@ -101,7 +101,7 @@ char *get_session_key() {
 
 char *get_pager_total_size() {
 	static char buf[10];
-	unsigned long long total_size = (MIN_PAGE_SIZE << control.pager.size) * control.core->count;
+	unsigned long long total_size = (BASE_PAGE_SIZE << control.pager.size) * control.core->count;
 	return unit_bytes(total_size, buf);
 }
 
@@ -246,16 +246,19 @@ void filesync() {
 	base_sync(&control);
 }
 
-int vacuum() {
+int zvacuum(int page_size) {
 	base_t new_control;
 	engine_t new_zero;
 
 	if (!ready)
 		return -1;
 
+	if (!page_size)
+		page_size = control.pager.size;
+
 	/* Copy current database */
 	base_lock(&control);
-	base_copy(&control, &new_control, &new_zero);
+	base_copy(&control, &new_control, &new_zero, page_size);
 	pager_init(&new_control);
 
 	/* Rebuild structures into order */

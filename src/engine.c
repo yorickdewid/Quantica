@@ -181,8 +181,8 @@ static int engine_create(base_t *base) {
 	flush_super(base);
 	flush_dbsuper(base);
 
-	base->offset.zero = palloc(base, sizeof(struct _engine_super));
-	base->offset.heap = palloc(base, sizeof(struct _engine_dbsuper));
+	base->offset.zero = zpalloc(base, sizeof(struct _engine_super));
+	base->offset.heap = zpalloc(base, sizeof(struct _engine_dbsuper));
 	return 0;
 }
 
@@ -225,7 +225,7 @@ static unsigned long long alloc_table_chunk(base_t *base, size_t len) {
 		return offset;
 	}
 
-	return palloc(base, len);
+	return zpalloc(base, len);
 }
 
 /* Allocate a chunk from the database file */
@@ -245,7 +245,7 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 		}
 	}
 
-	return palloc(base, sizeof(struct _blob_info) + len);
+	return zpalloc(base, sizeof(struct _blob_info) + len);
 }
 
 /* Mark a chunk as unused in the database file */
@@ -890,45 +890,6 @@ int engine_delete(base_t *base, const quid_t *quid) {
 		return -1;
 
 	flush_super(base);
-	return 0;
-}
-
-int engine_recover_storage(base_t *base) {
-	unsigned long long offset = base->engine->last_block; //TODO read heap
-	struct _blob_info info;
-	int cnt = 0;
-
-	if (islocked(base))
-		return -1;
-
-	lprint("[info] Start recovery process\n");
-	if (!offset) {
-		lprint("[erro] Metadata lost\n");
-		return -1;
-	}
-
-	while (1) {
-		cnt++;
-		int fd = pager_get_fd(base, &offset);
-		if (lseek(fd, offset, SEEK_SET) < 0) {
-			error_throw_fatal("a7df40ba3075", "Failed to read disk");
-			return -1;
-		}
-		if (read(fd, &info, sizeof(struct _blob_info)) != (ssize_t)sizeof(struct _blob_info)) {
-			error_throw_fatal("a7df40ba3075", "Failed to read disk");
-			return -1;
-		}
-
-		size_t len = from_be32(info.len);
-		unsigned long long next = from_be64(info.next);
-		zassert(len > 0);
-		if (next)
-			offset = next;
-		else
-			break;
-	}
-
-	lprintf("[info] Lost %d records\n", base->stats.zero_size - cnt);
 	return 0;
 }
 

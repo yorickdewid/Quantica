@@ -380,8 +380,12 @@ http_status_t api_sql_query(char **response, http_request_t *req) {
 }
 
 http_status_t api_vacuum(char **response, http_request_t *req) {
-	unused(req);
-	vacuum();
+	int size = 0;
+	char *page_size = get_param(req, "page_size");
+	if (page_size) {
+		size = atoi(page_size);
+	}
+	zvacuum(size);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
@@ -974,7 +978,7 @@ http_status_t api_help(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-void handle_request(int sd, fd_set *set) {
+void handle_request(int sd, fd_set * set) {
 	FILE *socket_stream = fdopen(sd, "r+");
 	if (!socket_stream) {
 		lprint("[erro] Failed to get file descriptor\n");
