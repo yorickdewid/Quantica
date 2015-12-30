@@ -243,6 +243,7 @@ void quid_generate_short(char *quid) {
 
 void filesync() {
 	engine_sync(&control);
+	pager_sync(&control);
 	base_sync(&control);
 }
 

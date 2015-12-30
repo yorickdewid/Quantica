@@ -207,6 +207,13 @@ flush_base:
 	base_sync(base);
 }
 
+void pager_sync(base_t *base) {
+	for (unsigned int i = 0; i < base->core->count; ++i) {
+		base->core->pages[i]->exit_status = EXSTAT_SUCCESS;
+		flush_page(base->core->pages[i]);
+	}
+}
+
 void pager_close(base_t *base) {
 	for (unsigned int i = 0; i < base->core->count; ++i) {
 		base->core->pages[i]->exit_status = EXSTAT_SUCCESS;
