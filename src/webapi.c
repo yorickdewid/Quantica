@@ -228,7 +228,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char *hostname = get_system_fqdn();
 
 	*response = zrealloc(*response, RESPONSE_SIZE * 2);
-	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"pager\":{\"page_size\":%u,\"page_count\":%d,\"allocated\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, get_pager_page_size(), get_pager_page_count(), get_pager_total_size(), stat_getkeys(), stat_getfreekeys(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"pager\":{\"page_size\":%u,\"page_count\":%d,\"allocated\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"blocks_free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, get_pager_page_size(), get_pager_page_count(), get_pager_total_size(), stat_getkeys(), stat_getfreekeys(), stat_getfreeblocks(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 	zfree(hostname);
 	return HTTP_OK;
 }
@@ -498,10 +498,12 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 http_status_t api_db_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 	bool resolve = TRUE;
+	bool getforce = FALSE;
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *noresolve = get_param(req, "noresolve");
 	char *selector = get_param(req, "select");
+	char *force = get_param(req, "force");
 	/* TODO char *where = get_param(req, "where"); */
 	if (quid) {
 		char *data = NULL;
@@ -519,8 +521,13 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 					resolve = FALSE;
 				}
 			}
+			if (force) {
+				if (!strcmp(force, "true")) {
+					getforce = TRUE;
+				}
+			}
 
-			data = db_get(quid, &len, resolve);
+			data = db_get(quid, &len, resolve, getforce);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -722,10 +729,17 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	char *importance = get_param(req, "importance");
 	char *lifecycle = get_param(req, "lifecycle");
 	char *system_lock = get_param(req, "system_lock");
+	char *force = get_param(req, "force");
 	if (quid) {
 		struct record_status status;
+		bool getforce = FALSE;
+		if (force) {
+			if (!strcmp(force, "true")) {
+				getforce = TRUE;
+			}
+		}
 		if (executable || freeze || importance || lifecycle || system_lock) {
-			db_record_get_meta(quid, &status);
+			db_record_get_meta(quid, FALSE, &status);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -749,7 +763,7 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
-		db_record_get_meta(quid, &status);
+		db_record_get_meta(quid, getforce, &status);
 		if (iserror()) {
 			return response_internal_error(response);
 		}

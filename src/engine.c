@@ -239,6 +239,7 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 				int diff = (((double)(len) / (double)slot->len) * 100);
 				if (diff >= DBCACHE_DENSITY) {
 					slot->len = 0;
+					base->stats.heap_free_size--;
 					return slot->offset;
 				}
 			}
@@ -284,6 +285,7 @@ static void free_dbchunk(base_t *base, unsigned long long offset) {
 	struct engine_dbcache dbinfo;
 	size_t len = from_be32(info.len);
 	dbinfo.offset = offset;
+	base->stats.heap_free_size++;
 	for (int i = DBCACHE_SLOTS - 1; i >= 0; --i) {
 		struct engine_dbcache *slot = &base->engine->dbcache[i];
 		if (len > slot->len) {
@@ -723,7 +725,7 @@ int engine_insert_meta(base_t *base, quid_t *quid, struct metadata *meta) {
  * Look up item with the given key 'quid' in the given table. Returns offset
  * to the item.
  */
-static unsigned long long lookup_key(base_t *base, unsigned long long table_offset, const quid_t *quid, bool *nodata, struct metadata *meta) {
+static unsigned long long lookup_key(base_t *base, unsigned long long table_offset, const quid_t *quid, bool *nodata, bool force, struct metadata *meta) {
 	while (table_offset) {
 		struct _engine_table *table = get_table(base, table_offset);
 		size_t left = 0, right = from_be16(table->size);
@@ -733,7 +735,7 @@ static unsigned long long lookup_key(base_t *base, unsigned long long table_offs
 			int cmp = quidcmp(quid, &table->items[i].quid);
 			if (cmp == 0) {
 				/* found */
-				if (table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
+				if (!force && table->items[i].meta.lifecycle != MD_LIFECYCLE_FINITE) {
 					error_throw("6ef42da7901f", "Record not found");
 					put_table(base->engine, table, table_offset);
 					return 0;
@@ -807,7 +809,23 @@ unsigned long long engine_get(base_t *base, const quid_t *quid, struct metadata 
 
 	bool nodata = 0;
 	memset(meta, 0, sizeof(struct metadata));
-	unsigned long long offset = lookup_key(base, base->engine->top, quid, &nodata, meta);
+	unsigned long long offset = lookup_key(base, base->engine->top, quid, &nodata, FALSE, meta);
+	if (iserror())
+		return 0;
+
+	if (nodata)
+		return 0;
+
+	return offset;
+}
+
+unsigned long long engine_get_force(base_t *base, const quid_t *quid, struct metadata *meta) {
+	if (islocked(base))
+		return 0;
+
+	bool nodata = 0;
+	memset(meta, 0, sizeof(struct metadata));
+	unsigned long long offset = lookup_key(base, base->engine->top, quid, &nodata, TRUE, meta);
 	if (iserror())
 		return 0;
 
@@ -880,7 +898,7 @@ int engine_delete(base_t *base, const quid_t *quid) {
 
 	bool nodata = 0;
 	struct metadata meta;
-	lookup_key(base, base->engine->top, quid, &nodata, &meta);
+	lookup_key(base, base->engine->top, quid, &nodata, FALSE, &meta);
 	if (iserror())
 		return -1;
 

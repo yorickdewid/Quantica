@@ -207,6 +207,7 @@ void base_sync(base_t *base) {
 	super.offset.index_list = to_be64(base->offset.index_list);
 	super.stats.zero_size = to_be64(base->stats.zero_size);
 	super.stats.zero_free_size = to_be64(base->stats.zero_free_size);
+	super.stats.heap_free_size = to_be64(base->stats.heap_free_size);
 	super.stats.alias_size = to_be64(base->stats.alias_size);
 	super.stats.index_list_size = to_be64(base->stats.index_list_size);
 	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
@@ -260,6 +261,7 @@ void base_init(base_t *base, engine_t *engine) {
 		base->offset.index_list = from_be64(super.offset.index_list);
 		base->stats.zero_size = from_be64(super.stats.zero_size);
 		base->stats.zero_free_size = from_be64(super.stats.zero_free_size);
+		base->stats.heap_free_size = from_be64(super.stats.heap_free_size);
 		base->stats.alias_size = from_be64(super.stats.alias_size);
 		base->stats.index_list_size = from_be64(super.stats.index_list_size);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';

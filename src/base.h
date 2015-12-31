@@ -59,6 +59,7 @@ typedef struct base {
 	struct {
 		unsigned long long zero_size;
 		unsigned long long zero_free_size;
+		unsigned long long heap_free_size;
 		unsigned long long alias_size;
 		unsigned long long index_list_size;
 	} stats;
@@ -86,6 +87,7 @@ struct _base {
 	struct {
 		__be64 zero_size;
 		__be64 zero_free_size;
+		__be64 heap_free_size;
 		__be64 alias_size;
 		__be64 index_list_size;
 	} stats;

@@ -213,6 +213,10 @@ unsigned long int stat_getfreekeys() {
 	return control.stats.zero_free_size;
 }
 
+unsigned long int stat_getfreeblocks() {
+	return control.stats.heap_free_size;
+}
+
 unsigned long int stat_tablesize() {
 	return control.stats.alias_size;
 }
@@ -325,7 +329,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	return 0;
 }
 
-void *db_get(char *quid, size_t *len, bool descent) {
+void *db_get(char *quid, size_t *len, bool descent, bool force) {
 	quid_t key;
 	size_t _len;
 	struct metadata meta;
@@ -336,7 +340,7 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = force ? engine_get_force(&control, &key, &meta) : engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -478,6 +482,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 	}
 
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
+		/* New data became a group */
 		if (meta.type != MD_TYPE_GROUP) {
 			char _quid[QUID_LENGTH + 1];
 			quidtostr(_quid, &key);
@@ -490,6 +495,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 				return -1;
 		}
 	} else {
+		/* New data is no longer a group */
 		if (meta.type == MD_TYPE_GROUP) {
 			alias_delete(&control, &key);
 		}
@@ -722,7 +728,7 @@ int db_purge(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	unsigned long long offset = engine_get_force(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -1034,7 +1040,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	return 0;
 }
 
-int db_record_get_meta(char *quid, struct record_status * status) {
+int db_record_get_meta(char *quid, bool force, struct record_status *status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -1042,7 +1048,11 @@ int db_record_get_meta(char *quid, struct record_status * status) {
 	if (!ready)
 		return -1;
 
-	engine_get(&control, &key, &meta);
+	if (force)
+		engine_get_force(&control, &key, &meta);
+	else
+		engine_get(&control, &key, &meta);
+
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
 	status->freeze = meta.freeze;
@@ -1061,7 +1071,7 @@ int db_record_get_meta(char *quid, struct record_status * status) {
 	return 0;
 }
 
-int db_record_set_meta(char *quid, struct record_status * status) {
+int db_record_set_meta(char *quid, struct record_status *status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);

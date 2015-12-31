@@ -52,6 +52,7 @@ char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
+unsigned long int stat_getfreeblocks();
 unsigned long int stat_tablesize();
 unsigned long int stat_indexsize();
 int generate_random_number(int range);
@@ -64,7 +65,7 @@ int zvacuum(int page_size);
  * Database operations
  */
 int db_put(char *quid, int *items, const void *data, size_t len);
-void *db_get(char *quid, size_t *len, bool descent);
+void *db_get(char *quid, size_t *len, bool descent, bool force);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);
 int db_count_group(char *quid);
@@ -76,7 +77,7 @@ void *db_select(char *quid, const char *element);
 int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len);
 int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len);
 
-int db_record_get_meta(char *quid, struct record_status *status);
+int db_record_get_meta(char *quid, bool force, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
 
 char *db_alias_get_name(char *quid);

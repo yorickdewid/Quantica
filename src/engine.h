@@ -105,6 +105,7 @@ int engine_insert(base_t *base, quid_t *quid);
  */
 void *get_data_block(base_t *base, unsigned long long offset, size_t *len);
 unsigned long long engine_get(base_t *base, const quid_t *quid, struct metadata *meta);
+unsigned long long engine_get_force(base_t *base, const quid_t *quid, struct metadata *meta);
 
 /*
  * Remove item with the given key 'quid' from the database file.
