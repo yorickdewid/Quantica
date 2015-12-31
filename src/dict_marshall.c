@@ -205,7 +205,7 @@ marshall_t *marshall_convert(char *data, size_t data_len) {
  */
 char *marshall_serialize(marshall_t *obj) {
 	if (!obj)
-		return NULL;
+		return zstrdup("null");
 
 	switch (obj->type) {
 		case MTYPE_NULL: {

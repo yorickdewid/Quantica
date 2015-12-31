@@ -779,7 +779,7 @@ int db_purge(char *quid, bool descent) {
 	return 0;
 }
 
-void *db_select(char *quid, const char *element) {
+void *db_select(char *quid, const char *select_element, const char *where_element) {
 	quid_t key;
 	size_t _len;
 	struct metadata meta;
@@ -816,31 +816,63 @@ void *db_select(char *quid, const char *element) {
 			return NULL;
 	}
 
-	marshall_t *elementobj = marshall_convert((char *)element, strlen(element));
-	if (!elementobj) {
+	/* Selector */
+	//TODO select all *
+	marshall_t *select_elementobj = marshall_convert((char *)select_element, strlen(select_element));
+	if (!select_elementobj) {
 		if (data)
 			zfree(data);
 		marshall_free(dataobj);
 		return NULL;
 	}
 
-	if (elementobj->type != MTYPE_ARRAY && elementobj->type != MTYPE_STRING) {
+	/* Selector type */
+	if (select_elementobj->type != MTYPE_ARRAY && select_elementobj->type != MTYPE_STRING) {
 		error_throw("14d882da30d9", "Operation expects an string or array given");
 		if (data)
 			zfree(data);
-		marshall_free(elementobj);
+		marshall_free(select_elementobj);
 		marshall_free(dataobj);
 		return NULL;
 	}
 
-	marshall_t *selectobj = marshall_filter(elementobj, dataobj, NULL);
+	/* Where */
+	if (where_element) {
+		marshall_t *where_elementobj = marshall_convert((char *)where_element, strlen(where_element));
+		if (!where_elementobj) {
+			if (data)
+				zfree(data);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		/* Where type */
+		if (where_elementobj->type != MTYPE_ARRAY && where_elementobj->type != MTYPE_OBJECT) {
+			error_throw("14d882da30d9", "Operation expects an string or array given");
+			if (data)
+				zfree(data);
+			marshall_free(where_elementobj);
+			marshall_free(select_elementobj);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		marshall_t *x = marshall_condition(where_elementobj, dataobj);
+		char *buf = marshall_serialize(x);
+		// puts(buf);
+		// zfree(buf);
+		marshall_free(where_elementobj);
+		return buf;
+	}
+
+	marshall_t *selectobj = marshall_filter(select_elementobj, dataobj, NULL);
 	char *buf = marshall_serialize(selectobj);
 	if (data)
 		zfree(data);
-	marshall_free(selectobj);
-	marshall_free(elementobj);
-	marshall_free(dataobj);
 
+	marshall_free(selectobj);
+	marshall_free(select_elementobj);
+	marshall_free(dataobj);
 	return buf;
 }
 

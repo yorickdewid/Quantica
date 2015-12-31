@@ -73,7 +73,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta);
 int db_delete(char *quid, bool descent);
 int db_purge(char *quid, bool descent);
-void *db_select(char *quid, const char *element);
+void *db_select(char *quid, const char *select_element, const char *where_element);
 int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len);
 int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len);
 

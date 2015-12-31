@@ -11,13 +11,13 @@
 #include "diagnose.h"
 
 bool diag_exerr(base_t *base) {
-	char tmp_key[QUID_LENGTH + 1];
-	quid_t key;
+	// char tmp_key[QUID_LENGTH + 1];
+	// quid_t key;
 
 	lprint("[info] Failure on exit, run diagnostics\n");
-	engine_init(base);
-	quid_create(&key);
-	quidtostr(tmp_key, &key);
+	// engine_init(base);
+	// quid_create(&key);
+	// quidtostr(tmp_key, &key);
 
 	// engine_recover_storage(base);
 	//TODO call core:vacuum()
@@ -25,6 +25,7 @@ bool diag_exerr(base_t *base) {
 		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
 	}*/
-	engine_close(base);
+	// engine_close(base);
+	unused(base);
 	return TRUE;
 }
