@@ -834,7 +834,6 @@ void *db_select(char *quid, const char *element) {
 	}
 
 	marshall_t *selectobj = marshall_filter(elementobj, dataobj, NULL);
-
 	char *buf = marshall_serialize(selectobj);
 	if (data)
 		zfree(data);

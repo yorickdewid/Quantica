@@ -266,10 +266,13 @@ char *marshall_serialize(marshall_t *obj) {
 				sprintf(data, "\"%s\":\"%s\"", obj->name, (char *)obj->data);
 				return data;
 			} else {
-				size_t len = obj->data_len + 4;
+				size_t nlen = 0;
+				char *escdata = stresc(obj->data, &nlen);
+				size_t len = obj->data_len + nlen + 4;
 				char *data = (char *)zcalloc(len + 1, sizeof(char));
 				memset(data, 0, len + 1);
-				sprintf(data, "\"%s\"", (char *)obj->data);
+				sprintf(data, "\"%s\"", (char *)escdata);
+				zfree(escdata);
 				return data;
 			}
 			break;
