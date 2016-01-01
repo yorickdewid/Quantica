@@ -507,7 +507,7 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 	char *where = get_param(req, "where");
 	if (quid) {
 		char *data = NULL;
-		if (selector) {
+		if (selector || where) {
 			data = db_select(quid, selector, where);
 			if (iserror()) {
 				return response_internal_error(response);

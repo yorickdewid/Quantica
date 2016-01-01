@@ -786,6 +786,8 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 	strtoquid(quid, &key);
 	void *data = NULL;
 	marshall_t *dataobj = NULL;
+	marshall_t *whereobj = NULL;
+	marshall_t *selectobj = NULL;
 
 	if (!ready)
 		return NULL;
@@ -816,26 +818,6 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 			return NULL;
 	}
 
-	/* Selector */
-	//TODO select all *
-	marshall_t *select_elementobj = marshall_convert((char *)select_element, strlen(select_element));
-	if (!select_elementobj) {
-		if (data)
-			zfree(data);
-		marshall_free(dataobj);
-		return NULL;
-	}
-
-	/* Selector type */
-	if (select_elementobj->type != MTYPE_ARRAY && select_elementobj->type != MTYPE_STRING) {
-		error_throw("14d882da30d9", "Operation expects an string or array given");
-		if (data)
-			zfree(data);
-		marshall_free(select_elementobj);
-		marshall_free(dataobj);
-		return NULL;
-	}
-
 	/* Where */
 	if (where_element) {
 		marshall_t *where_elementobj = marshall_convert((char *)where_element, strlen(where_element));
@@ -846,32 +828,41 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 			return NULL;
 		}
 
-		/* Where type */
-		if (where_elementobj->type != MTYPE_ARRAY && where_elementobj->type != MTYPE_OBJECT) {
+		whereobj = marshall_condition(where_elementobj, dataobj);
+		marshall_free(where_elementobj);
+	}
+
+	/* Selector */
+	if (select_element) {
+		marshall_t *select_elementobj = marshall_convert((char *)select_element, strlen(select_element));
+		if (!select_elementobj) {
+			if (data)
+				zfree(data);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		/* Selector type */
+		if (select_elementobj->type != MTYPE_ARRAY && select_elementobj->type != MTYPE_STRING) {
 			error_throw("14d882da30d9", "Operation expects an string or array given");
 			if (data)
 				zfree(data);
-			marshall_free(where_elementobj);
 			marshall_free(select_elementobj);
 			marshall_free(dataobj);
 			return NULL;
 		}
 
-		marshall_t *x = marshall_condition(where_elementobj, dataobj);
-		char *buf = marshall_serialize(x);
-		// puts(buf);
-		// zfree(buf);
-		marshall_free(where_elementobj);
-		return buf;
+		selectobj = marshall_filter(select_elementobj, whereobj ? whereobj : dataobj, NULL);
+		marshall_free(select_elementobj);
 	}
 
-	marshall_t *selectobj = marshall_filter(select_elementobj, dataobj, NULL);
-	char *buf = marshall_serialize(selectobj);
+	char *buf = marshall_serialize(selectobj ? selectobj : whereobj);
 	if (data)
 		zfree(data);
 
+	if (whereobj)
+		marshall_free(whereobj);
 	marshall_free(selectobj);
-	marshall_free(select_elementobj);
 	marshall_free(dataobj);
 	return buf;
 }
