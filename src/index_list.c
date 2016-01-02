@@ -156,7 +156,7 @@ quid_t *index_list_get_index(base_t *base, const quid_t *c_quid) {
 }
 
 marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
-	int alloc_children = 10;
+	int alloc_children = 10;//TODO this might not be enough
 
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(alloc_children, sizeof(marshall_t *), marshall);
@@ -306,7 +306,6 @@ void index_list_rebuild(base_t *base, base_t *new_base) {
 		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
-
 
 			size_t len;
 			struct metadata meta;

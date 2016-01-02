@@ -202,6 +202,7 @@ void base_sync(base_t *base) {
 	super.pager.sequence = to_be32(base->pager.sequence);
 	super.pager.offset = to_be64(base->pager.offset);
 	super.offset.alias = to_be64(base->offset.alias);
+	super.offset.history = to_be64(base->offset.history);
 	super.offset.zero = to_be64(base->offset.zero);
 	super.offset.heap = to_be64(base->offset.heap);
 	super.offset.index_list = to_be64(base->offset.index_list);
@@ -256,6 +257,7 @@ void base_init(base_t *base, engine_t *engine) {
 		base->pager.sequence = from_be32(super.pager.sequence);
 		base->pager.offset = from_be64(super.pager.offset);
 		base->offset.alias = from_be64(super.offset.alias);
+		base->offset.history = from_be64(super.offset.history);
 		base->offset.zero = from_be64(super.offset.zero);
 		base->offset.heap = from_be64(super.offset.heap);
 		base->offset.index_list = from_be64(super.offset.index_list);

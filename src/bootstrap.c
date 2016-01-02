@@ -148,6 +148,9 @@ void bootstrap(base_t *base) {
 	if (register_error(base, E_WARN, "a09c8843b09d", "Alias exists") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(base, E_WARN, "595a8ca9706d", "Key has no history") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(base, E_WARN, "dcb796d620d1", "Unknown datastructure") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 

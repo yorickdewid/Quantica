@@ -25,6 +25,7 @@
 #include "arc4random.h"
 #include "engine.h"
 #include "alias.h"
+#include "history.h"
 #include "index_list.h"
 #include "bootstrap.h"
 #include "sql.h"
@@ -423,6 +424,20 @@ char *db_get_schema(char *quid) {
 	return buf;
 }
 
+char *db_get_history(char *quid) {
+	quid_t key;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return NULL;
+
+	unsigned short count = history_get_last_version(&control, &key);
+	if (!count)
+		error_throw("595a8ca9706d", "Key has no history");
+
+	return itoa(count);
+}
+
 int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
@@ -472,6 +487,9 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 			return -1;
 			break;
 	}
+
+	/* Save old version as record history */
+	history_add(&control, &key, offset);
 
 	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;

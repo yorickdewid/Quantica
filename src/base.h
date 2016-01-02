@@ -54,6 +54,7 @@ typedef struct base {
 		unsigned long long zero;
 		unsigned long long heap;
 		unsigned long long alias;
+		unsigned long long history;
 		unsigned long long index_list;
 	} offset;
 	struct {
@@ -82,6 +83,7 @@ struct _base {
 		__be64 zero;
 		__be64 heap;
 		__be64 alias;
+		__be64 history;
 		__be64 index_list;
 	} offset;
 	struct {

@@ -569,6 +569,19 @@ http_status_t api_db_get_schema(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_get_history(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *history = db_get_history(quid);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"history\":%s,\"description\":\"Record history\",\"status\":\"SUCCEEDED\",\"success\":true}", history);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_db_delete(char **response, http_request_t *req) {
 	bool cascade = TRUE;
 
@@ -937,6 +950,7 @@ static const struct webroute route[] = {
 	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
 	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
 	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
+	{"/history",		api_db_get_history,	TRUE,	"Show key history"},
 
 	/* Items operations						*/
 	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
