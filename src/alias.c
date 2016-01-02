@@ -134,7 +134,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 char *alias_get_val(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
-		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
@@ -160,7 +160,7 @@ int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
 	unsigned int hash = jen_hash((unsigned char *)name, len);
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
-		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
@@ -182,7 +182,7 @@ int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t le
 	unsigned int hash = jen_hash((unsigned char *)name, len);
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
-		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
@@ -206,7 +206,7 @@ int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t le
 int alias_delete(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
-		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
@@ -237,7 +237,7 @@ marshall_t *alias_all(base_t *base) {
 
 	unsigned long long offset = base->offset.alias;
 	while (offset) {
-		struct _alias_list *list = get_alias_list(base, base->offset.alias);
+		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
