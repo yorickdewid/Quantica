@@ -431,11 +431,10 @@ char *db_get_history(char *quid) {
 	if (!ready)
 		return NULL;
 
-	unsigned short count = history_get_last_version(&control, &key);
-	if (!count)
-		error_throw("595a8ca9706d", "Key has no history");
-
-	return itoa(count);
+	marshall_t *dataobj = history_all(&control, &key);
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
 }
 
 char *db_get_version(char *quid, char *element) {
@@ -466,7 +465,6 @@ char *db_get_version(char *quid, char *element) {
 	if (data)
 		zfree(data);
 	marshall_free(dataobj);
-
 	return buf;
 }
 

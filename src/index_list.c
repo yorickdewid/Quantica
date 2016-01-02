@@ -14,7 +14,7 @@
 #include "index_list.h"
 
 #define INDEX_LIST_SIZE	64
-
+//TODO element_len cloud be 0 when element is set offset 0
 struct _engine_index_list {
 	struct {
 		quid_t index;

@@ -576,7 +576,8 @@ http_status_t api_db_get_history(char **response, http_request_t *req) {
 		if (iserror()) {
 			return response_internal_error(response);
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"history\":%s,\"description\":\"Record history\",\"status\":\"SUCCEEDED\",\"success\":true}", history);
+		snprintf(*response, RESPONSE_SIZE, "{\"history_versions\":%s,\"description\":\"Record history\",\"status\":\"SUCCEEDED\",\"success\":true}", history);
+		zfree(history);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);

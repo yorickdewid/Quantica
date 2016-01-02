@@ -58,8 +58,8 @@ static void flush_history_list(base_t *base, struct _history_list *list, unsigne
 	zfree(list);
 }
 
-unsigned short history_get_last_version(base_t *base, const quid_t *c_quid) {
-	int version = 0;
+static unsigned short history_get_next_version(base_t *base, const quid_t *c_quid) {
+	short version = -1;
 
 	unsigned long long offset = base->offset.history;
 	while (offset) {
@@ -76,12 +76,13 @@ unsigned short history_get_last_version(base_t *base, const quid_t *c_quid) {
 		zfree(list);
 	}
 
-	return version;
+	if (version != -1)
+		return ++version;
+
+	return 0;
 }
 
 unsigned long long history_get_version_offset(base_t *base, const quid_t *c_quid, unsigned short version) {
-	int count = 1;
-
 	unsigned long long offset = base->offset.history;
 	while (offset) {
 		struct _history_list *list = get_history_list(base, offset);
@@ -90,12 +91,11 @@ unsigned long long history_get_version_offset(base_t *base, const quid_t *c_quid
 		for (int i = 0; i < from_be16(list->size); ++i) {
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
-				if (count == version) {
+				if (from_be16(list->items[i].version) == version) {
 					unsigned long long version_offset = from_be64(list->items[i].offset);
 					zfree(list);
 					return version_offset;
 				}
-				count++;
 			}
 		}
 		offset = list->link ? from_be64(list->link) : 0;
@@ -106,6 +106,27 @@ unsigned long long history_get_version_offset(base_t *base, const quid_t *c_quid
 	return 0;
 }
 
+int history_count(base_t *base, const quid_t *c_quid) {
+	int counter = 0;
+
+	unsigned long long offset = base->offset.history;
+	while (offset) {
+		struct _history_list *list = get_history_list(base, offset);
+		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				counter++;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	return counter;
+}
+
 int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 	/* Does list exist */
 	if (base->offset.history != 0) {
@@ -114,7 +135,7 @@ int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 
 		memcpy(&list->items[from_be16(list->size)].quid, c_quid, sizeof(quid_t));
 		list->items[from_be16(list->size)].offset = to_be64(offset);
-		list->items[from_be16(list->size)].version = to_be16(history_get_last_version(base, c_quid) + 1);
+		list->items[from_be16(list->size)].version = to_be16(history_get_next_version(base, c_quid));
 		list->size = incr_be16(list->size);
 
 		/* Check if we need to add a new table*/
@@ -146,7 +167,7 @@ int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 		new_list->size = to_be16(1);
 		memcpy(&new_list->items[0].quid, c_quid, sizeof(quid_t));
 		new_list->items[0].offset = to_be64(offset);
-		new_list->items[0].version = to_be16(1);
+		new_list->items[0].version = to_be16(0);
 
 		unsigned long long new_list_offset = zpalloc(base, sizeof(struct _history_list));
 		flush_history_list(base, new_list, new_list_offset);
@@ -156,4 +177,37 @@ int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 
 	base_sync(base);
 	return 0;
+}
+
+marshall_t *history_all(base_t *base, const quid_t *c_quid) {
+	int count = history_count(base, c_quid);
+
+	if (!count)
+		return NULL;
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(count, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_ARRAY;
+
+	unsigned long long offset = base->offset.history;
+	while (offset) {
+		struct _history_list *list = get_history_list(base, offset);
+		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				char *version_index = itoa(from_be16(list->items[i].version));
+				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+				marshall->child[marshall->size]->type = MTYPE_INT;
+				marshall->child[marshall->size]->data = tree_zstrdup(version_index, marshall);
+				marshall->child[marshall->size]->data_len = strlen(version_index);
+				marshall->size++;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	return marshall;
 }
