@@ -58,6 +58,25 @@ static void flush_history_list(base_t *base, struct _history_list *list, unsigne
 	zfree(list);
 }
 
+#ifdef DEBUG
+void history_dump(base_t *base) {
+	unsigned long long offset = base->offset.history;
+	while (offset) {
+		struct _history_list *list = get_history_list(base, offset);
+		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			char squid[QUID_LENGTH + 1];
+			quidtostr(squid, &list->items[i].quid);
+
+			printf("Location %d key: %s, version: %d, offset: %lu\n", i, squid, from_be16(list->items[i].version), from_be64(list->items[i].offset));
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+}
+#endif
+
 static unsigned short history_get_next_version(base_t *base, const quid_t *c_quid) {
 	short version = -1;
 
@@ -89,6 +108,9 @@ unsigned long long history_get_version_offset(base_t *base, const quid_t *c_quid
 		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].offset)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				if (from_be16(list->items[i].version) == version) {
@@ -115,6 +137,9 @@ int history_count(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].offset)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				counter++;
@@ -125,6 +150,32 @@ int history_count(base_t *base, const quid_t *c_quid) {
 	}
 
 	return counter;
+}
+
+int history_delete(base_t *base, const quid_t *c_quid, unsigned long long data_offset) {
+	unsigned long long offset = base->offset.history;
+	while (offset) {
+		struct _history_list *list = get_history_list(base, offset);
+		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				if (from_be64(list->items[i].offset) == data_offset) {
+					memset(&list->items[i].quid, 0, sizeof(quid_t));
+					list->items[i].offset = 0;
+					list->items[i].version = 0;
+					flush_history_list(base, list, offset);
+					return 0;
+				}
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("595a8ca9706d", "Key has no history");
+	return -1;
 }
 
 int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
@@ -167,7 +218,7 @@ int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 		new_list->size = to_be16(1);
 		memcpy(&new_list->items[0].quid, c_quid, sizeof(quid_t));
 		new_list->items[0].offset = to_be64(offset);
-		new_list->items[0].version = to_be16(0);
+		new_list->items[0].version = 0;
 
 		unsigned long long new_list_offset = zpalloc(base, sizeof(struct _history_list));
 		flush_history_list(base, new_list, new_list_offset);
@@ -195,6 +246,9 @@ marshall_t *history_all(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].offset)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				char *version_index = itoa(from_be16(list->items[i].version));

@@ -240,6 +240,7 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 				if (diff >= DBCACHE_DENSITY) {
 					slot->len = 0;
 					base->stats.heap_free_size--;
+					printf("Getting %llu from cache\n", slot->offset);
 					return slot->offset;
 				}
 			}

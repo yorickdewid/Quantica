@@ -14,7 +14,7 @@
 #include "alias.h"
 
 #define ALIAS_LIST_SIZE	128
-
+//TODO do we exclude the deleted items?
 struct _alias_list {
 	struct {
 		quid_t quid;
