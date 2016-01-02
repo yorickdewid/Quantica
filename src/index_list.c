@@ -23,7 +23,7 @@ struct _engine_index_list {
 		__be64 offset;
 		char element[64]; //TODO this could be any sz
 	} items[INDEX_LIST_SIZE];
-	uint16_t size;
+	__be16 size;
 	__be64 link;
 } __attribute__((packed));
 
@@ -67,20 +67,20 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 	/* Does list exist */
 	if (base->offset.index_list != 0) {
 		struct _engine_index_list *list = get_index_list(base, base->offset.index_list);
-		zassert(list->size <= INDEX_LIST_SIZE - 1);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE - 1);
 
 		size_t psz = strlen(element);
-		memcpy(&list->items[list->size].index, index, sizeof(quid_t));
-		memcpy(&list->items[list->size].group, group, sizeof(quid_t));
-		memcpy(&list->items[list->size].element, element, psz);
-		list->items[list->size].element_len = to_be32(psz);
-		list->items[list->size].offset = to_be64(offset);
-		list->size++;
+		memcpy(&list->items[from_be16(list->size)].index, index, sizeof(quid_t));
+		memcpy(&list->items[from_be16(list->size)].group, group, sizeof(quid_t));
+		memcpy(&list->items[from_be16(list->size)].element, element, psz);
+		list->items[from_be16(list->size)].element_len = to_be32(psz);
+		list->items[from_be16(list->size)].offset = to_be64(offset);
+		list->size = incr_be16(list->size);
 
 		base->stats.index_list_size++;
 
 		/* Check if we need to add a new table*/
-		if (list->size >= INDEX_LIST_SIZE) {
+		if (from_be16(list->size) >= INDEX_LIST_SIZE) {
 			flush_index_list(base, list, base->offset.index_list);
 
 			struct _engine_index_list *new_list = (struct _engine_index_list *)zcalloc(1, sizeof(struct _engine_index_list));
@@ -107,7 +107,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		}
 
 		size_t psz = strlen(element);
-		new_list->size = 1;
+		new_list->size = to_be16(1);
 		memcpy(&new_list->items[0].index, index, sizeof(quid_t));
 		memcpy(&new_list->items[0].group, group, sizeof(quid_t));
 		memcpy(&new_list->items[0].element, element, psz);
@@ -133,9 +133,9 @@ quid_t *index_list_get_index(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
 
@@ -165,9 +165,9 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
 
@@ -192,9 +192,9 @@ unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_qui
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
 
@@ -217,9 +217,9 @@ int index_list_delete(base_t *base, const quid_t *index) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
 
@@ -254,9 +254,9 @@ marshall_t *index_list_all(base_t *base) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			char index_squid[QUID_LENGTH + 1];
 			char group_squid[QUID_LENGTH + 1];
 
@@ -301,9 +301,9 @@ void index_list_rebuild(base_t *base, base_t *new_base) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
-		zassert(list->size <= INDEX_LIST_SIZE);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
-		for (int i = 0; i < list->size; ++i) {
+		for (int i = 0; i < from_be16(list->size); ++i) {
 			if (!list->items[i].element_len)
 				continue;
 
