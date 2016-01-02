@@ -79,6 +79,33 @@ unsigned short history_get_last_version(base_t *base, const quid_t *c_quid) {
 	return version;
 }
 
+unsigned long long history_get_version_offset(base_t *base, const quid_t *c_quid, unsigned short version) {
+	int count = 1;
+
+	unsigned long long offset = base->offset.history;
+	while (offset) {
+		struct _history_list *list = get_history_list(base, offset);
+		zassert(from_be16(list->size) <= HISTORY_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			int cmp = quidcmp(c_quid, &list->items[i].quid);
+			if (cmp == 0) {
+				if (count == version) {
+					unsigned long long version_offset = from_be64(list->items[i].offset);
+					zfree(list);
+					return version_offset;
+				}
+				count++;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("595a8ca9706d", "Key has no history");
+	return 0;
+}
+
 int history_add(base_t *base, const quid_t *c_quid, unsigned long long offset) {
 	/* Does list exist */
 	if (base->offset.history != 0) {

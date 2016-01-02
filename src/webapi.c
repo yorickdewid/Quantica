@@ -582,6 +582,26 @@ http_status_t api_db_get_history(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_get_version(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *data = db_get_version(quid, req->uri);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		size_t len = strlen(data);
+		size_t resplen = RESPONSE_SIZE;
+		if (len > (RESPONSE_SIZE / 2)) {
+			resplen = RESPONSE_SIZE + len;
+			*response = zrealloc(*response, resplen);
+		}
+		snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve historic record by version key\",\"status\":\"SUCCEEDED\",\"success\":true}", data);
+		zfree(data);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_db_delete(char **response, http_request_t *req) {
 	bool cascade = TRUE;
 
@@ -950,7 +970,10 @@ static const struct webroute route[] = {
 	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
 	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
 	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
-	{"/history",		api_db_get_history,	TRUE,	"Show key history"},
+
+	/* Record version control */
+	{"/history",		api_db_get_history,	TRUE,	"Show record history"},
+	{"/history/*",		api_db_get_version,	TRUE,	"Show record history"},
 
 	/* Items operations						*/
 	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
@@ -1395,6 +1418,7 @@ unsupported:
 			if (fsz < QUID_LENGTH + 1)
 				continue;
 
+			/* Get QUID from filename */
 			char *_pfilename = _filename + QUID_LENGTH + 1;
 			strlcpy(squid, _filename + 1, QUID_LENGTH + 1);
 			if (_pfilename[0] != '/') {
@@ -1405,7 +1429,18 @@ unsupported:
 				continue;
 
 			if (_pfilename) {
-				if (!strcmp(route[nsz].uri, _pfilename)) {
+				if ((pch = strchr(route[nsz].uri, '*')) != NULL) {
+					size_t posc = pch - route[nsz].uri;
+					if (!strncmp(route[nsz].uri, _pfilename, posc)) {
+						hashtable_put(&req.data, "quid", squid);
+						req.uri = _pfilename;
+						req.uri += posc;
+						status = route[nsz].api_handler(&resp_message, &req);
+						goto respond;
+					} else {
+						continue;
+					}
+				} else if (!strcmp(route[nsz].uri, _pfilename)) {
 					hashtable_put(&req.data, "quid", squid);
 					req.uri = _pfilename;
 					status = route[nsz].api_handler(&resp_message, &req);

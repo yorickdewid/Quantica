@@ -438,6 +438,38 @@ char *db_get_history(char *quid) {
 	return itoa(count);
 }
 
+char *db_get_version(char *quid, char *element) {
+	quid_t key;
+	size_t len;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return NULL;
+
+	if (!strisdigit(element) || element[0] == '-') {
+		error_throw("888d28dff048", "Operation expects an positive index given");
+		return NULL;
+	}
+
+	unsigned long long offset = history_get_version_offset(&control, &key, atoi(element)) ;
+	if (iserror()) {
+		return NULL;
+	}
+
+	void *data = get_data_block(&control, offset, &len);
+	if (!data)
+		return NULL;
+
+	marshall_t *dataobj = slay_get(&control, data, NULL, TRUE);
+
+	char *buf = marshall_serialize(dataobj);
+	if (data)
+		zfree(data);
+	marshall_free(dataobj);
+
+	return buf;
+}
+
 int db_update(char *quid, int *items, bool descent, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;
