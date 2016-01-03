@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]) {
 	long long int i;
 	int fin = 0;
 	quid_t key;
-	char squid[QUID_SHORT_LENGTH] = {'\0'};
+	char squid[QUID_LENGTH - 2] = {'\0'};
 
 	if (argc < 2) {
 		fprintf(stderr, "%s [COUNT] -1 for infinite\n", argv[0]);

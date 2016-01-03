@@ -14,7 +14,7 @@
 #include "alias.h"
 
 #define ALIAS_LIST_SIZE	128
-//TODO do we exclude the deleted items?
+
 struct _alias_list {
 	struct {
 		quid_t quid;
@@ -138,6 +138,9 @@ char *alias_get_val(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].len)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				size_t len = from_be32(list->items[i].len);
@@ -164,6 +167,9 @@ int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].len)
+				continue;
+
 			if (from_be32(list->items[i].hash) == hash) {
 				memcpy(key, &list->items[i].quid, sizeof(quid_t));
 				zfree(list);
@@ -186,6 +192,9 @@ int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t le
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].len)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				memcpy(&list->items[i].name, name, len);
@@ -210,6 +219,9 @@ int alias_delete(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].len)
+				continue;
+
 			int cmp = quidcmp(c_quid, &list->items[i].quid);
 			if (cmp == 0) {
 				memset(&list->items[i].quid, 0, sizeof(quid_t));
@@ -247,8 +259,10 @@ marshall_t *alias_all(base_t *base) {
 			size_t len = from_be32(list->items[i].len);
 			if (!len)
 				continue;
+
 			if (list->items[i].name[0] == '_')
 				continue;
+
 			list->items[i].name[len] = '\0';
 
 			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
@@ -276,8 +290,10 @@ void alias_rebuild(base_t *base, base_t *new_base) {
 			size_t len = from_be32(list->items[i].len);
 			if (!len)
 				continue;
+
 			if (list->items[i].name[0] == '_')
 				continue;
+
 			list->items[i].name[len] = '\0';
 
 			alias_add(new_base, &list->items[i].quid, list->items[i].name, len);

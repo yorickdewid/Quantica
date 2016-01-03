@@ -101,8 +101,8 @@ marshall_t * quid_decode(quid_t *uid) {
 
 	marshall->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 	marshall->child[0]->type = MTYPE_STRING;
-	marshall->child[0]->name = "creation";
-	marshall->child[0]->name_len = 8;
+	marshall->child[0]->name = "created";
+	marshall->child[0]->name_len = 7;
 	marshall->child[0]->data = tree_zstrdup(buf, marshall);
 	marshall->child[0]->data_len = 36;
 

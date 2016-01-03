@@ -770,18 +770,18 @@ int db_delete(char *quid, bool descent) {
 				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
-
-			alias_delete(&control, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			alias_delete(&control, &key);
 			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
 	}
+
+	if (meta.alias)
+		alias_delete(&control, &key);
 
 	if (engine_delete(&control, &key) < 0)
 		return -1;
@@ -830,18 +830,19 @@ int db_purge(char *quid, bool descent) {
 				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
-
-			alias_delete(&control, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			alias_delete(&control, &key);
+
 			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
 	}
+
+	if (meta.alias)
+		alias_delete(&control, &key);
 
 	if (engine_purge(&control, &key) < 0)
 		return -1;
