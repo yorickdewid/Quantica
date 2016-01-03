@@ -14,6 +14,7 @@
 #include "dict.h"
 #include "marshall.h"
 #include "pager.h"
+#include "history.h"
 #include "core.h"
 #include "engine.h"
 
@@ -240,7 +241,9 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 				if (diff >= DBCACHE_DENSITY) {
 					slot->len = 0;
 					base->stats.heap_free_size--;
-					printf("Getting %llu from cache\n", slot->offset);
+
+					/* Datablock reused so remove from history */
+					history_delete(base, slot->offset);
 					return slot->offset;
 				}
 			}
