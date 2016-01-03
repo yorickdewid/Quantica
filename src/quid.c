@@ -16,6 +16,12 @@
 #include "time.h"
 #include "quid.h"
 
+#define UIDS_PER_TICK	1024			/* Generate identifiers per tick interval */
+#define EPOCH_DIFF		11644473600LL	/* Conversion needed for EPOCH to UTC */
+#define RND_SEED_CYCLE	4096			/* Generate new random seed after interval */
+#define QUID_VERSION_3	0xa000
+#define QUID_SIGNATURE	0x80
+
 static void format_quid(quid_t *, unsigned short, cuuid_time_t);
 static void get_current_time(cuuid_time_t *);
 
@@ -67,7 +73,7 @@ marshall_t * quid_decode(quid_t *uid) {
 
 	cv.p.low = uid->time_low;
 	cv.p.middle = uid->time_mid;
-	cv.p.high = (uid->time_hi_and_version - 0xa000) ^ 0x80;
+	cv.p.high = (uid->time_hi_and_version - QUID_VERSION_3) ^ QUID_SIGNATURE;
 	cuuid_time_t ts = (cv.timestamp / 10000000LL) - EPOCH_DIFF;
 
 	/* Timestamps outside this range are invalid for sure */
@@ -77,13 +83,13 @@ marshall_t * quid_decode(quid_t *uid) {
 		return NULL;
 	}
 
-	if (!(uid->time_hi_and_version & 0xa000)) {
+	if (!(uid->time_hi_and_version & QUID_VERSION_3)) {
 		error_throw("malformed9", "Key malformed or invalid");
 		marshall_free(marshall);
 		return NULL;
 	}
 
-	if (!(uid->clock_seq_hi_and_reserved & 0x80)) {
+	if (!(uid->clock_seq_hi_and_reserved & QUID_SIGNATURE)) {
 		error_throw("malformed9", "Key malformed or invalid");
 		marshall_free(marshall);
 		return NULL;
@@ -104,7 +110,7 @@ marshall_t * quid_decode(quid_t *uid) {
 	marshall->child[1]->type = MTYPE_INT;
 	marshall->child[1]->name = "version";
 	marshall->child[1]->name_len = 7;
-	marshall->child[1]->data = tree_zstrdup("3", marshall);
+	marshall->child[1]->data = tree_zstrdup(itoa(QUID_VERSION), marshall);
 	marshall->child[1]->data_len = 1;
 
 	marshall->child[2] = tree_zcalloc(1, sizeof(marshall_t), marshall);
@@ -132,12 +138,12 @@ static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t time
 	uid->time_mid = (unsigned short)((timestamp >> 32) & 0xffff);
 
 	uid->time_hi_and_version = (unsigned short)((timestamp >> 48) & 0xfff);
-	uid->time_hi_and_version ^= 0x80;
-	uid->time_hi_and_version |= 0xa000;
+	uid->time_hi_and_version ^= QUID_SIGNATURE;
+	uid->time_hi_and_version |= QUID_VERSION_3;
 
 	uid->clock_seq_low = (clock_seq & 0xff);
 	uid->clock_seq_hi_and_reserved = (clock_seq & 0x3f00) >> 8;
-	uid->clock_seq_hi_and_reserved |= 0x80;
+	uid->clock_seq_hi_and_reserved |= QUID_SIGNATURE;
 
 	for (int i = 0; i < 4; ++i) {
 		uid->node[i] = arc4random();

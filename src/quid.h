@@ -6,12 +6,10 @@
 
 #include "marshall.h"
 
-#define UIDS_PER_TICK 1024			/* Generate identifiers per tick interval */
-#define EPOCH_DIFF 11644473600LL	/* Conversion needed for EPOCH to UTC */
-#define RND_SEED_CYCLE 4096			/* Generate new random seed after interval */
-#define QUID_LENGTH 38
-#define SHORT_QUID_LENGTH 14		//TODO rename to something less ambigious
-#define QUID_SHORT_LENGTH 36
+#define QUID_LENGTH 		38
+#define SHORT_QUID_LENGTH	14		//TODO rename to something less ambigious
+#define QUID_SHORT_LENGTH	36
+#define QUID_VERSION		3
 
 /*
  * Identifier structure

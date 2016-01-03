@@ -87,7 +87,15 @@ fixeof:
 	find . -type f -name *.[c\|h] -print -exec $(UTILDIR)/lfeof {} \;
 
 genquid:
-	$(CC) $(CFLAGS) -I$(INCLUDE) $(SRCDIR)/time.c $(SRCDIR)/log.c $(SRCDIR)/quid.c $(SRCDIR)/arc4random.c $(UTILDIR)/genquid.c $(LDFLAGS) -o $(UTILDIR)/genquid
+	$(CC) $(CFLAGS) -I$(INCLUDE) \
+		$(SRCDIR)/time.c \
+		$(SRCDIR)/log.c \
+		$(SRCDIR)/error.c \
+		$(SRCDIR)/zmalloc.c \
+		$(SRCDIR)/itoa.c \
+		$(SRCDIR)/quid.c \
+		$(SRCDIR)/arc4random.c \
+		$(UTILDIR)/genquid.c $(LDFLAGS) -o $(UTILDIR)/genquid
 
 verminor:
 	$(CC) -O3 $(WFLAGS) $(UTILDIR)/verminor.c -o $(UTILDIR)/verminor
