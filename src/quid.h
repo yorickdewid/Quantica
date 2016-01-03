@@ -4,6 +4,8 @@
 #include <config.h>
 #include <common.h>
 
+#include "marshall.h"
+
 #define UIDS_PER_TICK 1024			/* Generate identifiers per tick interval */
 #define EPOCH_DIFF 11644473600LL	/* Conversion needed for EPOCH to UTC */
 #define RND_SEED_CYCLE 4096			/* Generate new random seed after interval */
@@ -39,6 +41,8 @@ typedef struct quid_short quid_short_t;
  */
 void quid_create(quid_t *);
 void quid_short_create(quid_short_t *uid);
+
+marshall_t *quid_decode(quid_t *uid);
 
 void quid_shorttostr(char *s, quid_short_t *u);
 

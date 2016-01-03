@@ -36,6 +36,12 @@ char *tstostrf(char *buf, size_t len, long long ts, char *fmt) {
 	return buf;
 }
 
+char *unixtostrf(char *buf, size_t len, long long ts, char *fmt) {
+	struct tm tm_ts = *localtime((time_t *)&ts);
+	strftime(buf, len, fmt, &tm_ts);
+	return buf;
+}
+
 long long timetots(struct tm *t) {
 	return (long long)mktime(t) - EPOCH_DIFF;
 }

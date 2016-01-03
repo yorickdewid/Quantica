@@ -807,6 +807,20 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_db_decode(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *data = key_decode(quid);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Record decoded\",\"status\":\"SUCCEEDED\",\"success\":true}", data);
+		zfree(data);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_alias_name(char **response, http_request_t *req) {
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *name = get_param(req, "name");
@@ -969,6 +983,7 @@ static const struct webroute route[] = {
 	{"/remove",			api_db_delete,		TRUE,	"Delete dataset by key"},
 	{"/purge",			api_db_purge,		TRUE,	"Purge dataset and key"},
 	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
+	{"/decode",			api_db_decode,		TRUE,	"Decode QUID"},
 	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
 	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
 

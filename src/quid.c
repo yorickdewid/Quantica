@@ -9,8 +9,11 @@
 
 #include <config.h>
 #include <common.h>
-
+#include <error.h>
 #include "arc4random.h"
+#include "zmalloc.h"
+#include "marshall.h"
+#include "time.h"
 #include "quid.h"
 
 static void format_quid(quid_t *, unsigned short, cuuid_time_t);
@@ -47,6 +50,79 @@ void quid_short_create(quid_short_t *uid) {
 	uid->node[5] = (arc4random() & 0xff);
 }
 
+marshall_t * quid_decode(quid_t *uid) {
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(4, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_OBJECT;
+	marshall->size = 4;
+
+	union {
+		struct {
+			unsigned int low;
+			unsigned short middle;
+			unsigned short high;
+		} p;
+		cuuid_time_t timestamp;
+	} cv;
+
+	cv.p.low = uid->time_low;
+	cv.p.middle = uid->time_mid;
+	cv.p.high = (uid->time_hi_and_version - 0xa000) ^ 0x80;
+	cuuid_time_t ts = (cv.timestamp / 10000000LL) - EPOCH_DIFF;
+
+	/* Timestamps outside this range are invalid for sure */
+	if (ts < 1000000000 || ts > 2000000000) {
+		error_throw("malformed9", "Key malformed or invalid");
+		marshall_free(marshall);
+		return NULL;
+	}
+
+	if (!(uid->time_hi_and_version & 0xa000)) {
+		error_throw("malformed9", "Key malformed or invalid");
+		marshall_free(marshall);
+		return NULL;
+	}
+
+	if (!(uid->clock_seq_hi_and_reserved & 0x80)) {
+		error_throw("malformed9", "Key malformed or invalid");
+		marshall_free(marshall);
+		return NULL;
+	}
+
+	char buf[36];
+	nullify(buf, 36);
+	unixtostrf(buf, 36, (cv.timestamp / 10000000LL) - EPOCH_DIFF, ISO_8601_FORMAT);
+
+	marshall->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+	marshall->child[0]->type = MTYPE_STRING;
+	marshall->child[0]->name = "creation";
+	marshall->child[0]->name_len = 8;
+	marshall->child[0]->data = tree_zstrdup(buf, marshall);
+	marshall->child[0]->data_len = 36;
+
+	marshall->child[1] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+	marshall->child[1]->type = MTYPE_INT;
+	marshall->child[1]->name = "version";
+	marshall->child[1]->name_len = 7;
+	marshall->child[1]->data = tree_zstrdup("3", marshall);
+	marshall->child[1]->data_len = 1;
+
+	marshall->child[2] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+	marshall->child[2]->type = MTYPE_TRUE;
+	marshall->child[2]->name = "valid";
+	marshall->child[2]->name_len = 5;
+
+	char *mark = itoa(uid->node[4]);
+	marshall->child[3] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+	marshall->child[3]->type = MTYPE_INT;
+	marshall->child[3]->name = "checkpoint_mark";
+	marshall->child[3]->name_len = 15;
+	marshall->child[3]->data = tree_zstrdup(mark, marshall);
+	marshall->child[3]->data_len = strlen(mark);
+
+	return marshall;
+}
+
 /*
  * Format QUID from the timestamp, clocksequence, and node ID
  * Structure succeeds version 3
@@ -55,7 +131,7 @@ static void format_quid(quid_t *uid, unsigned short clock_seq, cuuid_time_t time
 	uid->time_low = (unsigned long)(timestamp & 0xffffffff);
 	uid->time_mid = (unsigned short)((timestamp >> 32) & 0xffff);
 
-	uid->time_hi_and_version = (unsigned short)((timestamp >> 48) & 0xFFF);
+	uid->time_hi_and_version = (unsigned short)((timestamp >> 48) & 0xfff);
 	uid->time_hi_and_version ^= 0x80;
 	uid->time_hi_and_version |= 0xa000;
 

@@ -285,6 +285,21 @@ int zvacuum(int page_size) {
 	return 0;
 }
 
+char *key_decode(char *quid) {
+	quid_t key;
+	if (!strquid_format(quid)) {
+		error_throw("malformed9", "Key malformed or invalid");
+		return NULL;
+	}
+
+	strtoquid(quid, &key);
+	marshall_t *dataobj = quid_decode(&key);
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
 	quid_t key;
 	size_t len = 0;

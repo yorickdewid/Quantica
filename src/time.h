@@ -10,6 +10,7 @@
 long long get_timestamp();
 long long get_unixtimestamp();
 char *tstostrf(char *buf, size_t len, long long ts, char *fmt);
+char *unixtostrf(char *buf, size_t len, long long ts, char *fmt);
 long long timetots(struct tm *t);
 char *timename_now(char *str);
 
