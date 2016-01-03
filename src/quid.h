@@ -7,8 +7,7 @@
 #include "marshall.h"
 
 #define QUID_LENGTH 		38
-#define SHORT_QUID_LENGTH	14		//TODO rename to something less ambigious
-#define QUID_SHORT_LENGTH	36
+#define SHORT_QUID_LENGTH	14
 #define QUID_VERSION		3
 
 /*

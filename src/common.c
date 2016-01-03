@@ -122,7 +122,7 @@ int file_exists(const char *path) {
 size_t file_size(int fd) {
 	struct stat stbuf;
 	if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
-		puts("kaas");
+		return 0;
 	}
 
 	return (size_t)stbuf.st_size;

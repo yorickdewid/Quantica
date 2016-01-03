@@ -228,7 +228,29 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char *hostname = get_system_fqdn();
 
 	*response = zrealloc(*response, RESPONSE_SIZE * 2);
-	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"pager\":{\"page_size\":%u,\"page_count\":%d,\"allocated\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"blocks_free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, get_pager_page_size(), get_pager_page_count(), get_pager_total_size(), stat_getkeys(), stat_getfreekeys(), stat_getfreeblocks(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"pager\":{\"page_size\":%u,\"page_count\":%d,\"allocated\":\"%s\",\"in_use\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"blocks_free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}"
+	         , get_uptime()
+	         , client_requests
+	         , API_PORT
+	         , hostname
+	         , get_pager_page_size()
+	         , get_pager_page_count()
+	         , get_pager_alloc_size()
+	         , get_total_disk_size()
+	         , stat_getkeys()
+	         , stat_getfreekeys()
+	         , stat_getfreeblocks()
+	         , stat_tablesize()
+	         , stat_indexsize()
+	         , get_instance_prefix_key("000000000000")
+	         , get_timestamp()
+	         , get_unixtimestamp()
+	         , htime
+	         , timename_now(buf2)
+	         , VERSION_MAJOR
+	         , VERSION_MINOR
+	         , VERSION_PATCH);
+
 	zfree(hostname);
 	return HTTP_OK;
 }

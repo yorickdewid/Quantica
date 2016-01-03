@@ -78,19 +78,19 @@ marshall_t * quid_decode(quid_t *uid) {
 
 	/* Timestamps outside this range are invalid for sure */
 	if (ts < 1000000000 || ts > 2000000000) {
-		error_throw("malformed9", "Key malformed or invalid");
+		error_throw("f0b867c41006", "Key malformed or invalid");
 		marshall_free(marshall);
 		return NULL;
 	}
 
 	if (!(uid->time_hi_and_version & QUID_VERSION_3)) {
-		error_throw("malformed9", "Key malformed or invalid");
+		error_throw("f0b867c41006", "Key malformed or invalid");
 		marshall_free(marshall);
 		return NULL;
 	}
 
 	if (!(uid->clock_seq_hi_and_reserved & QUID_SIGNATURE)) {
-		error_throw("malformed9", "Key malformed or invalid");
+		error_throw("f0b867c41006", "Key malformed or invalid");
 		marshall_free(marshall);
 		return NULL;
 	}
@@ -236,7 +236,7 @@ void strtoquid(const char *s, quid_t *u) {
 		       , (unsigned int *)&u->node[3]
 		       , (unsigned int *)&u->node[4]
 		       , (unsigned int *)&u->node[5]);
-	} else if (ssz == QUID_SHORT_LENGTH) {
+	} else if (ssz == (QUID_LENGTH - 2)) {
 		sscanf(s, "%8lx-%4hx-%4hx-%2hx%2hx-%2x%2x%2x%2x%2x%2x"
 		       , &u->time_low
 		       , &u->time_mid
@@ -277,7 +277,7 @@ char strquid_format(const char *s) {
 			return 0;
 
 		return 1;
-	} else if (ssz == QUID_SHORT_LENGTH) {
+	} else if (ssz == (QUID_LENGTH - 2)) {
 		if (s[strspn(s, "-0123456789abcdefABCDEF")])
 			return 0;
 

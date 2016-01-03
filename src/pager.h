@@ -31,6 +31,7 @@ void pager_init(base_t *base);
 void pager_sync(base_t *base);
 void pager_close(base_t *base);
 void pager_unlink_all(base_t *base);
+size_t pager_total_disk_size(base_t *base);
 marshall_t *pager_all(base_t *base);
 
 #endif // PAGE_H_INCLUDED

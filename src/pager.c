@@ -254,6 +254,14 @@ void pager_unlink_all(base_t *base) {
 	}
 }
 
+size_t pager_total_disk_size(base_t *base) {
+	size_t total = 0;
+	for (unsigned int i = 0; i < base->core->count; ++i) {
+		total += file_size(base->core->pages[i]->fd);
+	}
+	return total;
+}
+
 marshall_t *pager_all(base_t *base) {
 	if (!base->core->count)
 		return NULL;

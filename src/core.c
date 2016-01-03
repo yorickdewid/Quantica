@@ -100,9 +100,16 @@ char *get_session_key() {
 	return buf;
 }
 
-char *get_pager_total_size() {
+char *get_pager_alloc_size() {
 	static char buf[10];
 	unsigned long long total_size = (BASE_PAGE_SIZE << control.pager.size) * control.core->count;
+	return unit_bytes(total_size, buf);
+}
+
+char *get_total_disk_size() {
+	static char buf[10];
+	size_t total_size = pager_total_disk_size(&control);
+	total_size += file_size(control.fd);
 	return unit_bytes(total_size, buf);
 }
 
@@ -288,7 +295,7 @@ int zvacuum(int page_size) {
 char *key_decode(char *quid) {
 	quid_t key;
 	if (!strquid_format(quid)) {
-		error_throw("malformed9", "Key malformed or invalid");
+		error_throw("f0b867c41006", "Key malformed or invalid");
 		return NULL;
 	}
 

@@ -130,7 +130,7 @@ void bootstrap(base_t *base) {
 	if (register_error(base, E_WARN, "a475446c70e8", "Key exists") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
-	if (register_error(base, E_WARN, "malformed9", "Key malformed or invalid") < 0)
+	if (register_error(base, E_WARN, "f0b867c41006", "Key malformed or invalid") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
 	if (register_error(base, E_WARN, "986154f80058", "Database locked") < 0)

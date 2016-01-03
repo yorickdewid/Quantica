@@ -14,7 +14,7 @@
 #include "index_list.h"
 
 #define INDEX_LIST_SIZE	64
-//TODO element_len cloud be 0 when element is set offset 0
+
 struct _engine_index_list {
 	struct {
 		quid_t index;
@@ -136,7 +136,7 @@ quid_t *index_list_get_index(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			int cmp = quidcmp(c_quid, &list->items[i].group);
@@ -168,7 +168,7 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			int cmp = quidcmp(c_quid, &list->items[i].group);
@@ -195,7 +195,7 @@ unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_qui
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			int cmp = quidcmp(c_quid, &list->items[i].index);
@@ -220,7 +220,7 @@ int index_list_delete(base_t *base, const quid_t *index) {
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			int cmp = quidcmp(index, &list->items[i].index);
@@ -260,7 +260,7 @@ marshall_t *index_list_all(base_t *base) {
 			char index_squid[QUID_LENGTH + 1];
 			char group_squid[QUID_LENGTH + 1];
 
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			quidtostr(index_squid, &list->items[i].index);
@@ -304,7 +304,7 @@ void index_list_rebuild(base_t *base, base_t *new_base) {
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
 		for (int i = 0; i < from_be16(list->size); ++i) {
-			if (!list->items[i].element_len)
+			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
 			size_t len;
