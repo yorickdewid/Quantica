@@ -4,8 +4,8 @@
 #define PROGNAME		"Quantica"
 #define INSTANCE_PREFIX	"QUANTZ"
 #define VERSION_MAJOR	0
-#define VERSION_MINOR	8
-#define VERSION_PATCH	68
+#define VERSION_MINOR	9
+#define VERSION_PATCH	0
 #define LOGFILE			"quantica.log"
 #define BINDATA			"QUBIN_DATA"
 
