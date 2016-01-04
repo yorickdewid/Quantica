@@ -66,34 +66,50 @@ int main(int argc, char *argv[]) {
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
+
+				/* Daemonize */
 				case 'D':
 				case 'd':
 					daemonize();
 					break;
+
+				/* Change working directory */
 				case 'S':
 				case 's':
-					if (i + 1 < argc) {
-						if ((chdir(argv[i + 1])) < 0) {
-							lprint("[erro] Failed to change directory\n");
-							return 1;
-						}
-						daemonize();
+					if (i + 1 >= argc)
+						break;
+
+					char *dir = argv[i + 1];
+					if (!dir)
+						break;
+
+					if (chdir(dir) < 0) {
+						lprint("[erro] Failed to change directory\n");
+						return 1;
 					}
+					daemonize();
 					break;
+
+				/* Run in foreground */
 				case 'F':
 				case 'f':
 					lprint("[info] Running in foreground\n");
 					start_webapi();
 					break;
+
+				/* Show help */
 				case 'H':
 				case 'h':
 				case '?':
 					print_usage();
 					break;
+
+				/* Version info */
 				case 'V':
 				case 'v':
 					print_version();
 					break;
+
 				default:
 					printf("Unknown option '-%c'\n", argv[i][1]);
 			}

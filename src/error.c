@@ -26,14 +26,14 @@ bool iserror() {
 void error_throw(char *error_code, char *error_message) {
 	error_clear();
 
-	strncpy(stack.error_squid, error_code, SHORT_QUID_LENGTH);
+	strncpy(stack.error_squid, error_code, ERROR_CODE);
 	stack.description = (char *)zstrdup(error_message);
 }
 
 void error_throw_fatal(char *error_code, char *error_message) {
 	error_clear();
 
-	strncpy(stack.error_squid, error_code, SHORT_QUID_LENGTH);
+	strncpy(stack.error_squid, error_code, ERROR_CODE);
 	stack.description = (char *)zstrdup(error_message);
 	lprintf("[erro] %s\n", error_message);
 }

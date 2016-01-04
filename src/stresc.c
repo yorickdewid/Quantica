@@ -2,7 +2,7 @@
 
 #include "zmalloc.h"
 
-char *stresc(char *src) {
+char *stresc(char *src, size_t *_len) {
 	char c;
 	size_t len = strlen(src);
 	size_t nlen = len + 1;
@@ -25,6 +25,7 @@ char *stresc(char *src) {
 	char *dst = (char *)zmalloc(nlen);
 	if (!dst)
 		return NULL;
+	*_len = nlen;
 	char *pdst = dst;
 	memcpy(dst, src, len);
 

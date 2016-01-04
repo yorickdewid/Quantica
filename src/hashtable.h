@@ -32,6 +32,10 @@ void hashtable_put(hashtable_t **, const char *key, const char *value);
 /* or 0 if no matching key is present */
 const char *hashtable_get(hashtable_t *, const char *key);
 
+#ifdef DEBUG
+void hashtable_dump(hashtable_t *d);
+#endif
+
 /* delete the most recently inserted record with the given key */
 /* if there is no such record, has no effect */
 void hashtable_delete(hashtable_t *, const char *key);

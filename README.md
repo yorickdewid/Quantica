@@ -1,4 +1,6 @@
-# Quantica [![Build Status](https://travis-ci.org/yorickdewid/Quantica.svg)](https://travis-ci.org/yorickdewid/Quantica)
+# Quantica
+[![Build Status](https://travis-ci.org/yorickdewid/Quantica.svg)](https://travis-ci.org/yorickdewid/Quantica)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/6570/badge.svg)](https://scan.coverity.com/projects/yorickdewid-quantica)
 
 A fast and scalable object database designed to store large amounts of both structured and unstructured data.
 Quantica is modular, polymorfistic and able to build relationships between all kind of data structures.

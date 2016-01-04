@@ -31,7 +31,7 @@
 #define VALSIZE		100
 
 static struct timespec timer_start;
-static struct engine e;
+static engine_t engine;
 static char val[VALSIZE + 1] = {'\0'};
 quid_t quidr[NUM];
 
@@ -92,7 +92,7 @@ static void db_write_test() {
 		quid_create(&key);
 		quidtostr(squid, &key);
 		memcpy(&quidr[i], &key, sizeof(quid_t));
-		if (engine_insert_data(&e, &key, val, v_len) < 0)
+		if (engine_insert_data(&engine, &key, val, v_len) < 0)
 			FATAL("engine_insert");
 
 		if (!(i % 10000))
@@ -119,8 +119,8 @@ static void db_read_seq_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -154,8 +154,8 @@ static void db_read_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -188,8 +188,8 @@ static void db_read_bounds_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data != NULL) {
 			all++;
 		} else {
@@ -224,13 +224,13 @@ static void db_delete_test() {
 		quidtostr(squid, &key);
 
 		size_t len;
-		if (engine_delete(&e, &key) < 0) {
+		if (engine_delete(&engine, &key) < 0) {
 			quidtostr(squid, &key);
 			LOGF("Cannot delete key %s[%d]\n", squid, i);
 			FATAL("engine_delete");
 		}
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data == NULL) {
 			all++;
 		} else {
@@ -264,13 +264,13 @@ static void db_delete_random_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		if (engine_delete(&e, &key) < 0) {
+		if (engine_delete(&engine, &key) < 0) {
 			quidtostr(squid, &key);
 			printf(">>%s\n", squid);
 			FATAL("engine_delete");
 		}
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data == NULL) {
 			all++;
 		} else {
@@ -301,8 +301,8 @@ static void db_read_test() {
 		memcpy(&key, &quidr[i], sizeof(quid_t));
 
 		size_t len;
-		uint64_t offset = engine_get(&e, &key, &meta);
-		void *data = get_data_block(&e, offset, &len);
+		uint64_t offset = engine_get(&engine, &key, &meta);
+		void *data = get_data_block(&engine, offset, &len);
 		if (data != NULL) {
 			all++;
 		}
@@ -327,7 +327,7 @@ BENCHMARK_IMPL(engine) {
 
 	/* Create new database */
 	error_clear();
-	engine_init(&e, IDXNAME, DBNAME);
+	engine_init(&engine, IDXNAME, DBNAME);
 
 	/* Run testcase */
 	db_write_test();
@@ -343,7 +343,7 @@ BENCHMARK_IMPL(engine) {
 	LINE();
 
 	/* Close and delete database */
-	engine_close(&e);
+	engine_close(&engine);
 	unlink(IDXNAME);
 	unlink(DBNAME);
 	error_clear();

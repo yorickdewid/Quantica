@@ -16,7 +16,6 @@ struct {
 	bool data;
 	bool descent;
 } type_info[] = {
-
 	/* No data */
 	{MTYPE_NULL,	FALSE, FALSE},
 	{MTYPE_TRUE,	FALSE, FALSE},
@@ -102,7 +101,6 @@ marshall_type_t autoscalar(const char *data, size_t len) {
  * Count elements by level
  */
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
-
 	/* Only descending scalars need to be counted */
 	if (marshall_type_hasdescent(obj->type)) {
 		unsigned int n = 1;
@@ -113,7 +111,6 @@ unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 		}
 		return n;
 	}
-
 	return 1;
 }
 
@@ -150,6 +147,15 @@ char *marshall_strdata(marshall_t *obj, size_t *len) {
 
 int marshall_count(marshall_t *obj) {
 	return obj->size;
+}
+
+static void shift_left(marshall_t *marshall, int offset) {
+	for (unsigned int i = offset; i < marshall->size - 1; ++i) {
+		marshall->child[i]->data = marshall->child[i + 1]->data;
+		marshall->child[i]->data_len = marshall->child[i + 1]->data_len;
+		marshall->child[i]->type = marshall->child[i + 1]->type;
+		marshall->child[i]->child = marshall->child[i + 1]->child;
+	}
 }
 
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent) {
@@ -202,6 +208,111 @@ marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *par
 	}
 
 	vector_free(selectors);
+	return selection;
+}
+
+
+/*
+ * Exactly match two marshall objects
+ */
+bool marshall_match_any(marshall_t *object_1, marshall_t *object_2) {
+	if (object_2->type == MTYPE_OBJECT) {
+		if (object_1->type != MTYPE_OBJECT) {
+			return FALSE;
+		} else {
+			for (unsigned int i = 0; i < object_1->size; ++i) {
+				for (unsigned int j = 0; j < object_2->size; ++j) {
+					if (marshall_match_any(object_1->child[i], object_2->child[j]))
+						return TRUE;
+				}
+			}
+			return FALSE;
+		}
+	} else if (object_2->type == MTYPE_ARRAY) {
+		if (object_1->type != MTYPE_ARRAY) {
+			return FALSE;
+		} else {
+			if (object_1->size != object_2->size)
+				return FALSE;
+			for (unsigned int i = 0; i < object_1->size; ++i) {
+				if (!marshall_match_any(object_1->child[i], object_2->child[i]))
+					return FALSE;
+			}
+			return TRUE;
+		}
+	} else {
+		if (object_1->type == MTYPE_OBJECT || object_1->type == MTYPE_ARRAY) {
+			return FALSE;
+		} else {
+			if (object_1->type != object_2->type)
+				return FALSE;
+			if (object_1->name_len != object_2->name_len)
+				return FALSE;
+			if (object_1->name && object_2->name) {
+				if (strcmp(object_1->name, object_2->name))
+					return FALSE;
+			}
+			if (object_1->data_len != object_2->data_len)
+				return FALSE;
+			if (object_1->data && object_2->data) {
+				if (strcmp(object_1->data, object_2->data))
+					return FALSE;
+			}
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+marshall_t *marshall_condition(marshall_t *filterobject, marshall_t *marshall) {
+	marshall_t *selection = NULL;
+	if (marshall->type == MTYPE_OBJECT) {
+		if (filterobject->type == MTYPE_OBJECT) {
+			if (marshall_match_any(marshall, filterobject)) {
+				selection = marshall_copy(marshall, NULL);
+			}
+		} else if (filterobject->type == MTYPE_ARRAY) {
+			for (unsigned int j = 0; j < filterobject->size; ++j) {
+				if (marshall_match_any(marshall, filterobject->child[j])) {
+					selection = marshall_copy(marshall, NULL);
+					break;
+				}
+			}
+		}
+	} else if (marshall->type == MTYPE_ARRAY) {
+		selection = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+		selection->child = (marshall_t **)tree_zcalloc(marshall->size, sizeof(marshall_t *), selection);
+		selection->type = MTYPE_ARRAY;
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			if (filterobject->type == MTYPE_ARRAY) {
+				for (unsigned int j = 0; j < filterobject->size; ++j) {
+					if (marshall_match_any(marshall->child[i], filterobject->child[j])) {
+						selection->child[selection->size] = marshall_copy(marshall->child[i], selection);
+						selection->size++;
+					}
+				}
+			} else {
+				if (marshall_match_any(marshall->child[i], filterobject)) {
+					selection->child[selection->size] = marshall_copy(marshall->child[i], selection);
+					selection->size++;
+				}
+			}
+		}
+	} else {
+		if (filterobject->type == MTYPE_ARRAY) {
+			for (unsigned int j = 0; j < filterobject->size; ++j) {
+				if (marshall_match_any(marshall, filterobject->child[j])) {
+					selection = marshall_copy(marshall, NULL);
+					break;
+				}
+			}
+		} else {
+			if (marshall_match_any(marshall, filterobject)) {
+				selection = marshall_copy(marshall, NULL);
+			}
+		}
+	}
+
 	return selection;
 }
 
@@ -335,6 +446,9 @@ marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall) {
 	return marshall;
 }
 
+/*
+ * Exactly match two marshall objects
+ */
 bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
 	if (object_2->type == MTYPE_OBJECT) {
 		if (object_1->type != MTYPE_OBJECT) {
@@ -386,16 +500,7 @@ bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
 	return FALSE;
 }
 
-static void shift_left(marshall_t *marshall, int offset) {
-	for (unsigned int i = offset; i < marshall->size - 1; ++i) {
-		marshall->child[i]->data = marshall->child[i + 1]->data;
-		marshall->child[i]->data_len = marshall->child[i + 1]->data_len;
-		marshall->child[i]->type = marshall->child[i + 1]->type;
-		marshall->child[i]->child = marshall->child[i + 1]->child;
-	}
-}
-
-marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed) {
+marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool * changed) {
 	if (marshall->type == MTYPE_OBJECT) {
 		if (filterobject->type == MTYPE_OBJECT) {
 			if (marshall_equal(marshall, filterobject)) {
@@ -471,13 +576,38 @@ arr_again:
 	return marshall;
 }
 
+marshall_t *marshall_copy(marshall_t *marshall, void *parent) {
+	marshall_t *new_marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+	if (marshall->size > 0)
+		new_marshall->child = (marshall_t **)tree_zcalloc(marshall->size, sizeof(marshall_t *), new_marshall);
+	new_marshall->type = marshall->type;
+	if (marshall->name) {
+		new_marshall->name = tree_zstrndup(marshall->name, marshall->name_len, new_marshall);
+		new_marshall->name_len = marshall->name_len;
+	}
+	if (marshall->data) {
+		new_marshall->data = tree_zstrndup(marshall->data, marshall->data_len, new_marshall);
+		new_marshall->data_len = marshall->data_len;
+	}
+	new_marshall->size = marshall->size;
+
+	if (marshall->type == MTYPE_ARRAY || marshall->type == MTYPE_OBJECT) {
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			new_marshall->child[i] = marshall_copy(marshall->child[i], new_marshall);
+		}
+	}
+
+	return new_marshall;
+}
+
 #ifdef DEBUG
-void marshall_dump(marshall_t *marshall, int depth) {
+void marshall_dump(const marshall_t *marshall, int depth) {
 	if (!marshall) {
-		puts("no marshall");
+		printf("%*s%d (nil)\n", (depth * 4), " ", depth);
 		return;
 	}
 
+	printf("%*s%d addr: %p\n", (depth * 4), " ", depth, (void *)marshall);
 	printf("%*s%d type: %s\n", (depth * 4), " ", depth, marshall_get_strtype(marshall->type));
 	printf("%*s%d name: %s[%zu]\n", (depth * 4), " ", depth, marshall->name, marshall->name_len);
 	printf("%*s%d data: %s[%zu]\n", (depth * 4), " ", depth, (char *)marshall->data, marshall->data_len);
@@ -515,5 +645,4 @@ char *marshall_get_strtype(marshall_type_t type) {
 		default:
 			return "NULL";
 	}
-	return "NULL";
 }

@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <config.h>
 #include <common.h>
@@ -98,72 +99,15 @@ char *str_null() {
 	return "null";
 }
 
-uint16_t _ntohs(uint16_t x) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-	unsigned char *s = (unsigned char *)&x;
-	return (uint16_t)(s[0] << 8 | s[1]);
-#else
-	return x;
-#endif
-}
+int file_access_exists(const char *path) {
+	if (access(path, F_OK) < 0)
+		return 0;
 
-uint32_t _htonl(uint32_t x) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-	unsigned char *s = (unsigned char  *)&x;
-	return (uint32_t)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
-#else
-	return x;
-#endif
-}
+	if (access(path, R_OK) < 0 || !access(path, W_OK) < 0) {
+		return -1;
+	}
 
-uint32_t _ntohl(uint32_t x) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-	unsigned char *s = (unsigned char *)&x;
-	return (uint32_t)(s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3]);
-#else
-	return x;
-#endif
-}
-
-uint16_t _htons(uint16_t x) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-	unsigned char *s = (unsigned char *)&x;
-	return (uint16_t)(s[0] << 8 | s[1]);
-#else
-	return x;
-#endif
-}
-
-__be32 to_be32(uint32_t x) {
-	return (FORCE __be32) _htonl(x);
-}
-
-__be16 to_be16(uint16_t x) {
-	return (FORCE __be16) _htons(x);
-}
-
-__be64 to_be64(uint64_t x) {
-#if (BYTE_ORDER == LITTLE_ENDIAN)
-	return (FORCE __be64)(((uint64_t) _htonl((uint32_t) x) << 32) | _htonl((uint32_t)(x >> 32)));
-#else
-	return (FORCE __be64) x;
-#endif
-}
-
-uint32_t from_be32(__be32 x) {
-	return _ntohl((FORCE uint32_t) x);
-}
-
-uint16_t from_be16(__be16 x) {
-	return _ntohs((FORCE uint16_t) x);
-}
-
-uint64_t from_be64(__be64 x) {
-#if (BYTE_ORDER == LITTLE_ENDIAN)
-	return ((uint64_t) _ntohl((uint32_t)(FORCE uint64_t) x) << 32) | _ntohl((uint32_t)((FORCE uint64_t) x >> 32));
-#else
-	return (FORCE uint64_t) x;
-#endif
+	return 1;
 }
 
 int file_exists(const char *path) {
@@ -175,6 +119,15 @@ int file_exists(const char *path) {
 	return 0;
 }
 
+size_t file_size(int fd) {
+	struct stat stbuf;
+	if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+		return 0;
+	}
+
+	return (size_t)stbuf.st_size;
+}
+
 char *get_version_string() {
 	static char buf[16];
 	snprintf(buf, 16, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -183,4 +136,22 @@ char *get_version_string() {
 
 long get_version() {
 	return sizeof(int) * VERSION_MAJOR + sizeof(int) * VERSION_MINOR + sizeof(int) * VERSION_PATCH;
+}
+
+size_t page_align(size_t val) {
+	size_t i = 1;
+	while (i < val)
+		i <<= 1;
+	return i;
+}
+
+char *unit_bytes(double size, char *buf) {
+	int i = 0;
+	const char *units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+	while (size > 1024) {
+		size /= 1024;
+		i++;
+	}
+	sprintf(buf, "%.*f %s", i, size, units[i]);
+	return buf;
 }

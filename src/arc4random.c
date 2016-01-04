@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <config.h>
 #include <common.h>
@@ -9,6 +10,7 @@
 
 #include "arc4random.h"
 
+#ifdef LINUX
 typedef struct {
 	uint8_t i;
 	uint8_t j;
@@ -46,21 +48,23 @@ static inline void arc4_addrandom(arc4_stream_t *as, uint8_t *dat, int datlen) {
 
 static void arc4_stir(arc4_stream_t *as) {
 	int fd;
-	struct {
+	struct dat {
 		struct timeval tv;
 		pid_t pid;
 		uint8_t rnd[128 - sizeof(struct timeval) - sizeof(pid_t)];
-	} rdat;
+	};
+
+	struct dat rdat;
+	nullify(&rdat, sizeof(struct dat));
 
 	gettimeofday(&rdat.tv, NULL);
 	rdat.pid = getpid();
 	fd = open(RANDOMDEV, O_RDONLY, 0);
 	if (fd >= 0) {
-		if (read(fd, rdat.rnd, sizeof(rdat.rnd)) > 0) {
+		if (read(fd, rdat.rnd, sizeof(rdat.rnd)) != sizeof(rdat.rnd)) {
+			lprint("[erro] Failed to read " RANDOMDEV "\n");
 			close(fd);
-		} else {
-			fputs("Cannot read " RANDOMDEV, stderr);
-			exit(1);
+			return;
 		}
 	}
 	arc4_addrandom(as, (void *)&rdat, sizeof(rdat));
@@ -127,3 +131,15 @@ uint32_t arc4random() {
 
 	return rnd;
 }
+
+uint32_t arc4random_uniform(uint32_t range) {
+	uint32_t rnd;
+
+	arc4_check_init();
+	arc4_check_stir();
+	rnd = arc4_getword(&rs);
+	rnd %= range;
+
+	return rnd;
+}
+#endif // LINUX

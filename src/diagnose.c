@@ -10,25 +10,22 @@
 #include "engine.h"
 #include "diagnose.h"
 
-bool diag_exerr(struct base *base) {
-	char tmp_key[QUID_LENGTH + 1];
-	quid_t key;
-	struct engine engine;
+bool diag_exerr(base_t *base) {
+	// char tmp_key[QUID_LENGTH + 1];
+	// quid_t key;
 
 	lprint("[info] Failure on exit, run diagnostics\n");
-	engine_init(&engine, get_zero_key(), base->bindata);
-	quid_create(&key);
-	quidtostr(tmp_key, &key);
-	char *bindata = generate_bindata_name(base);
+	// engine_init(base);
+	// quid_create(&key);
+	// quidtostr(tmp_key, &key);
 
-	engine_recover_storage(&engine);
-	if (engine_vacuum(&engine, tmp_key, bindata) < 0) {
+	// engine_recover_storage(base);
+	//TODO call core:vacuum()
+	/*if (engine_vacuum(base) < 0) {
 		lprint("[erro] Failed to vacuum\n");
 		return FALSE;
-	}
-	memcpy(&base->zero_key, &key, sizeof(quid_t));
-	strcpy(base->bindata, bindata);
-
-	engine_close(&engine);
+	}*/
+	// engine_close(base);
+	unused(base);
 	return TRUE;
 }

@@ -36,10 +36,12 @@ char *marshall_strdata(marshall_t *obj, size_t *len);
 int marshall_count(marshall_t *obj);
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent);
 marshall_t *marshall_merge(marshall_t *newobject, marshall_t *marshall);
+marshall_t *marshall_condition(marshall_t *element, marshall_t *marshall);
 bool marshall_equal(marshall_t *object_1, marshall_t *object_2);
 marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed);
+marshall_t *marshall_copy(marshall_t *marshall, void *parent);
 #ifdef DEBUG
-void marshall_dump(marshall_t *marshall, int depth);
+void marshall_dump(const marshall_t *marshall, int depth);
 #endif
 char *marshall_get_strtype(marshall_type_t type);
 

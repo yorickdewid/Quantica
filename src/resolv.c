@@ -1,11 +1,4 @@
-#ifdef LINUX
-#if __STDC_VERSION__ >= 199901L
-#define _XOPEN_SOURCE 700
-#else
-#define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-#endif // LINUX
-
+#include <stdver.h>
 #include <string.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -39,12 +32,12 @@ int resolve_host(char *hostname, char *ip) {
 
 	if ((rv = getaddrinfo(host, NULL, &hints, &servinfo)) < 0) {
 		lprint("[erro] Cannot resolve host\n");
+		zfree(_htmp);
 		return 0;
 	}
 
-	// Loop through all the results and connect to the first we can
-	struct addrinfo *p = servinfo;
-	for (; p != NULL; p = p->ai_next) {
+	/* Loop through all the results and connect to the first we can */
+	for (struct addrinfo *p = servinfo; p != NULL; p = p->ai_next) {
 		void *ptr = NULL;
 		switch (p->ai_family) {
 			case AF_INET:
@@ -54,11 +47,13 @@ int resolve_host(char *hostname, char *ip) {
 				ptr = &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
 				break;
 			default:
-				break;
+				continue;
 		}
-		inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
-		proto = p->ai_family;
-		break;
+		if (ptr) {
+			inet_ntop(p->ai_family, ptr, ip, INET6_ADDRSTRLEN);
+			proto = p->ai_family;
+			break;
+		}
 	}
 
 	zfree(_htmp);

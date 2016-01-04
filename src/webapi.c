@@ -1,11 +1,4 @@
-#ifdef LINUX
-#if __STDC_VERSION__ >= 199901L
-#define _XOPEN_SOURCE 700
-#else
-#define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-#endif // LINUX
-
+#include <stdver.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -75,6 +68,7 @@ typedef struct {
 	char *uri;
 	hashtable_t *data;
 	hashtable_t *querystring;
+	hashtable_t *header;
 	http_method_t method;
 } http_request_t;
 
@@ -181,8 +175,11 @@ char *get_param(http_request_t *req, char *param_name) {
 		if (param)
 			return param;
 	}
-	if (req->method == HTTP_POST || req->method == HTTP_PUT) {
+	if ((req->method == HTTP_POST || req->method == HTTP_PUT) && req->data->n > 0) {
 		return (char *)hashtable_get(req->data, param_name);
+	}
+	if (req->header->n > 0) {
+		return (char *)hashtable_get(req->header, param_name);
 	}
 	return NULL;
 }
@@ -222,7 +219,7 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char buf2[TIMENAME_SIZE + 1];
 	buf2[TIMENAME_SIZE] = '\0';
 
-	char *htime = tstostrf(buf, 32, get_timestamp(), ISO_8601_FORMAT);
+	char *htime = tstostrf(buf, 26, get_timestamp(), ISO_8601_FORMAT);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
@@ -231,7 +228,29 @@ http_status_t api_variables(char **response, http_request_t *req) {
 	char *hostname = get_system_fqdn();
 
 	*response = zrealloc(*response, RESPONSE_SIZE * 2);
-	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"tablecache\":%d,\"datacache\":%d,\"datacache_density\":%d,\"core\":\"%s\",\"dataheap\":\"%s\",\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}", get_uptime(), client_requests, API_PORT, hostname, stat_getkeys(), stat_getfreekeys(), stat_tablesize(), stat_indexsize(), CACHE_SLOTS, DBCACHE_SLOTS, DBCACHE_DENSITY, get_zero_key(), get_dataheap_name(), get_instance_prefix_key("000000000000"), get_timestamp(), get_unixtimestamp(), htime, timename_now(buf2), VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	snprintf(*response, RESPONSE_SIZE * 2, "{\"server\":{\"uptime\":\"%s\",\"client_requests\":%llu,\"port\":%d,\"host\":\"%s\"},\"pager\":{\"page_size\":%u,\"page_count\":%d,\"allocated\":\"%s\",\"in_use\":\"%s\"},\"engine\":{\"records\":%lu,\"free\":%lu,\"blocks_free\":%lu,\"groups\":%lu,\"indexes\":%lu,\"default_key\":\"%s\"},\"date\":{\"timestamp\":%lld,\"unixtime\":%lld,\"datetime\":\"%s\",\"timename\":\"%s\"},\"version\":{\"major\":%d,\"minor\":%d,\"patch\":%d},\"description\":\"Database statistics\",\"status\":\"SUCCEEDED\",\"success\":true}"
+	         , get_uptime()
+	         , client_requests
+	         , API_PORT
+	         , hostname
+	         , get_pager_page_size()
+	         , get_pager_page_count()
+	         , get_pager_alloc_size()
+	         , get_total_disk_size()
+	         , stat_getkeys()
+	         , stat_getfreekeys()
+	         , stat_getfreeblocks()
+	         , stat_tablesize()
+	         , stat_indexsize()
+	         , get_instance_prefix_key("000000000000")
+	         , get_timestamp()
+	         , get_unixtimestamp()
+	         , htime
+	         , timename_now(buf2)
+	         , VERSION_MAJOR
+	         , VERSION_MINOR
+	         , VERSION_PATCH);
+
 	zfree(hostname);
 	return HTTP_OK;
 }
@@ -380,8 +399,12 @@ http_status_t api_sql_query(char **response, http_request_t *req) {
 }
 
 http_status_t api_vacuum(char **response, http_request_t *req) {
-	unused(req);
-	db_vacuum();
+	int size = 0;
+	char *page_size = get_param(req, "page_size");
+	if (page_size) {
+		size = atoi(page_size);
+	}
+	zvacuum(size);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
@@ -418,10 +441,26 @@ http_status_t api_gen_quid(char **response, http_request_t *req) {
 	}
 
 	if (iserror()) {
+		zfree(squid);
 		return response_internal_error(response);
 	}
 	snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"description\":\"New QUID generated\",\"status\":\"SUCCEEDED\",\"success\":true}", squid);
 	zfree(squid);
+	return HTTP_OK;
+}
+
+http_status_t api_gen_rand(char **response, http_request_t *req) {
+	bool range = FALSE;
+	char *param_range = get_param(req, "range");
+	if (param_range) {
+		range = TRUE;
+	}
+
+	int number = generate_random_number(range ? atoi(param_range) : 0);
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+	snprintf(*response, RESPONSE_SIZE, "{\"number\":%d,\"description\":\"Random number\",\"status\":\"SUCCEEDED\",\"success\":true}", number);
 	return HTTP_OK;
 }
 
@@ -437,6 +476,7 @@ http_status_t api_base64_enc(char **response, http_request_t *req) {
 	if (data) {
 		char *enc = crypto_base64_enc(data);
 		if (iserror()) {
+			zfree(enc);
 			return response_internal_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
@@ -451,6 +491,7 @@ http_status_t api_base64_dec(char **response, http_request_t *req) {
 	if (data) {
 		char *enc = crypto_base64_dec(data);
 		if (iserror()) {
+			zfree(enc);
 			return response_internal_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"encode\":\"%s\",\"description\":\"Data encoded with base64\",\"status\":\"SUCCEEDED\",\"success\":true}", enc);
@@ -479,18 +520,17 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 http_status_t api_db_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
 	bool resolve = TRUE;
+	bool getforce = FALSE;
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *noresolve = get_param(req, "noresolve");
 	char *selector = get_param(req, "select");
-	/* TODO char *where = get_param(req, "where"); */
+	char *force = get_param(req, "force");
+	char *where = get_param(req, "where");
 	if (quid) {
 		char *data = NULL;
-		/* TODO if (where) {
-			puts(where);
-		} */
-		if (selector) {
-			data = db_select(quid, selector);
+		if (selector || where) {
+			data = db_select(quid, selector, where);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -500,8 +540,13 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 					resolve = FALSE;
 				}
 			}
+			if (force) {
+				if (!strcmp(force, "true")) {
+					getforce = TRUE;
+				}
+			}
 
-			data = db_get(quid, &len, resolve);
+			data = db_get(quid, &len, resolve, getforce);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -541,6 +586,40 @@ http_status_t api_db_get_schema(char **response, http_request_t *req) {
 			return response_internal_error(response);
 		}
 		snprintf(*response, RESPONSE_SIZE, "{\"dataschema\":\"%s\",\"description\":\"Datatype of record value\",\"status\":\"SUCCEEDED\",\"success\":true}", schema);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_get_history(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *history = db_get_history(quid);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"history_versions\":%s,\"description\":\"Record history\",\"status\":\"SUCCEEDED\",\"success\":true}", history);
+		zfree(history);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_get_version(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *data = db_get_version(quid, req->uri);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		size_t len = strlen(data);
+		size_t resplen = RESPONSE_SIZE;
+		if (len > (RESPONSE_SIZE / 2)) {
+			resplen = RESPONSE_SIZE + len;
+			*response = zrealloc(*response, resplen);
+		}
+		snprintf(*response, resplen, "{\"data\":%s,\"description\":\"Retrieve historic record by version key\",\"status\":\"SUCCEEDED\",\"success\":true}", data);
+		zfree(data);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);
@@ -703,10 +782,17 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	char *importance = get_param(req, "importance");
 	char *lifecycle = get_param(req, "lifecycle");
 	char *system_lock = get_param(req, "system_lock");
+	char *force = get_param(req, "force");
 	if (quid) {
 		struct record_status status;
+		bool getforce = FALSE;
+		if (force) {
+			if (!strcmp(force, "true")) {
+				getforce = TRUE;
+			}
+		}
 		if (executable || freeze || importance || lifecycle || system_lock) {
-			db_record_get_meta(quid, &status);
+			db_record_get_meta(quid, FALSE, &status);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -730,7 +816,7 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Record updated\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
-		db_record_get_meta(quid, &status);
+		db_record_get_meta(quid, getforce, &status);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -738,6 +824,20 @@ http_status_t api_db_get_meta(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"metadata\":{\"nodata\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\",\"alias\":\"%s\"},\"description\":\"Record metadata queried\",\"status\":\"SUCCEEDED\",\"success\":true}", str_bool(status.nodata), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type, status.alias);
 		else
 			snprintf(*response, RESPONSE_SIZE, "{\"metadata\":{\"nodata\":%s,\"freeze\":%s,\"executable\":%s,\"system_lock\":%s,\"lifecycle\":\"%s\",\"importance\":%d,\"type\":\"%s\",\"alias\":null},\"description\":\"Record metadata queried\",\"status\":\"SUCCEEDED\",\"success\":true}", str_bool(status.nodata), str_bool(status.freeze), str_bool(status.exec), str_bool(status.syslock), status.lifecycle, status.importance, status.type);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
+http_status_t api_db_decode(char **response, http_request_t *req) {
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		char *data = key_decode(quid);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"data\":%s,\"description\":\"Record decoded\",\"status\":\"SUCCEEDED\",\"success\":true}", data);
+		zfree(data);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);
@@ -755,14 +855,16 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 			snprintf(*response, RESPONSE_SIZE, "{\"description\":\"Alias set\",\"status\":\"SUCCEEDED\",\"success\":true}");
 			return HTTP_OK;
 		}
+		char *current_name = db_alias_get_name(quid);
+		if (iserror()) {
+			zfree(current_name);
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", current_name);
+		zfree(current_name);
+		return HTTP_OK;
 	}
-	char *current_name = db_alias_get_name(quid);
-	if (iserror()) {
-		return response_internal_error(response);
-	}
-	snprintf(*response, RESPONSE_SIZE, "{\"name\":\"%s\",\"description\":\"Get in list\",\"status\":\"SUCCEEDED\",\"success\":true}", current_name);
-	zfree(current_name);
-	return HTTP_OK;
+	return response_empty_error(response);
 }
 
 http_status_t api_alias_get(char **response, http_request_t *req) {
@@ -794,22 +896,22 @@ http_status_t api_alias_all(char **response, http_request_t *req) {
 	unused(req);
 	size_t len = 0, resplen;
 
-	char *table = db_alias_all();
+	char *list = db_alias_all();
 	if (iserror()) {
 		return response_internal_error(response);
 	}
 
-	if (!table)
-		table = zstrdup("null");
+	if (!list)
+		list = zstrdup("null");
 
-	len = strlen(table);
+	len = strlen(list);
 	resplen = RESPONSE_SIZE;
 	if (len > (RESPONSE_SIZE / 2)) {
 		resplen = RESPONSE_SIZE + len;
 		*response = zrealloc(*response, resplen);
 	}
-	snprintf(*response, resplen, "{\"aliasses\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", table);
-	zfree(table);
+	snprintf(*response, resplen, "{\"aliasses\":%s,\"description\":\"Listening aliasses\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
+	zfree(list);
 	return HTTP_OK;
 }
 
@@ -836,6 +938,29 @@ http_status_t api_index_all(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_page_all(char **response, http_request_t *req) {
+	unused(req);
+	size_t len = 0, resplen;
+
+	char *list = db_pager_all();
+	if (iserror()) {
+		return response_internal_error(response);
+	}
+
+	if (!list)
+		list = zstrdup("null");
+
+	len = strlen(list);
+	resplen = RESPONSE_SIZE;
+	if (len > (RESPONSE_SIZE / 2)) {
+		resplen = RESPONSE_SIZE + len;
+		*response = zrealloc(*response, resplen);
+	}
+	snprintf(*response, resplen, "{\"pages\":%s,\"description\":\"Listening pages\",\"status\":\"SUCCEEDED\",\"success\":true}", list);
+	zfree(list);
+	return HTTP_OK;
+}
+
 /*
  * Webrequest router
  */
@@ -857,6 +982,7 @@ static const struct webroute route[] = {
 	{"/sha256",			api_sha256,			FALSE, 	"SHA256 hash function"},
 	{"/sha512",			api_sha512,			FALSE, 	"SHA512 hash function"},
 	{"/quid",			api_gen_quid,		FALSE,	"Generate random QUID"},
+	{"/random",			api_gen_rand,		FALSE,	"Generate random number"},
 	{"/base64/enc",		api_base64_enc,		FALSE,	"Base64 encode function"},
 	{"/base64/dec",		api_base64_dec,		FALSE, 	"Base64 decode function"},
 	{"/hmac/sha256",	api_hmac_sha256,	FALSE,	"Generate HMAC-SHA256 signature"},
@@ -879,8 +1005,13 @@ static const struct webroute route[] = {
 	{"/remove",			api_db_delete,		TRUE,	"Delete dataset by key"},
 	{"/purge",			api_db_purge,		TRUE,	"Purge dataset and key"},
 	{"/meta",			api_db_get_meta,	TRUE,	"Get/set metadata on key"},
+	{"/decode",			api_db_decode,		TRUE,	"Decode QUID"},
 	{"/type",			api_db_get_type,	TRUE,	"Show datatype"},
 	{"/schema",			api_db_get_schema,	TRUE,	"Show data schema"},
+
+	/* Record version control */
+	{"/history",		api_db_get_history,	TRUE,	"Show record history"},
+	{"/history/*",		api_db_get_version,	TRUE,	"Show record history"},
 
 	/* Items operations						*/
 	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
@@ -894,6 +1025,8 @@ static const struct webroute route[] = {
 	/* Database index operations				*/
 	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
 	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
+
+	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},
 };
 
 http_status_t api_help(char **response, http_request_t *req) {
@@ -928,7 +1061,7 @@ http_status_t api_help(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
-void handle_request(int sd, fd_set *set) {
+void handle_request(int sd, fd_set * set) {
 	FILE *socket_stream = fdopen(sd, "r+");
 	if (!socket_stream) {
 		lprint("[erro] Failed to get file descriptor\n");
@@ -941,13 +1074,18 @@ void handle_request(int sd, fd_set *set) {
 	struct sockaddr_storage addr;
 	char str_addr[INET6_ADDRSTRLEN];
 	socklen_t len = sizeof(addr);
-	getpeername(sd, (struct sockaddr*)&addr, &len);
-	inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
+	if (!getpeername(sd, (struct sockaddr*)&addr, &len)) {
+		inet_ntop(addr.ss_family, get_in_addr((struct sockaddr *)&addr), str_addr, sizeof(str_addr));
+	} else {
+		str_addr[0] = '?';
+		str_addr[1] = '\0';
+	}
 
 	vector_t *queue = alloc_vector(VECTOR_RHEAD_SIZE);
 	vector_t *headers = alloc_vector(VECTOR_SHEAD_SIZE);
-	hashtable_t *postdata = NULL;
+	hashtable_t *postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 	hashtable_t *getdata = NULL;
+	hashtable_t *headdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 	char buf[HEADER_SIZE];
 	while (!feof(socket_stream)) {
 		char *in = fgets(buf, HEADER_SIZE - 2, socket_stream);
@@ -1147,6 +1285,9 @@ void handle_request(int sd, fd_set *set) {
 				c_referer = colon;
 			} else if (!strcmp(str, "connection")) {
 				c_connection = colon;
+			} else {
+				if (strcmp(str, "accept"))
+					hashtable_put(&headdata, str, colon);
 			}
 		}
 	}
@@ -1274,7 +1415,6 @@ unsupported:
 		}
 		c_buf[total_read] = '\0';
 
-		postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
 		char *var = strtok(c_buf, "&");
 		while (var != NULL) {
 			char *value = strchr(var, '=');
@@ -1308,6 +1448,7 @@ unsupported:
 	http_request_t req;
 	req.data = postdata;
 	req.querystring = getdata;
+	req.header = headdata;
 	req.method = request_type;
 	while (nsz-- > 0) {
 		if (route[nsz].require_quid) {
@@ -1315,6 +1456,7 @@ unsupported:
 			if (fsz < QUID_LENGTH + 1)
 				continue;
 
+			/* Get QUID from filename */
 			char *_pfilename = _filename + QUID_LENGTH + 1;
 			strlcpy(squid, _filename + 1, QUID_LENGTH + 1);
 			if (_pfilename[0] != '/') {
@@ -1325,11 +1467,18 @@ unsupported:
 				continue;
 
 			if (_pfilename) {
-				if (!strcmp(route[nsz].uri, _pfilename)) {
-					if (!postdata) {
-						postdata = alloc_hashtable(HASHTABLE_DATA_SIZE);
-						req.data = postdata;
+				if ((pch = strchr(route[nsz].uri, '*')) != NULL) {
+					size_t posc = pch - route[nsz].uri;
+					if (!strncmp(route[nsz].uri, _pfilename, posc)) {
+						hashtable_put(&req.data, "quid", squid);
+						req.uri = _pfilename;
+						req.uri += posc;
+						status = route[nsz].api_handler(&resp_message, &req);
+						goto respond;
+					} else {
+						continue;
 					}
+				} else if (!strcmp(route[nsz].uri, _pfilename)) {
 					hashtable_put(&req.data, "quid", squid);
 					req.uri = _pfilename;
 					status = route[nsz].api_handler(&resp_message, &req);
@@ -1373,9 +1522,8 @@ done:
 	if (getdata) {
 		free_hashtable(getdata);
 	}
-	if (postdata) {
-		free_hashtable(postdata);
-	}
+	free_hashtable(postdata);
+	free_hashtable(headdata);
 
 	if (keepalive) {
 		error_clear();
@@ -1400,10 +1548,8 @@ int start_webapi() {
 	start_core();
 
 	lprint("[info] Starting daemon\n");
-	lprint("[info] Start database core\n");
 	lprintf("[info] " PROGNAME " %s ("__DATE__", "__TIME__")\n", get_version_string());
 	lprintf("[info] Current time: %lld\n", get_timestamp());
-	lprintf("[info] Storage core %s\n", get_zero_key());
 	lprintf("[info] Instance %s %s\n", get_instance_name(), get_instance_key());
 
 	struct addrinfo hints, *servinfo, *p;

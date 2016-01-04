@@ -8,6 +8,8 @@
 #define INDEX_SIZE 4
 #define INDEX_MSIZE (INDEX_SIZE/2)
 
+typedef struct base base_t;
+
 typedef enum {
 	INSERTNOTCOMPLETE,
 	SUCCESS,
@@ -25,24 +27,29 @@ typedef struct {
 typedef struct {
 	int cnt;
 	item_t items[INDEX_SIZE];
-	long int ptr[INDEX_SIZE + 1];
+	long long ptr[INDEX_SIZE + 1];
 } node_t;
 
 typedef struct {
-	long int root;
-	long int freelist;
+	long long root;
+	long long freelist;
 	node_t rootnode;
-	FILE *fp;
+	unsigned long long offset;
 	bool unique_keys;
 } btree_t;
 
-status_t btree_insert(btree_t *index, char *key, size_t key_size, long long int offset);
-status_t btree_get(btree_t *index, char *key, vector_t **result);
-status_t btree_delete(btree_t *index, char *key);
-vector_t *btree_get_all(btree_t *index);
-void btree_print();
+status_t btree_insert(base_t *base, btree_t *index, char *key, size_t key_size, long long int offset);
+status_t btree_get(base_t *base, btree_t *index, char *key, vector_t **result);
+status_t btree_delete(base_t *base, btree_t *index, char *key);
+vector_t *btree_get_all(base_t *base, btree_t *index);
+
+#ifdef DEBUG
+void btree_print(base_t *base, btree_t *index);
+#endif
+
 void btree_set_unique(btree_t *index, bool unique);
-void btree_init(btree_t *index, char *name);
-void btree_close(btree_t *index);
+unsigned long long btree_create(base_t *base, btree_t *index);
+void btree_open(base_t *base, btree_t *index, unsigned long long offset);
+void btree_close(base_t *base, btree_t *index);
 
 #endif // INDEX_H_INCLUDED

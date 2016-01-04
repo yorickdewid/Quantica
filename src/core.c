@@ -15,42 +15,42 @@
 #include "crc32.h"
 #include "base64.h"
 #include "time.h"
+#include "base.h"
+#include "pager.h"
 #include "btree.h"
 #include "index.h"
 #include "marshall.h"
 #include "dict_marshall.h"
 #include "slay_marshall.h"
-#include "basecontrol.h"
+#include "arc4random.h"
 #include "engine.h"
+#include "alias.h"
+#include "history.h"
+#include "index_list.h"
 #include "bootstrap.h"
 #include "sql.h"
 #include "core.h"
 
-static struct engine btx;
-static struct base control;
-static uint8_t ready = FALSE;
+static engine_t zero;
+static base_t control;
+static bool ready = FALSE;
 static long long uptime;
 static quid_t sessionid;
-
-char *get_zero_key() {
-	static char buf[QUID_LENGTH + 1];
-	quidtostr(buf, &control.zero_key);
-	return buf;
-}
 
 void start_core() {
 	/* Start the logger */
 	start_log();
 	error_clear();
 
+	/* Daemon Session */
 	quid_create(&sessionid);
-	base_init(&control);
 
-	/* Initialize engine */
-	engine_init(&btx, get_zero_key(), control.bindata);
+	base_init(&control, &zero);
+	pager_init(&control);
+	engine_init(&control);
 
 	/* Bootstrap database if not exist */
-	bootstrap(&btx);
+	bootstrap(&control);
 
 	/* Server ready */
 	uptime = get_timestamp();
@@ -61,8 +61,9 @@ void detach_core() {
 	if (!ready)
 		return;
 
-	/* CLose all databases */
-	engine_close(&btx);
+	/* Close all databases */
+	engine_close(&control);
+	pager_close(&control);
 	base_close(&control);
 
 	/* Stop the logger */
@@ -99,12 +100,25 @@ char *get_session_key() {
 	return buf;
 }
 
-char *get_dataheap_name() {
-	return control.bindata;
+char *get_pager_alloc_size() {
+	static char buf[10];
+	unsigned long long total_size = (BASE_PAGE_SIZE << control.pager.size) * control.core->count;
+	return unit_bytes(total_size, buf);
 }
 
-struct engine *get_current_engine() {
-	return &btx;
+char *get_total_disk_size() {
+	static char buf[10];
+	size_t total_size = pager_total_disk_size(&control);
+	total_size += file_size(control.fd);
+	return unit_bytes(total_size, buf);
+}
+
+unsigned int get_pager_page_size() {
+	return control.pager.size;
+}
+
+unsigned int get_pager_page_count() {
+	return control.core->count;
 }
 
 /*
@@ -200,23 +214,31 @@ char *crypto_base64_dec(const char *data) {
 }
 
 unsigned long int stat_getkeys() {
-	return btx.stats.keys;
+	return control.stats.zero_size;
 }
 
 unsigned long int stat_getfreekeys() {
-	return btx.stats.free_tables;
+	return control.stats.zero_free_size;
+}
+
+unsigned long int stat_getfreeblocks() {
+	return control.stats.heap_free_size;
 }
 
 unsigned long int stat_tablesize() {
-	return btx.stats.list_size;
+	return control.stats.alias_size;
 }
 
 unsigned long int stat_indexsize() {
-	return btx.stats.index_list_size;
+	return control.stats.index_list_size;
 }
 
 sqlresult_t *exec_sqlquery(const char *query, size_t *len) {
 	return sql_exec(query, len);
+}
+
+int generate_random_number(int range) {
+	return (!range) ? (int)arc4random() : (int)arc4random_uniform(range);
 }
 
 void quid_generate(char *quid) {
@@ -226,14 +248,63 @@ void quid_generate(char *quid) {
 }
 
 void quid_generate_short(char *quid) {
-	quid_t key;
-	quid_create(&key);
-	quidtoshortstr(quid, &key);
+	quid_short_t key;
+	quid_short_create(&key);
+	quid_shorttostr(quid, &key);
 }
 
 void filesync() {
-	engine_sync(&btx);
+	engine_sync(&control);
+	pager_sync(&control);
 	base_sync(&control);
+}
+
+int zvacuum(int page_size) {
+	base_t new_control;
+	engine_t new_zero;
+
+	if (!ready)
+		return -1;
+
+	if (!page_size)
+		page_size = control.pager.size;
+
+	/* Copy current database */
+	base_lock(&control);
+	base_copy(&control, &new_control, &new_zero, page_size);
+	pager_init(&new_control);
+
+	/* Rebuild structures into order */
+	engine_rebuild(&control, &new_control);
+	alias_rebuild(&control, &new_control);
+	index_list_rebuild(&control, &new_control);
+
+	engine_close(&control);
+	pager_unlink_all(&control);
+	pager_close(&control);
+	base_close(&control);
+
+	base_swap();
+	memcpy(&zero, &new_zero, sizeof(engine_t));
+	memcpy(&control, &new_control, sizeof(base_t));
+	control.engine = &zero;
+
+	return 0;
+}
+
+char *key_decode(char *quid) {
+	quid_t key;
+	if (!strquid_format(quid)) {
+		error_throw("f0b867c41006", "Key malformed or invalid");
+		return NULL;
+	}
+
+	strtoquid(quid, &key);
+	marshall_t *dataobj = quid_decode(&key);
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
 }
 
 int db_put(char *quid, int *items, const void *data, size_t data_len) {
@@ -250,9 +321,9 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 		return -1;
 	}
 
-	void *dataslay = slay_put(dataobj, &len, &nrs);
+	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_insert_data(&btx, &key, dataslay, len) < 0) {
+	if (engine_insert_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
@@ -263,10 +334,10 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 	quidtostr(quid, &key);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
-		engine_list_insert(&btx, &key, quid, QUID_LENGTH);
+		alias_add(&control, &key, quid, QUID_LENGTH);
 
 		struct metadata meta;
-		engine_get(&btx, &key, &meta);
+		engine_get(&control, &key, &meta);
 		if (meta.type != MD_TYPE_RECORD) {
 			error_throw("1e933eea602c", "Invalid record type");
 			return -1;
@@ -274,14 +345,14 @@ int db_put(char *quid, int *items, const void *data, size_t data_len) {
 
 		meta.type = MD_TYPE_GROUP;
 		meta.alias = 1;
-		if (engine_setmeta(&btx, &key, &meta) < 0)
+		if (engine_setmeta(&control, &key, &meta) < 0)
 			return -1;
 	}
 
 	return 0;
 }
 
-void *db_get(char *quid, size_t *len, bool descent) {
+void *db_get(char *quid, size_t *len, bool descent, bool force) {
 	quid_t key;
 	size_t _len;
 	struct metadata meta;
@@ -292,15 +363,15 @@ void *db_get(char *quid, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = force ? engine_get_force(&control, &key, &meta) : engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
-			dataobj = slay_get(data, NULL, descent);
+			dataobj = slay_get(&control, data, NULL, descent);
 			if (!dataobj) {
 				zfree(data);
 				return NULL;
@@ -308,7 +379,8 @@ void *db_get(char *quid, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key, descent);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
 		default:
@@ -335,13 +407,13 @@ char *db_get_type(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
-	void *data = get_data_block(&btx, offset, &len);
+	void *data = get_data_block(&control, offset, &len);
 	if (!data)
 		return NULL;
 
@@ -359,18 +431,62 @@ char *db_get_schema(char *quid) {
 		return NULL;
 
 	size_t len;
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
 	}
 
-	void *data = get_data_block(&btx, offset, &len);
+	void *data = get_data_block(&control, offset, &len);
 	if (!data)
 		return NULL;
 
 	char *buf = slay_get_strschema(data);
 	zfree(data);
+	return buf;
+}
+
+char *db_get_history(char *quid) {
+	quid_t key;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return NULL;
+
+	marshall_t *dataobj = history_all(&control, &key);
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
+char *db_get_version(char *quid, char *element) {
+	quid_t key;
+	size_t len;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return NULL;
+
+	if (!strisdigit(element) || element[0] == '-') {
+		error_throw("888d28dff048", "Operation expects an positive index given");
+		return NULL;
+	}
+
+	unsigned long long offset = history_get_version_offset(&control, &key, atoi(element)) ;
+	if (iserror()) {
+		return NULL;
+	}
+
+	void *data = get_data_block(&control, offset, &len);
+	if (!data)
+		return NULL;
+
+	marshall_t *dataobj = slay_get(&control, data, NULL, TRUE);
+
+	char *buf = marshall_serialize(dataobj);
+	if (data)
+		zfree(data);
+	marshall_free(dataobj);
 	return buf;
 }
 
@@ -390,15 +506,15 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *descentdata = get_data_block(&btx, offset, &_len);
+				void *descentdata = get_data_block(&control, offset, &_len);
 				if (!descentdata)
 					break;
 
-				marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+				marshall_t *descentobj = slay_get(&control, descentdata, NULL, FALSE);
 				if (!descentobj) {
 					zfree(descentdata);
 					break;
@@ -407,7 +523,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 				for (unsigned int i = 0; i < descentobj->size; ++i) {
 					quid_t _key;
 					strtoquid(descentobj->child[i]->data, &_key);
-					engine_delete(&btx, &_key);
+					engine_delete(&control, &_key);
 					error_clear();
 				}
 				marshall_free(descentobj);
@@ -424,29 +540,34 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 			break;
 	}
 
-	void *dataslay = slay_put(dataobj, &len, &nrs);
+	/* Save old version as record history */
+	history_add(&control, &key, offset);
+
+	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(dataobj);
 		return -1;
 	}
 
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
+		/* New data became a group */
 		if (meta.type != MD_TYPE_GROUP) {
 			char _quid[QUID_LENGTH + 1];
 			quidtostr(_quid, &key);
 
-			engine_list_insert(&btx, &key, _quid, QUID_LENGTH);
+			alias_add(&control, &key, _quid, QUID_LENGTH);
 
 			meta.type = MD_TYPE_GROUP;
 			meta.alias = 1;
-			if (engine_setmeta(&btx, &key, &meta) < 0)
+			if (engine_setmeta(&control, &key, &meta) < 0)
 				return -1;
 		}
 	} else {
+		/* New data is no longer a group */
 		if (meta.type == MD_TYPE_GROUP) {
-			engine_list_delete(&btx, &key);
+			alias_delete(&control, &key);
 		}
 	}
 
@@ -467,7 +588,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP:
@@ -478,11 +599,11 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 			break;
 	}
 
-	void *descentdata = get_data_block(&btx, offset, &_len);
+	void *descentdata = get_data_block(&control, offset, &_len);
 	if (!descentdata)
 		return 0;
 
-	marshall_t *descentobj = slay_get(descentdata, NULL, TRUE);
+	marshall_t *descentobj = slay_get(&control, descentdata, NULL, TRUE);
 	if (!descentobj) {
 		zfree(descentdata);
 		return 0;
@@ -490,9 +611,9 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 
 	quid_create(&nkey);
 
-	void *dataslay = slay_put(descentobj, &len, &nrs);
+	void *dataslay = slay_put(&control, descentobj, &len, &nrs);
 	*items = nrs.items;
-	if (engine_insert_data(&btx, &nkey, dataslay, len) < 0) {
+	if (engine_insert_data(&control, &nkey, dataslay, len) < 0) {
 		zfree(descentdata);
 		zfree(dataslay);
 		marshall_free(descentobj);
@@ -500,64 +621,69 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	}
 
 	if (!copy_meta) {
-		memset(&meta, 0, sizeof(struct metadata));
+		nullify(&meta, sizeof(struct metadata));
 		meta.importance = MD_IMPORTANT_NORMAL;
 	}
 
 	quidtostr(nquid, &nkey);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		if (copy_meta) {
-			marshall_t *index_element = engine_index_list_get_element(&btx, &key);
+			marshall_t *index_element = index_list_get_element(&control, &key);
 			for (unsigned int i = 0; i < index_element->size; ++i) {
 				index_result_t inrs;
 				struct metadata _meta;
-				memset(&inrs, 0, sizeof(index_result_t));
+				nullify(&inrs, sizeof(index_result_t));
 				char index_quid[QUID_LENGTH + 1];
 
 				/* Create index key */
 				quid_create(&inrs.index);
 				quidtostr(index_quid, &inrs.index);
 
-				marshall_t *_descentobj = slay_get(descentdata, NULL, FALSE);
+				marshall_t *_descentobj = slay_get(&control, descentdata, NULL, FALSE);
 				if (!_descentobj) {
 					continue;
 				}
 
 				/* Determine index based on dataschema */
-				if (nrs.schema == SCHEMA_TABLE)
-					index_btree_create_table(index_quid, index_element->child[i]->data, _descentobj, &inrs);
-				else if (nrs.schema == SCHEMA_SET)
-					index_btree_create_set(index_quid, index_element->child[i]->data, _descentobj, &inrs);
-				else
-					error_throw("ece28bc980db", "Invalid schema");
+				switch (nrs.schema) {
+					case SCHEMA_TABLE:
+						index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
+						break;
+					case SCHEMA_SET:
+						index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
+						break;
+					default:
+						error_throw("ece28bc980db", "Invalid schema");
+				}
 
 				/* Add index to database */
-				memset(&_meta, 0, sizeof(struct metadata));
+				nullify(&_meta, sizeof(struct metadata));
 				_meta.nodata = 1;
 				_meta.type = MD_TYPE_INDEX;
 				_meta.alias = 1;
-				engine_insert_meta(&btx, &inrs.index, &_meta);
+				engine_insert_meta(&control, &inrs.index, &_meta);
 
 				/* Add index to alias list */
-				engine_list_insert(&btx, &inrs.index, index_quid, QUID_LENGTH);
+				alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
 
 				/* Add index to index list */
-				engine_index_list_insert(&btx, &inrs.index, &nkey, index_element->child[i]->data);
+				index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, inrs.offset);
 
 				marshall_free(_descentobj);
-
 			}
 			error_clear();
 			marshall_free(index_element);
 		}
 
-		engine_list_insert(&btx, &nkey, nquid, QUID_LENGTH);
+		alias_add(&control, &nkey, nquid, QUID_LENGTH);
 		meta.type = MD_TYPE_GROUP;
 		meta.alias = 1;
 	}
 
-	if (engine_setmeta(&btx, &nkey, &meta) < 0)
+	if (engine_setmeta(&control, &nkey, &meta) < 0) {
+		zfree(descentdata);
 		return -1;
+	}
 
 	zfree(descentdata);
 	zfree(dataslay);
@@ -576,14 +702,14 @@ int db_count_group(char *quid) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return -1;
 
-			dataobj = slay_get(data, NULL, FALSE);
+			dataobj = slay_get(&control, data, NULL, FALSE);
 			if (!dataobj) {
 				zfree(data);
 				return -1;
@@ -592,7 +718,8 @@ int db_count_group(char *quid) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key, FALSE);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, FALSE);
 			break;
 		}
 		default:
@@ -615,15 +742,15 @@ int db_delete(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *data = get_data_block(&btx, offset, &_len);
+				void *data = get_data_block(&control, offset, &_len);
 				if (!data)
 					break;
 
-				marshall_t *dataobj = slay_get(data, NULL, FALSE);
+				marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
 				if (!dataobj) {
 					zfree(data);
 					break;
@@ -632,35 +759,35 @@ int db_delete(char *quid, bool descent) {
 				for (unsigned int i = 0; i < dataobj->size; ++i) {
 					quid_t _key;
 					strtoquid(dataobj->child[i]->data, &_key);
-					engine_delete(&btx, &_key);
+					engine_delete(&control, &_key);
 					error_clear();
 				}
 				marshall_free(dataobj);
 				zfree(data);
 			}
 
-			quid_t *index = engine_index_list_get_index(&btx, &key);
+			quid_t *index = index_list_get_index(&control, &key);
 			while (index) {
-				engine_list_delete(&btx, index);
-				engine_index_list_delete(&btx, index);
+				alias_delete(&control, index);
+				index_list_delete(&control, index);
 				zfree(index);
-				index = engine_index_list_get_index(&btx, &key);
+				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
-
-			engine_list_delete(&btx, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			engine_list_delete(&btx, &key);
-			engine_index_list_delete(&btx, &key);
+			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
 	}
 
-	if (engine_delete(&btx, &key) < 0)
+	if (meta.alias)
+		alias_delete(&control, &key);
+
+	if (engine_delete(&control, &key) < 0)
 		return -1;
 
 	return 0;
@@ -675,15 +802,15 @@ int db_purge(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get_force(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
-				void *data = get_data_block(&btx, offset, &_len);
+				void *data = get_data_block(&control, offset, &_len);
 				if (!data)
 					break;
 
-				marshall_t *dataobj = slay_get(data, NULL, FALSE);
+				marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
 				if (!dataobj) {
 					zfree(data);
 					break;
@@ -692,60 +819,63 @@ int db_purge(char *quid, bool descent) {
 				for (unsigned int i = 0; i < dataobj->size; ++i) {
 					quid_t _key;
 					strtoquid(dataobj->child[i]->data, &_key);
-					engine_purge(&btx, &_key);
+					engine_purge(&control, &_key);
 					error_clear();
 				}
 				marshall_free(dataobj);
 				zfree(data);
 			}
 
-			quid_t *index = engine_index_list_get_index(&btx, &key);
+			quid_t *index = index_list_get_index(&control, &key);
 			while (index) {
-				engine_list_delete(&btx, index);
-				engine_index_list_delete(&btx, index);
+				alias_delete(&control, index);
+				index_list_delete(&control, index);
 				zfree(index);
-				index = engine_index_list_get_index(&btx, &key);
+				index = index_list_get_index(&control, &key);
 			}
 			error_clear();
-
-			engine_list_delete(&btx, &key);
 			break;
 		}
 		case MD_TYPE_INDEX:
-			engine_list_delete(&btx, &key);
-			engine_index_list_delete(&btx, &key);
+
+			index_list_delete(&control, &key);
 			break;
 		case MD_TYPE_RECORD:
 		default:
 			break;
 	}
 
-	if (engine_purge(&btx, &key) < 0)
+	if (meta.alias)
+		alias_delete(&control, &key);
+
+	if (engine_purge(&control, &key) < 0)
 		return -1;
 
 	return 0;
 }
 
-void *db_select(char *quid, const char *element) {
+void *db_select(char *quid, const char *select_element, const char *where_element) {
 	quid_t key;
 	size_t _len;
 	struct metadata meta;
 	strtoquid(quid, &key);
 	void *data = NULL;
 	marshall_t *dataobj = NULL;
+	marshall_t *whereobj = NULL;
+	marshall_t *selectobj = NULL;
 
 	if (!ready)
 		return NULL;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
-			dataobj = slay_get(data, NULL, TRUE);
+			dataobj = slay_get(&control, data, NULL, TRUE);
 			if (!dataobj) {
 				zfree(data);
 				return NULL;
@@ -753,7 +883,8 @@ void *db_select(char *quid, const char *element) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key, TRUE);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, TRUE);
 			break;
 		}
 		default:
@@ -762,32 +893,52 @@ void *db_select(char *quid, const char *element) {
 			return NULL;
 	}
 
-	marshall_t *elementobj = marshall_convert((char *)element, strlen(element));
-	if (!elementobj) {
-		if (data)
-			zfree(data);
-		marshall_free(dataobj);
-		return NULL;
+	/* Where */
+	if (where_element) {
+		marshall_t *where_elementobj = marshall_convert((char *)where_element, strlen(where_element));
+		if (!where_elementobj) {
+			if (data)
+				zfree(data);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		whereobj = marshall_condition(where_elementobj, dataobj);
+		marshall_free(where_elementobj);
 	}
 
-	if (elementobj->type != MTYPE_ARRAY && elementobj->type != MTYPE_STRING) {
-		error_throw("14d882da30d9", "Operation expects an string or array given");
-		if (data)
-			zfree(data);
-		marshall_free(elementobj);
-		marshall_free(dataobj);
-		return NULL;
+	/* Selector */
+	if (select_element) {
+		marshall_t *select_elementobj = marshall_convert((char *)select_element, strlen(select_element));
+		if (!select_elementobj) {
+			if (data)
+				zfree(data);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		/* Selector type */
+		if (select_elementobj->type != MTYPE_ARRAY && select_elementobj->type != MTYPE_STRING) {
+			error_throw("14d882da30d9", "Operation expects an string or array given");
+			if (data)
+				zfree(data);
+			marshall_free(select_elementobj);
+			marshall_free(dataobj);
+			return NULL;
+		}
+
+		selectobj = marshall_filter(select_elementobj, whereobj ? whereobj : dataobj, NULL);
+		marshall_free(select_elementobj);
 	}
 
-	marshall_t *selectobj = marshall_filter(elementobj, dataobj, NULL);
-
-	char *buf = marshall_serialize(selectobj);
+	char *buf = marshall_serialize(selectobj ? selectobj : whereobj);
 	if (data)
 		zfree(data);
-	marshall_free(selectobj);
-	marshall_free(elementobj);
-	marshall_free(dataobj);
 
+	if (whereobj)
+		marshall_free(whereobj);
+	marshall_free(selectobj);
+	marshall_free(dataobj);
 	return buf;
 }
 
@@ -808,17 +959,17 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
 				return -1;
 			}
 
-			marshall_t *dataobj = slay_get(data, NULL, TRUE);
+			marshall_t *dataobj = slay_get(&control, data, NULL, TRUE);
 			if (!dataobj) {
 				zfree(data);
 				marshall_free(mergeobj);
@@ -841,9 +992,9 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
-	void *dataslay = slay_put(newobject, &len, &nrs);
+	void *dataslay = slay_put(&control, newobject, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(mergeobj);
 		marshall_free(newobject);
@@ -851,14 +1002,14 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	}
 
 	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&btx, offset, &_len);
+		void *descentdata = get_data_block(&control, offset, &_len);
 		if (!descentdata) {
 			marshall_free(mergeobj);
 			marshall_free(newobject);
 			return -1;
 		}
 
-		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+		marshall_t *descentobj = slay_get(&control, descentdata, NULL, FALSE);
 		if (!descentobj) {
 			zfree(descentdata);
 			marshall_free(mergeobj);
@@ -869,7 +1020,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		for (unsigned int i = 0; i < descentobj->size; ++i) {
 			quid_t _key;
 			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&btx, &_key);
+			engine_delete(&control, &_key);
 			error_clear();
 		}
 		marshall_free(descentobj);
@@ -902,17 +1053,17 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			void *data = get_data_block(&btx, offset, &_len);
+			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
 				return -1;
 			}
 
-			marshall_t *dataobj = slay_get(data, NULL, TRUE);
+			marshall_t *dataobj = slay_get(&control, data, NULL, TRUE);
 			if (!dataobj) {
 				zfree(data);
 				marshall_free(mergeobj);
@@ -942,9 +1093,9 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	void *dataslay = slay_put(filterobject, &len, &nrs);
+	void *dataslay = slay_put(&control, filterobject, &len, &nrs);
 	*items = nrs.items;
-	if (engine_update_data(&btx, &key, dataslay, len) < 0) {
+	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(mergeobj);
 		marshall_free(filterobject);
@@ -952,15 +1103,17 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	}
 
 	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&btx, offset, &_len);
+		void *descentdata = get_data_block(&control, offset, &_len);
 		if (!descentdata) {
+			zfree(dataslay);
 			marshall_free(mergeobj);
 			marshall_free(filterobject);
 			return -1;
 		}
 
-		marshall_t *descentobj = slay_get(descentdata, NULL, FALSE);
+		marshall_t *descentobj = slay_get(&control, descentdata, NULL, FALSE);
 		if (!descentobj) {
+			zfree(dataslay);
 			zfree(descentdata);
 			marshall_free(mergeobj);
 			marshall_free(filterobject);
@@ -970,7 +1123,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		for (unsigned int i = 0; i < descentobj->size; ++i) {
 			quid_t _key;
 			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&btx, &_key);
+			engine_delete(&control, &_key);
 			error_clear();
 		}
 		marshall_free(descentobj);
@@ -984,25 +1137,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	return 0;
 }
 
-int db_vacuum() {
-	char tmp_key[QUID_LENGTH + 1];
-	quid_t key;
-	quid_create(&key);
-	quidtostr(tmp_key, &key);
-
-	if (!ready)
-		return -1;
-
-	char *bindata = generate_bindata_name(&control);
-	if (engine_vacuum(&btx, tmp_key, bindata) < 0)
-		return -1;
-
-	memcpy(&control.zero_key, &key, sizeof(quid_t));
-	strcpy(control.bindata, bindata);
-	return 0;
-}
-
-int db_record_get_meta(char *quid, struct record_status *status) {
+int db_record_get_meta(char *quid, bool force, struct record_status *status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -1010,7 +1145,11 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
 
-	engine_get(&btx, &key, &meta);
+	if (force)
+		engine_get_force(&control, &key, &meta);
+	else
+		engine_get(&control, &key, &meta);
+
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
 	status->freeze = meta.freeze;
@@ -1020,8 +1159,8 @@ int db_record_get_meta(char *quid, struct record_status *status) {
 
 	if (meta.alias) {
 		status->has_alias = 1;
-		char *name = engine_list_get_val(&btx, &key);
-		strlcpy(status->alias, name, LIST_NAME_LENGTH);
+		char *name = alias_get_val(&control, &key);
+		strlcpy(status->alias, name, STATUS_ALIAS_LENGTH);
 		zfree(name);
 	}
 	strlcpy(status->lifecycle, get_str_lifecycle(meta.lifecycle), STATUS_LIFECYCLE_SIZE);
@@ -1037,13 +1176,13 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	if (!ready)
 		return -1;
 
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	meta.syslock = status->syslock;
 	meta.exec = status->exec;
 	meta.freeze = status->freeze;
 	meta.importance = status->importance;
 	meta.lifecycle = get_meta_lifecycle(status->lifecycle);
-	if (engine_setmeta(&btx, &key, &meta) < 0)
+	if (engine_setmeta(&control, &key, &meta) < 0)
 		return -1;
 
 	return 0;
@@ -1056,7 +1195,7 @@ char *db_alias_get_name(char *quid) {
 	if (!ready)
 		return NULL;
 
-	return engine_list_get_val(&btx, &key);
+	return alias_get_val(&control, &key);
 }
 
 int db_alias_update(char *quid, const char *name) {
@@ -1068,31 +1207,31 @@ int db_alias_update(char *quid, const char *name) {
 		return -1;
 
 	/* Does name already exist */
-	if (!engine_list_get_key(&btx, &_key, name, strlen(name))) {
+	if (!alias_get_key(&control, &_key, name, strlen(name))) {
 		error_throw("a09c8843b09d", "Alias exists");
 		return -1;
 	}
 	error_clear();
 
 	/* Check if key has alias */
-	engine_get(&btx, &key, &meta);
+	engine_get(&control, &key, &meta);
 	if (!meta.alias) {
-		engine_list_insert(&btx, &key, name, strlen(name));
+		alias_add(&control, &key, name, strlen(name));
 
 		meta.alias = 1;
-		if (engine_setmeta(&btx, &key, &meta) < 0)
+		if (engine_setmeta(&control, &key, &meta) < 0)
 			return -1;
 		return 0;
 	}
 
-	return engine_list_update(&btx, &key, name, strlen(name));;
+	return alias_update(&control, &key, name, strlen(name));;
 }
 
 char *db_alias_all() {
 	if (!ready)
 		return NULL;
 
-	marshall_t *dataobj = engine_list_all(&btx);
+	marshall_t *dataobj = alias_all(&control);
 	if (!dataobj) {
 		return NULL;
 	}
@@ -1106,7 +1245,21 @@ char *db_index_all() {
 	if (!ready)
 		return NULL;
 
-	marshall_t *dataobj = engine_index_list_all(&btx);
+	marshall_t *dataobj = index_list_all(&control);
+	if (!dataobj) {
+		return NULL;
+	}
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
+char *db_pager_all() {
+	if (!ready)
+		return NULL;
+
+	marshall_t *dataobj = pager_all(&control);
 	if (!dataobj) {
 		return NULL;
 	}
@@ -1126,18 +1279,18 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (!ready)
 		return NULL;
 
-	if (engine_list_get_key(&btx, &key, name, strlen(name)) < 0)
+	if (alias_get_key(&control, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
-			data = get_data_block(&btx, offset, &_len);
+			data = get_data_block(&control, offset, &_len);
 			if (!data)
 				return NULL;
 
-			dataobj = slay_get(data, NULL, descent);
+			dataobj = slay_get(&control, data, NULL, descent);
 			if (!dataobj) {
 				zfree(data);
 				return NULL;
@@ -1145,7 +1298,8 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			dataobj = index_btree_all(&key, descent);
+			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
 		default:
@@ -1172,7 +1326,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	struct metadata meta;
 	index_result_t nrs;
 	strtoquid(group_quid, &key);
-	memset(&nrs, 0, sizeof(index_result_t));
+	nullify(&nrs, sizeof(index_result_t));
 
 	if (!ready)
 		return -1;
@@ -1180,52 +1334,60 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	quid_create(&nrs.index);
 	quidtostr(index_quid, &nrs.index);
 
-	uint64_t offset = engine_get(&btx, &key, &meta);
+	unsigned long long offset = engine_get(&control, &key, &meta);
 	if (meta.type != MD_TYPE_GROUP) {
 		error_throw("1e933eea602c", "Invalid record type");
 		return -1;
 	}
 
-	void *data = get_data_block(&btx, offset, &_len);
+	void *data = get_data_block(&control, offset, &_len);
 	if (!data)
 		return -1;
 
-	marshall_t *dataobj = slay_get(data, NULL, FALSE);
-	if (!dataobj)
+	marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
+	if (!dataobj) {
+		zfree(data);
 		return -1;
+	}
+
+	if (marshall_count(dataobj) < 2) {
+		error_throw("3d2a88a4502b", "Too few items for index");
+		return 0;
+	}
 
 	/* Determine index based on dataschema */
 	schema_t group = slay_get_schema(data);
-	if (group == SCHEMA_TABLE)
-		index_btree_create_table(index_quid, idxkey, dataobj, &nrs);
-	else if (group == SCHEMA_SET)
-		index_btree_create_set(index_quid, idxkey, dataobj, &nrs);
-	else
-		error_throw("ece28bc980db", "Invalid schema");
+	switch (group) {
+		case SCHEMA_TABLE:
+			index_btree_create_table(&control, idxkey, dataobj, &nrs);
+			break;
+		case SCHEMA_SET:
+			index_btree_create_set(&control, idxkey, dataobj, &nrs);
+			break;
+		default:
+			error_throw("ece28bc980db", "Invalid schema");
+	}
 
 	marshall_free(dataobj);
 	zfree(data);
 
-	quidtostr(index_quid, &nrs.index);
 	*items = nrs.index_elements;
-
 	if (*items < 2) {
 		error_throw("3d2a88a4502b", "Too few items for index");
 		return 0;
 	}
 
 	/* Add index to database */
-	memset(&meta, 0, sizeof(struct metadata));
+	nullify(&meta, sizeof(struct metadata));
 	meta.nodata = 1;
 	meta.type = MD_TYPE_INDEX;
 	meta.alias = 1;
-	engine_insert_meta(&btx, &nrs.index, &meta);
+	engine_insert_meta(&control, &nrs.index, &meta);
 
 	/* Add index to alias list */
-	engine_list_insert(&btx, &nrs.index, index_quid, QUID_LENGTH);
+	alias_add(&control, &nrs.index, index_quid, QUID_LENGTH);
 
 	/* Add index to index list */
-	engine_index_list_insert(&btx, &nrs.index, &key, (char *)idxkey);
-
+	index_list_add(&control, &nrs.index, &key, (char *)idxkey, nrs.offset);
 	return 0;
 }

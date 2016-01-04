@@ -8,10 +8,6 @@ compiler:
   - clang
   - gcc
 
-matrix:
-  allow_failures:
-    - os: osx
-
 script:
   - make fixeof
   - make genquid
@@ -19,8 +15,8 @@ script:
   - make verminor
   - make debug clean
   - make qcli clean
-  - make test
-  - ./bin/quantica_test
+#  - make test
+#  - ./bin/quantica_test
   - ./test/dupquid.sh
 
 sudo:

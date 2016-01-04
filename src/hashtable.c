@@ -111,6 +111,20 @@ const char *hashtable_get(hashtable_t *d, const char *key) {
 	return 0;
 }
 
+#ifdef DEBUG
+void hashtable_dump(hashtable_t *d) {
+	struct item *e;
+
+	for (int i = 0; i < d->size; i++) {
+		int x = 0;
+		for (e = d->table[i]; e != 0; e = e->next) {
+			printf("Location %d:%d key: %s, value: %s\n", i, x, e->key, e->value);
+			x++;
+		}
+	}
+}
+#endif
+
 /* delete the most recently inserted record with the given key */
 /* if there is no such record, has no effect */
 void hashtable_delete(hashtable_t *d, const char *key) {

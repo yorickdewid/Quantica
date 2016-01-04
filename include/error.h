@@ -4,11 +4,13 @@
 #include <config.h>
 #include <common.h>
 
+#define ERROR_CODE	14
+
 /*
  * Trace error through global structure
  */
 struct error {
-	char error_squid[12 + 1];
+	char error_squid[ERROR_CODE];
 	char *description;
 };
 
