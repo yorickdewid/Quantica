@@ -101,7 +101,6 @@ marshall_type_t autoscalar(const char *data, size_t len) {
  * Count elements by level
  */
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
-
 	/* Only descending scalars need to be counted */
 	if (marshall_type_hasdescent(obj->type)) {
 		unsigned int n = 1;
@@ -112,7 +111,6 @@ unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth) {
 		}
 		return n;
 	}
-
 	return 1;
 }
 

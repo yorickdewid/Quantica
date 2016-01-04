@@ -21,7 +21,7 @@ struct _engine_index_list {
 		quid_t group;
 		__be32 element_len;
 		__be64 offset;
-		char element[64]; //TODO this could be any sz
+		__be64 element;
 	} items[INDEX_LIST_SIZE];
 	__be16 size;
 	__be64 link;
@@ -63,6 +63,41 @@ static void flush_index_list(base_t *base, struct _engine_index_list *list, unsi
 	zfree(list);
 }
 
+static char *get_element_name(base_t *base, size_t element_len, unsigned long long offset) {
+	int fd = pager_get_fd(base, &offset);
+
+	char *element = (char *)zcalloc(element_len + 1, sizeof(char));
+	if (!element) {
+		zfree(element);
+		error_throw_fatal("7b8a6ac440e2", "Failed to request memory");
+		return NULL;
+	}
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		zfree(element);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
+		return NULL;
+	}
+	if (read(fd, element, element_len) != (ssize_t)element_len) {
+		zfree(element);
+		error_throw_fatal("a7df40ba3075", "Failed to read disk");
+		return NULL;
+	}
+	return element;
+}
+
+static void flush_element_name(base_t *base, char *element, size_t element_len, unsigned long long offset) {
+	int fd = pager_get_fd(base, &offset);
+
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+	if (write(fd, element, element_len) != (ssize_t)element_len) {
+		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
+		return;
+	}
+}
+
 int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, unsigned long long offset) {
 	/* Does list exist */
 	if (base->offset.index_list != 0) {
@@ -70,9 +105,12 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		zassert(from_be16(list->size) <= INDEX_LIST_SIZE - 1);
 
 		size_t psz = strlen(element);
+		unsigned long long psz_offset = zpalloc(base, psz);
+		flush_element_name(base, element, psz, psz_offset);
+
 		memcpy(&list->items[from_be16(list->size)].index, index, sizeof(quid_t));
 		memcpy(&list->items[from_be16(list->size)].group, group, sizeof(quid_t));
-		memcpy(&list->items[from_be16(list->size)].element, element, psz);
+		list->items[from_be16(list->size)].element = to_be64(psz_offset);
 		list->items[from_be16(list->size)].element_len = to_be32(psz);
 		list->items[from_be16(list->size)].offset = to_be64(offset);
 		list->size = incr_be16(list->size);
@@ -107,12 +145,15 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		}
 
 		size_t psz = strlen(element);
-		new_list->size = to_be16(1);
+		unsigned long long psz_offset = zpalloc(base, psz);
+		flush_element_name(base, element, psz, psz_offset);
+
 		memcpy(&new_list->items[0].index, index, sizeof(quid_t));
 		memcpy(&new_list->items[0].group, group, sizeof(quid_t));
-		memcpy(&new_list->items[0].element, element, psz);
+		new_list->items[0].element = to_be64(psz_offset);
 		new_list->items[0].element_len = to_be32(psz);
 		new_list->items[0].offset = to_be64(offset);
+		new_list->size = to_be16(1);
 
 		unsigned long long new_list_offset = zpalloc(base, sizeof(struct _engine_index_list));
 		flush_index_list(base, new_list, new_list_offset);
@@ -155,11 +196,30 @@ quid_t *index_list_get_index(base_t *base, const quid_t *c_quid) {
 	return NULL;
 }
 
-marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
-	int alloc_children = 10;//TODO this might not be enough
+size_t index_list_size(base_t *base, const quid_t *c_quid) {
+	size_t count = 0;
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
 
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].element_len && !list->items[i].offset)
+				continue;
+
+			if (!quidcmp(c_quid, &list->items[i].group))
+				count++;
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	return count;
+}
+
+marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
-	marshall->child = (marshall_t **)tree_zcalloc(alloc_children, sizeof(marshall_t *), marshall);
+	marshall->child = (marshall_t **)tree_zcalloc(index_list_size(base, c_quid), sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_ARRAY;
 
 	unsigned long long offset = base->offset.index_list;
@@ -173,11 +233,13 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 
 			int cmp = quidcmp(c_quid, &list->items[i].group);
 			if (cmp == 0) {
+				char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
 				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 				marshall->child[marshall->size]->type = MTYPE_STRING;
-				marshall->child[marshall->size]->data = tree_zstrdup(list->items[i].element, marshall);
+				marshall->child[marshall->size]->data = tree_zstrdup(element, marshall);
 				marshall->child[marshall->size]->data_len = from_be32(list->items[i].element_len);
 				marshall->size++;
+				zfree(element);
 			}
 		}
 		offset = list->link ? from_be64(list->link) : 0;
@@ -282,13 +344,15 @@ marshall_t *index_list_all(base_t *base) {
 			marshall->child[marshall->size]->child[0]->data_len = 5;
 
 			/* Indexed element */
+			char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
 			marshall->child[marshall->size]->child[1] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child[1]->type = strisdigit(list->items[i].element) ? MTYPE_INT : MTYPE_STRING;
+			marshall->child[marshall->size]->child[1]->type = strisdigit(element) ? MTYPE_INT : MTYPE_STRING;
 			marshall->child[marshall->size]->child[1]->name = tree_zstrdup("element", marshall);
 			marshall->child[marshall->size]->child[1]->name_len = 7;
-			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(list->items[i].element, marshall);
-			marshall->child[marshall->size]->child[1]->data_len = strlen(list->items[i].element);
+			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(element, marshall);
+			marshall->child[marshall->size]->child[1]->data_len = from_be32(list->items[i].element_len);
 			marshall->size++;
+			zfree(element);
 		}
 		offset = list->link ? from_be64(list->link) : 0;
 		zfree(list);
@@ -325,19 +389,25 @@ void index_list_rebuild(base_t *base, base_t *new_base) {
 
 			index_result_t nrs;
 			nullify(&nrs, sizeof(index_result_t));
+			char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
 
 			schema_t group = slay_get_schema(index_data);
-			if (group == SCHEMA_TABLE)
-				index_btree_create_table(new_base, list->items[i].element, index_obj, &nrs);
-			else if (group == SCHEMA_SET)
-				index_btree_create_set(new_base, list->items[i].element, index_obj, &nrs);
-			else
-				continue;
+			switch (group) {
+				case SCHEMA_TABLE:
+					index_btree_create_table(new_base, element, index_obj, &nrs);
+					break;
+				case SCHEMA_SET:
+					index_btree_create_set(new_base, element, index_obj, &nrs);
+					break;
+				default:
+					continue;
+			}
 
 			marshall_free(index_obj);
 			zfree(index_data);
 
-			index_list_add(new_base, &list->items[i].index, &list->items[i].group, list->items[i].element, nrs.offset);
+			index_list_add(new_base, &list->items[i].index, &list->items[i].group, element, nrs.offset);
+			zfree(element);
 		}
 		offset = list->link ? from_be64(list->link) : 0;
 		zfree(list);

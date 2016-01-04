@@ -645,12 +645,16 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 				}
 
 				/* Determine index based on dataschema */
-				if (nrs.schema == SCHEMA_TABLE)
-					index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
-				else if (nrs.schema == SCHEMA_SET)
-					index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
-				else
-					error_throw("ece28bc980db", "Invalid schema");
+				switch (nrs.schema) {
+					case SCHEMA_TABLE:
+						index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
+						break;
+					case SCHEMA_SET:
+						index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
+						break;
+					default:
+						error_throw("ece28bc980db", "Invalid schema");
+				}
 
 				/* Add index to database */
 				nullify(&_meta, sizeof(struct metadata));
@@ -1346,20 +1350,29 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 		return -1;
 	}
 
+	if (marshall_count(dataobj) < 2) {
+		error_throw("3d2a88a4502b", "Too few items for index");
+		return 0;
+	}
+
 	/* Determine index based on dataschema */
 	schema_t group = slay_get_schema(data);
-	if (group == SCHEMA_TABLE)
-		index_btree_create_table(&control, idxkey, dataobj, &nrs);
-	else if (group == SCHEMA_SET)
-		index_btree_create_set(&control, idxkey, dataobj, &nrs);
-	else
-		error_throw("ece28bc980db", "Invalid schema");
+	switch (group) {
+		case SCHEMA_TABLE:
+			index_btree_create_table(&control, idxkey, dataobj, &nrs);
+			break;
+		case SCHEMA_SET:
+			index_btree_create_set(&control, idxkey, dataobj, &nrs);
+			break;
+		default:
+			error_throw("ece28bc980db", "Invalid schema");
+	}
 
 	marshall_free(dataobj);
 	zfree(data);
 
 	*items = nrs.index_elements;
-	if (*items < 2) { // TODO does the index know this as well?
+	if (*items < 2) {
 		error_throw("3d2a88a4502b", "Too few items for index");
 		return 0;
 	}
