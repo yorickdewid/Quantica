@@ -951,6 +951,7 @@ static void engine_copy(base_t *base, base_t *new_base, unsigned long long table
 			insert_toplevel(new_base, &new_base->engine->top, &table->items[i].quid, &table->items[i].meta, data, len);
 			new_base->stats.zero_size++;
 			flush_super(new_base);
+			error_clear();
 		}
 
 		zfree(data);

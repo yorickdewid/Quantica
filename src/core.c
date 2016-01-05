@@ -635,50 +635,52 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		if (copy_meta) {
 			marshall_t *index_element = index_list_get_element(&control, &key);
-			for (unsigned int i = 0; i < index_element->size; ++i) {
-				index_result_t inrs;
-				struct metadata _meta;
-				nullify(&inrs, sizeof(index_result_t));
-				char index_quid[QUID_LENGTH + 1];
+			if (index_element) {
+				for (unsigned int i = 0; i < index_element->size; ++i) {
+					index_result_t inrs;
+					struct metadata _meta;
+					nullify(&inrs, sizeof(index_result_t));
+					char index_quid[QUID_LENGTH + 1];
 
-				/* Create index key */
-				quid_create(&inrs.index);
-				quidtostr(index_quid, &inrs.index);
+					/* Create index key */
+					quid_create(&inrs.index);
+					quidtostr(index_quid, &inrs.index);
 
-				marshall_t *_descentobj = slay_get(&control, descentdata, NULL, FALSE);
-				if (!_descentobj) {
-					continue;
+					marshall_t *_descentobj = slay_get(&control, descentdata, NULL, FALSE);
+					if (!_descentobj) {
+						continue;
+					}
+
+					/* Determine index based on dataschema */
+					switch (nrs.schema) {
+						case SCHEMA_TABLE:
+							index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
+							break;
+						case SCHEMA_SET:
+							index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
+							break;
+						default:
+							error_throw("ece28bc980db", "Invalid schema");
+					}
+
+					/* Add index to database */
+					nullify(&_meta, sizeof(struct metadata));
+					_meta.nodata = 1;
+					_meta.type = MD_TYPE_INDEX;
+					_meta.alias = 1;
+					engine_insert_meta(&control, &inrs.index, &_meta);
+
+					/* Add index to alias list */
+					alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
+
+					/* Add index to index list */
+					index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, inrs.offset);
+
+					marshall_free(_descentobj);
 				}
-
-				/* Determine index based on dataschema */
-				switch (nrs.schema) {
-					case SCHEMA_TABLE:
-						index_btree_create_table(&control, index_element->child[i]->data, _descentobj, &inrs);
-						break;
-					case SCHEMA_SET:
-						index_btree_create_set(&control, index_element->child[i]->data, _descentobj, &inrs);
-						break;
-					default:
-						error_throw("ece28bc980db", "Invalid schema");
-				}
-
-				/* Add index to database */
-				nullify(&_meta, sizeof(struct metadata));
-				_meta.nodata = 1;
-				_meta.type = MD_TYPE_INDEX;
-				_meta.alias = 1;
-				engine_insert_meta(&control, &inrs.index, &_meta);
-
-				/* Add index to alias list */
-				alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
-
-				/* Add index to index list */
-				index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, inrs.offset);
-
-				marshall_free(_descentobj);
+				error_clear();
+				marshall_free(index_element);
 			}
-			error_clear();
-			marshall_free(index_element);
 		}
 
 		alias_add(&control, &nkey, nquid, QUID_LENGTH);

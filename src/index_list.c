@@ -9,6 +9,7 @@
 #include "zmalloc.h"
 #include "quid.h"
 #include "slay_marshall.h"
+#include "alias.h"
 #include "index.h"
 #include "pager.h"
 #include "index_list.h"
@@ -217,9 +218,14 @@ size_t index_list_size(base_t *base, const quid_t *c_quid) {
 	return count;
 }
 
+/* Return all indexed elements on group */
 marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
+	size_t index_elements = index_list_size(base, c_quid);
+	if (!index_elements)
+		return NULL;
+
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
-	marshall->child = (marshall_t **)tree_zcalloc(index_list_size(base, c_quid), sizeof(marshall_t *), marshall);
+	marshall->child = (marshall_t **)tree_zcalloc(index_elements, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_ARRAY;
 
 	unsigned long long offset = base->offset.index_list;
@@ -231,8 +237,7 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 			if (!list->items[i].element_len && !list->items[i].offset)
 				continue;
 
-			int cmp = quidcmp(c_quid, &list->items[i].group);
-			if (cmp == 0) {
+			if (!quidcmp(c_quid, &list->items[i].group)) {
 				char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
 				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
 				marshall->child[marshall->size]->type = MTYPE_STRING;
@@ -336,12 +341,15 @@ marshall_t *index_list_all(base_t *base) {
 			marshall->child[marshall->size]->size = 2;
 
 			/* Indexed group */
+			char *group_name = alias_get_val(base, &list->items[i].group);
 			marshall->child[marshall->size]->child[0] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child[0]->type = MTYPE_QUID;
+			marshall->child[marshall->size]->child[0]->type = group_name ? MTYPE_STRING : MTYPE_QUID;
 			marshall->child[marshall->size]->child[0]->name = tree_zstrdup("group", marshall);
 			marshall->child[marshall->size]->child[0]->name_len = QUID_LENGTH;
-			marshall->child[marshall->size]->child[0]->data = tree_zstrdup(group_squid, marshall);
-			marshall->child[marshall->size]->child[0]->data_len = 5;
+			marshall->child[marshall->size]->child[0]->data = tree_zstrdup(group_name ? group_name : group_squid, marshall);
+			marshall->child[marshall->size]->child[0]->data_len = group_name ? strlen(group_name) : 5;
+			if (group_name)
+				zfree(group_name);
 
 			/* Indexed element */
 			char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
