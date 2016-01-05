@@ -5,9 +5,8 @@
 #define INSTANCE_PREFIX	"QUANTZ"
 #define VERSION_MAJOR	0
 #define VERSION_MINOR	9
-#define VERSION_PATCH	0
+#define VERSION_PATCH	1
 #define LOGFILE			"quantica.log"
-#define BINDATA			"QUBIN_DATA"
 
 #define CACHE_SLOTS	23
 #define DBCACHE_SLOTS	25

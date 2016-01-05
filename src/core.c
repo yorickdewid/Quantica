@@ -540,6 +540,12 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 			break;
 	}
 
+	/* Return if record was not found */
+	if (iserror()) {
+		marshall_free(dataobj);
+		return -1;
+	}
+
 	/* Save old version as record history */
 	history_add(&control, &key, offset);
 

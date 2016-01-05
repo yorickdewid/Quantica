@@ -1115,6 +1115,7 @@ void handle_request(int sd, fd_set * set) {
 		goto disconnect;
 	}
 
+	unsigned int keepalive = 0;
 	char *filename = NULL;
 	char *_filename = NULL;
 	char *querystring = NULL;
@@ -1130,7 +1131,7 @@ void handle_request(int sd, fd_set * set) {
 
 	unsigned int i;
 	for (i = 0; i < queue->size; ++i) {
-		char *str = (char*)(vector_at(queue, i));
+		char *str = (char *)(vector_at(queue, i));
 
 		char *colon = strchr(str, ':');
 		if (!colon) {
@@ -1342,7 +1343,6 @@ void handle_request(int sd, fd_set * set) {
 	}
 	lprint(logreqline);
 
-	unsigned int keepalive = 0;
 	if (c_connection) {
 		if (!strcmp(c_connection, "close")) {
 			vector_append_str(headers, "Connection: close\r\n");
@@ -1356,17 +1356,13 @@ void handle_request(int sd, fd_set * set) {
 unsupported:
 		raw_response(socket_stream, headers, "405 Method Not Allowed");
 		fflush(socket_stream);
-		vector_free(queue);
-		vector_free(headers);
-		goto disconnect;
+		goto done;
 	}
 
 	if (!filename || strstr(filename, "'") || strstr(filename, " ") || (querystring && strstr(querystring, " "))) {
 		raw_response(socket_stream, headers, "400 Bad Request");
 		fflush(socket_stream);
-		vector_free(queue);
-		vector_free(headers);
-		goto disconnect;
+		goto done;
 	}
 
 	size_t _filename_sz = strlen(filename) + 2;
