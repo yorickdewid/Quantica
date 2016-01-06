@@ -758,18 +758,28 @@ http_status_t api_db_item_remove(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
-http_status_t api_index_create(char **response, http_request_t *req) {
+http_status_t api_index_group(char **response, http_request_t *req) {
 	char squid[QUID_LENGTH + 1];
 	int items = 0;
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *element = get_param(req, "element");
-	if (quid && element) {
-		db_index_create(quid, squid, &items, element);
+	if (quid) {
+		if (element) {
+			db_index_create(quid, squid, &items, element);
+			if (iserror()) {
+				return response_internal_error(response);
+			}
+			snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+			return HTTP_OK;
+		}
+		char *indexes = db_index_on_group(quid);
 		if (iserror()) {
+			zfree(indexes);
 			return response_internal_error(response);
 		}
-		snprintf(*response, RESPONSE_SIZE, "{\"quid\":\"%s\",\"items\":%d,\"description\":\"Index created\",\"status\":\"SUCCEEDED\",\"success\":true}", squid, items);
+		snprintf(*response, RESPONSE_SIZE, "{\"name\":%s,\"description\":\"Listening indexes on group\",\"status\":\"SUCCEEDED\",\"success\":true}", indexes);
+		zfree(indexes);
 		return HTTP_OK;
 	}
 	return response_empty_error(response);
@@ -1013,7 +1023,7 @@ static const struct webroute route[] = {
 	{"/history",		api_db_get_history,	TRUE,	"Show record history"},
 	{"/history/*",		api_db_get_version,	TRUE,	"Show record history"},
 
-	/* Items operations						*/
+	/* Items operations							*/
 	{"/attach",			api_db_item_add,	TRUE,	"Bind item to group"},
 	{"/detach",			api_db_item_remove,	TRUE,	"Remove item from group"},
 
@@ -1023,7 +1033,7 @@ static const struct webroute route[] = {
 	{"/alias",			api_alias_name,		TRUE,	"Show or set alias name by key"},
 
 	/* Database index operations				*/
-	{"/index",			api_index_create,	TRUE,	"Create index on data element"},
+	{"/index",			api_index_group,	TRUE,	"Show or set index on element"},
 	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
 
 	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},

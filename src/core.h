@@ -85,6 +85,7 @@ int db_record_get_meta(char *quid, bool force, struct record_status *status);
 int db_record_set_meta(char *quid, struct record_status *status);
 
 char *db_alias_get_name(char *quid);
+char *db_index_on_group(char *quid);
 int db_alias_update(char *quid, const char *name);
 char *db_alias_all();
 char *db_index_all();

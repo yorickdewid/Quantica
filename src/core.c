@@ -1196,6 +1196,23 @@ int db_record_set_meta(char *quid, struct record_status *status) {
 	return 0;
 }
 
+char *db_index_on_group(char *quid) {
+	quid_t key;
+	strtoquid(quid, &key);
+
+	if (!ready)
+		return NULL;
+
+	marshall_t *dataobj = index_list_on_group(&control, &key);
+	if (!dataobj) {
+		return NULL;
+	}
+
+	char *buf = marshall_serialize(dataobj);
+	marshall_free(dataobj);
+	return buf;
+}
+
 char *db_alias_get_name(char *quid) {
 	quid_t key;
 	strtoquid(quid, &key);
