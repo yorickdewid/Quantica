@@ -338,9 +338,10 @@ http_status_t api_hmac_sha256(char **response, http_request_t *req) {
 	mac[SHA256_BLOCK_SIZE] = '\0';
 
 	char *data = get_param(req, "data");
-	char *key = get_param(req, "data");
+	char *key = get_param(req, "key");
 	if (data && key) {
 		crypto_hmac_sha256(mac, key, data);
+		nullify(key, strlen(key));
 		if (iserror()) {
 			return response_internal_error(response);
 		}
@@ -355,9 +356,10 @@ http_status_t api_hmac_sha512(char **response, http_request_t *req) {
 	mac[SHA512_BLOCK_SIZE] = '\0';
 
 	char *data = get_param(req, "data");
-	char *key = get_param(req, "data");
+	char *key = get_param(req, "key");
 	if (data && key) {
 		crypto_hmac_sha512(mac, key, data);
+		nullify(key, strlen(key));
 		if (iserror()) {
 			return response_internal_error(response);
 		}

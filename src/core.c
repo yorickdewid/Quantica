@@ -977,8 +977,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 
 	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
-		case MD_TYPE_RECORD:
-		case MD_TYPE_GROUP: {
+		case MD_TYPE_RECORD: {
 			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
@@ -989,6 +988,44 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 			if (!dataobj) {
 				zfree(data);
 				marshall_free(mergeobj);
+				return -1;
+			}
+
+			newobject = marshall_merge(mergeobj, dataobj);
+			zfree(data);
+			break;
+		}
+		case MD_TYPE_GROUP: {
+			quid_t newkey;
+			quid_create(&newkey);
+			char squid[QUID_LENGTH + 1];
+			quidtostr(squid, &newkey);
+
+			/* Insert new item as separate record */
+			void *newslay = slay_put(&control, mergeobj, &len, &nrs);
+			if (engine_insert_data(&control, &newkey, newslay, len) < 0) {
+				zfree(newslay);
+				marshall_free(mergeobj);
+				return -1;
+			}
+			zfree(newslay);
+			marshall_free(mergeobj);
+
+			void *data = get_data_block(&control, offset, &_len);
+			if (!data) {
+				return -1;
+			}
+
+			marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
+			if (!dataobj) {
+				zfree(data);
+				return -1;
+			}
+
+			mergeobj = marshall_convert(squid, QUID_LENGTH);
+			if (!mergeobj) {
+				zfree(data);
+				marshall_free(dataobj);
 				return -1;
 			}
 
@@ -1015,32 +1052,6 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		marshall_free(mergeobj);
 		marshall_free(newobject);
 		return -1;
-	}
-
-	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&control, offset, &_len);
-		if (!descentdata) {
-			marshall_free(mergeobj);
-			marshall_free(newobject);
-			return -1;
-		}
-
-		marshall_t *descentobj = slay_get(&control, descentdata, NULL, FALSE);
-		if (!descentobj) {
-			zfree(descentdata);
-			marshall_free(mergeobj);
-			marshall_free(newobject);
-			return -1;
-		}
-
-		for (unsigned int i = 0; i < descentobj->size; ++i) {
-			quid_t _key;
-			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&control, &_key);
-			error_clear();
-		}
-		marshall_free(descentobj);
-		zfree(descentdata);
 	}
 
 	zfree(dataslay);
