@@ -307,20 +307,28 @@ char *key_decode(char *quid) {
 	return buf;
 }
 
-int db_put(char *quid, int *items, const void *data, size_t data_len) {
+int db_put(char *quid, int *items, const void *data, size_t data_len, char *hint) {
 	quid_t key;
 	size_t len = 0;
 	quid_create(&key);
 	slay_result_t nrs;
+	marshall_t *dataobj = NULL;
 
 	if (!ready)
 		return -1;
 
-	marshall_t *dataobj = marshall_convert((char *)data, data_len);
+	if (hint) {
+		dataobj = marshall_convert_suggest((char *)data, hint);
+		if (dataobj)
+			goto db_store;
+	}
+
+	dataobj = marshall_convert((char *)data, data_len);
 	if (!dataobj) {
 		return -1;
 	}
 
+db_store:;
 	void *dataslay = slay_put(&control, dataobj, &len, &nrs);
 	*items = nrs.items;
 	if (engine_insert_data(&control, &key, dataslay, len) < 0) {

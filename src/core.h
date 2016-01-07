@@ -66,7 +66,7 @@ int zvacuum(int page_size);
  * Database operations
  */
 char *key_decode(char *quid);
-int db_put(char *quid, int *items, const void *data, size_t len);
+int db_put(char *quid, int *items, const void *data, size_t len, char *hint);
 void *db_get(char *quid, size_t *len, bool descent, bool force);
 char *db_get_type(char *quid);
 char *db_get_schema(char *quid);

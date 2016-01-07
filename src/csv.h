@@ -1,6 +1,10 @@
-#ifndef CSV_MARSHALL_H_INCLUDED
-#define CSV_MARSHALL_H_INCLUDED
+#ifndef CSV_H_INCLUDED
+#define CSV_H_INCLUDED
 
-bool csv_valid(char *str);
+#include "vector.h"
 
-#endif // CSV_MARSHALL_H_INCLUDED
+const char *csv_getfield(char *line, vector_t *vector);
+size_t csv_getfieldcount(const char *line);
+bool csv_valid(const char *str);
+
+#endif // CSV_H_INCLUDED

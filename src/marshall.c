@@ -4,9 +4,12 @@
 
 #include <error.h>
 #include "quid.h"
+#include "csv.h"
 #include "json_check.h"
 #include "vector.h"
 #include "zmalloc.h"
+#include "dict_marshall.h"
+#include "csv_marshall.h"
 #include "marshall.h"
 
 #define VECTOR_SIZE	1024
@@ -95,6 +98,42 @@ marshall_type_t autoscalar(const char *data, size_t len) {
 	if (!strcmp(data, "null") || !strcmp(data, "NULL"))
 		return MTYPE_NULL;
 	return MTYPE_STRING;
+}
+
+marshall_t *marshall_convert_suggest(char *data, char *hint) {
+	marshall_t *marshall = NULL;
+
+	if (!strcmp(hint, "csv")) {
+		if (csv_valid(data))
+			marshall = marshall_csv_decode(data);
+	}
+
+	return marshall;
+}
+
+/*
+ * Convert string to object
+ */
+marshall_t *marshall_convert(char *data, size_t data_len) {
+	marshall_t *marshall = NULL;
+	marshall_type_t type = autoscalar(data, data_len);
+
+	/* Create marshall object based on scalar */
+	if (marshall_type_hasdata(type)) {
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+		marshall->data = tree_zstrndup(data, data_len, marshall);
+		marshall->data_len = data_len;
+		marshall->type = type;
+		marshall->size = 1;
+	} else if (marshall_type_hasdescent(type)) {
+		marshall = marshall_dict_decode(data, data_len, NULL, 0, NULL);
+	} else {
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+		marshall->type = type;
+		marshall->size = 1;
+	}
+
+	return marshall;
 }
 
 /*

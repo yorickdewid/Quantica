@@ -505,9 +505,10 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 	char squid[QUID_LENGTH + 1];
 	int items = 0;
 
+	char *hint = get_param(req, "hint");
 	char *data = get_param(req, "data");
 	if (data) {
-		db_put(squid, &items, data, strlen(data));
+		db_put(squid, &items, data, strlen(data), hint);
 		if (iserror()) {
 			return response_internal_error(response);
 		}
