@@ -26,8 +26,10 @@ marshall_t *marshall_csv_decode(char *data) {
 		for (unsigned int i = 0; i < field_array->size; ++i) {
 			char *field = (char *)vector_at(field_array, i);
 
+			// TODO Handle descending types
+
 			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size]->type = MTYPE_STRING;
+			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size]->type = autoscalar(field, strlen(field));
 			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size]->data = tree_zstrdup(field, marshall);
 			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size]->data_len = strlen(field);
 			marshall->child[marshall->size]->child[marshall->child[marshall->size]->size]->size = 1;
