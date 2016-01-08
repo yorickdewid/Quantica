@@ -112,6 +112,31 @@ marshall_t *marshall_convert_suggest(char *data, char *hint) {
 }
 
 /*
+ * Convert string to object and append to parent
+ */
+marshall_t *marshall_convert_parent(char *data, size_t data_len, void *parent) {
+	marshall_t *marshall = NULL;
+	marshall_type_t type = autoscalar(data, data_len);
+
+	/* Create marshall object based on scalar */
+	if (marshall_type_hasdata(type)) {
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+		marshall->data = tree_zstrndup(data, data_len, marshall);
+		marshall->data_len = data_len;
+		marshall->type = type;
+		marshall->size = 1;
+	} else if (marshall_type_hasdescent(type)) {
+		marshall = marshall_dict_decode(data, data_len, NULL, 0, parent);
+	} else {
+		marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
+		marshall->type = type;
+		marshall->size = 1;
+	}
+
+	return marshall;
+}
+
+/*
  * Convert string to object
  */
 marshall_t *marshall_convert(char *data, size_t data_len) {

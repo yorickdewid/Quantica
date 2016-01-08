@@ -9,14 +9,18 @@ const char *csv_getfield(char *line, vector_t *vector) {
 	char *oline = line;
 
 	int count = 0;
-	for (; *line; line++) {
-		if (*line == ';') {
+	for (; *line; ++line) {
+		if (*line == CSV_DEFAULT_DELIMITER) {
 			*line = '\0';
 			vector_append(vector, (void *)oline);
+
 			oline = line + 1;
 			count++;
 		}
 	}
+
+	if (vector->size > 0)
+		vector_append(vector, (void *)oline);
 
 	return NULL;
 }
@@ -24,7 +28,7 @@ const char *csv_getfield(char *line, vector_t *vector) {
 size_t csv_getfieldcount(const char *line) {
 	size_t count = 0;
 	for (; *line; line++) {
-		if (*line == ';')
+		if (*line == CSV_DEFAULT_DELIMITER)
 			count++;
 	}
 
