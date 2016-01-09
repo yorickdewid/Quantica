@@ -996,40 +996,105 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 			break;
 		}
 		case MD_TYPE_GROUP: {
-			quid_t newkey;
-			quid_create(&newkey);
-			char squid[QUID_LENGTH + 1];
-			quidtostr(squid, &newkey);
-
-			/* Insert new item as separate record */
-			void *newslay = slay_put(&control, mergeobj, &len, &nrs);
-			if (engine_insert_data(&control, &newkey, newslay, len) < 0) {
-				zfree(newslay);
-				marshall_free(mergeobj);
-				return -1;
-			}
-			zfree(newslay);
-			marshall_free(mergeobj);
-
 			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				return -1;
 			}
 
+			schema_t schema = slay_get_schema(data);
 			marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
 			if (!dataobj) {
 				zfree(data);
 				return -1;
 			}
 
-			mergeobj = marshall_convert(squid, QUID_LENGTH);
-			if (!mergeobj) {
-				zfree(data);
-				marshall_free(dataobj);
-				return -1;
-			}
+			quid_t newkey;
+			quid_create(&newkey);
+			char squid[QUID_LENGTH + 1];
+			quidtostr(squid, &newkey);
+			if (schema == SCHEMA_TABLE) {
 
-			newobject = marshall_merge(mergeobj, dataobj);
+				/* Insert new item as separate record */
+				void *newslay = slay_put(&control, mergeobj, &len, &nrs);
+				if (engine_insert_data(&control, &newkey, newslay, len) < 0) {
+					zfree(newslay);
+					marshall_free(mergeobj);
+					return -1;
+				}
+				zfree(newslay);
+				marshall_free(mergeobj);
+
+				/* Append key to group */
+				mergeobj = marshall_convert(squid, QUID_LENGTH);
+				if (!mergeobj) {
+					zfree(data);
+					marshall_free(dataobj);
+					return -1;
+				}
+				newobject = marshall_merge(mergeobj, dataobj);
+			} else {
+
+				/* Add record as set item */
+				if (marshall_type_hasdescent(mergeobj->type)) {
+					if (mergeobj->child[0]) {
+						if (mergeobj->child[0]->name_len) {
+
+							/* Insert new item as separate record */
+							void *newslay = slay_put(&control, mergeobj->child[0], &len, &nrs);
+							if (engine_insert_data(&control, &newkey, newslay, len) < 0) {
+								zfree(newslay);
+								marshall_free(mergeobj);
+								return -1;
+							}
+							zfree(newslay);
+
+							marshall_t *old_mergeobj = mergeobj;
+
+							mergeobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+							mergeobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), mergeobj);
+							mergeobj->type = MTYPE_OBJECT;
+							mergeobj->size = 1;
+
+							mergeobj->child[0] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), mergeobj);
+							mergeobj->child[0]->type = MTYPE_QUID;
+							mergeobj->child[0]->name = tree_zstrndup(old_mergeobj->child[0]->name, old_mergeobj->child[0]->name_len, mergeobj);
+							mergeobj->child[0]->name_len = old_mergeobj->child[0]->name_len;
+							mergeobj->child[0]->data = tree_zstrndup(squid, QUID_LENGTH, mergeobj);
+							mergeobj->child[0]->data_len = QUID_LENGTH;
+							marshall_free(old_mergeobj);
+
+							newobject = marshall_merge(mergeobj, dataobj);
+						}
+					}
+				}
+
+				/* No set, insert as is and take key as name */
+				if (!newobject) {
+
+					/* Insert new item as separate record */
+					void *newslay = slay_put(&control, mergeobj, &len, &nrs);
+					if (engine_insert_data(&control, &newkey, newslay, len) < 0) {
+						zfree(newslay);
+						marshall_free(mergeobj);
+						return -1;
+					}
+					zfree(newslay);
+					marshall_free(mergeobj);
+
+					mergeobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+					mergeobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), mergeobj);
+					mergeobj->type = MTYPE_OBJECT;
+					mergeobj->size = 1;
+
+					mergeobj->child[0] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), mergeobj);
+					mergeobj->child[0]->type = MTYPE_QUID;
+					mergeobj->child[0]->name = tree_zstrndup(squid, QUID_LENGTH, mergeobj);
+					mergeobj->child[0]->name_len = QUID_LENGTH;
+					mergeobj->child[0]->data = tree_zstrndup(squid, QUID_LENGTH, mergeobj);
+					mergeobj->child[0]->data_len = QUID_LENGTH;
+					newobject = marshall_merge(mergeobj, dataobj);
+				}
+			}
 			zfree(data);
 			break;
 		}
