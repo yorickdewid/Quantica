@@ -260,6 +260,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 				marshall->child[marshall->size]->type = val_dt;
 				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 				marshall->child[marshall->size]->data_len = val_len;
+				marshall->child[marshall->size]->size = 1;
 				marshall->size++;
 				if (val_data)
 					zfree(val_data);
@@ -286,7 +287,6 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 					if (!marshall->child[marshall->size]) {
 						marshall->child[marshall->size] = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), marshall);
 						marshall->child[marshall->size]->type = MTYPE_NULL;
-						marshall->child[marshall->size]->size = 1;
 					}
 					marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
 					marshall->child[marshall->size]->name_len = namelen;
@@ -333,6 +333,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 					marshall->child[marshall->size]->type = val_dt;
 					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 					marshall->child[marshall->size]->data_len = val_len;
+					marshall->child[marshall->size]->size = 1;
 				}
 
 				marshall->size++;
@@ -363,12 +364,14 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 					marshall->child[marshall->size]->type = val_dt;
 					marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 					marshall->child[marshall->size]->data_len = val_len;
+					marshall->child[marshall->size]->size = 1;
 				}
 
 				if (name) {
 					marshall->child[marshall->size]->name = tree_zstrndup(name, namelen, marshall);
 					marshall->child[marshall->size]->name_len = namelen;
 					marshall->size++;
+
 					zfree(name);
 					zfree(val_data);
 				}

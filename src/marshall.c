@@ -215,6 +215,8 @@ int marshall_count(marshall_t *obj) {
 
 static void shift_left(marshall_t *marshall, int offset) {
 	for (unsigned int i = offset; i < marshall->size - 1; ++i) {
+		marshall->child[i]->name = marshall->child[i + 1]->name;
+		marshall->child[i]->name_len = marshall->child[i + 1]->name_len;
 		marshall->child[i]->data = marshall->child[i + 1]->data;
 		marshall->child[i]->data_len = marshall->child[i + 1]->data_len;
 		marshall->child[i]->type = marshall->child[i + 1]->type;
@@ -566,29 +568,52 @@ bool marshall_equal(marshall_t *object_1, marshall_t *object_2) {
 
 marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool * changed) {
 	if (marshall->type == MTYPE_OBJECT) {
-		if (filterobject->type == MTYPE_OBJECT) {
-			if (marshall_equal(marshall, filterobject)) {
-				marshall->data = NULL;
-				marshall->data_len = 0;
-				marshall->type = MTYPE_NULL;
-				marshall->size = 0;
-				*changed = TRUE;
-			}
-		} else if (filterobject->type == MTYPE_ARRAY) {
-			for (unsigned int j = 0; j < filterobject->size; ++j) {
-				if (marshall_equal(marshall, filterobject->child[j])) {
-					marshall->data = NULL;
-					marshall->data_len = 0;
-					marshall->type = MTYPE_NULL;
-					marshall->size = 0;
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			if (filterobject->type == MTYPE_OBJECT) {
+				if (marshall_equal(marshall->child[i], filterobject)) {
+					marshall->child[i]->data = NULL;
+					marshall->child[i]->data_len = 0;
+					marshall->child[i]->type = MTYPE_NULL;
+					marshall->child[i]->size = 0;
+
+					shift_left(marshall, i);
+
+					marshall->size--;
 					*changed = TRUE;
+				}
+			} else if (filterobject->type == MTYPE_ARRAY) {
+arr_again_1:
+				for (unsigned int j = 0; j < filterobject->size; ++j) {
+					if (marshall_equal(marshall->child[i], filterobject->child[j])) {
+						marshall->child[i]->data = NULL;
+						marshall->child[i]->data_len = 0;
+						marshall->child[i]->type = MTYPE_NULL;
+						marshall->child[i]->size = 0;
+
+						shift_left(marshall, i);
+
+						marshall->size--;
+						*changed = TRUE;
+						goto arr_again_1;
+					}
+				}
+			} else {
+				if (marshall_equal(marshall->child[i], filterobject)) {
+					marshall->child[i]->data = NULL;
+					marshall->child[i]->data_len = 0;
+					marshall->child[i]->type = MTYPE_NULL;
+					marshall->child[i]->size = 0;
+
+					shift_left(marshall, i);
+					*changed = TRUE;
+					marshall->size--;
 				}
 			}
 		}
 	} else if (marshall->type == MTYPE_ARRAY) {
 		for (unsigned int i = 0; i < marshall->size; ++i) {
 			if (filterobject->type == MTYPE_ARRAY) {
-arr_again:
+arr_again_2:
 				for (unsigned int j = 0; j < filterobject->size; ++j) {
 					if (marshall_equal(marshall->child[i], filterobject->child[j])) {
 						marshall->child[i]->data = NULL;
@@ -599,7 +624,7 @@ arr_again:
 
 						marshall->size--;
 						*changed = TRUE;
-						goto arr_again;
+						goto arr_again_2;
 					}
 				}
 			} else {

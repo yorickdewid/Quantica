@@ -380,6 +380,7 @@ void *db_get(char *quid, size_t *len, bool descent, bool force) {
 				return NULL;
 
 			dataobj = slay_get(&control, data, NULL, descent);
+			marshall_dump(dataobj, 0);
 			if (!dataobj) {
 				zfree(data);
 				return NULL;
@@ -1198,6 +1199,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				return -1;
 			}
 
+			schema_t schema = slay_get_schema(data);
 			marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
 			if (!dataobj) {
 				zfree(data);
@@ -1205,6 +1207,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				return -1;
 			}
 			zfree(data);
+
 
 			for (unsigned int i = 0; i < dataobj->size; ++i) {
 				quid_t row_key;
@@ -1225,38 +1228,99 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 					continue;
 				}
 
-				if (marshall_equal(mergeobj, row_dataobj)) {
-					engine_delete(&control, &row_key);
+				if (schema == SCHEMA_TABLE) {
+					if (marshall_equal(mergeobj, row_dataobj)) {
+						engine_delete(&control, &row_key);
 
-					if (row_meta.alias)
-						alias_delete(&control, &row_key);
+						if (row_meta.alias)
+							alias_delete(&control, &row_key);
 
-					marshall_t *rmobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
-					rmobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), rmobj);
-					rmobj->type = MTYPE_QUID;
-					rmobj->data = dataobj->child[i]->data;
-					rmobj->data_len = dataobj->child[i]->data_len;
+						marshall_t *rmobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+						rmobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), rmobj);
+						rmobj->type = MTYPE_QUID;
+						rmobj->data = dataobj->child[i]->data;
+						rmobj->data_len = QUID_LENGTH;
 
-					bool alteration = FALSE;
-					marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
+						bool alteration = FALSE;
+						marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
 
-					/* If anything changed write back the new list */
-					if (alteration) {
-						void *dataslay = slay_put(&control, filterobject, &len, &nrs);
-						*items = nrs.items;
-						if (engine_update_data(&control, &key, dataslay, len) < 0) {
-							marshall_free(rmobj);
-							marshall_free(row_dataobj);
-							zfree(row_data);
-							continue;
+						/* If anything changed write back the new list */
+						if (alteration) {
+							void *dataslay = slay_put(&control, filterobject, &len, &nrs);
+							*items = nrs.items;
+							if (engine_update_data(&control, &key, dataslay, len) < 0) {
+								marshall_free(rmobj);
+								marshall_free(row_dataobj);
+								zfree(row_data);
+								continue;
+							}
+							zfree(dataslay);
 						}
-						zfree(dataslay);
+						marshall_free(rmobj);
+						marshall_free(row_dataobj);
+						zfree(row_data);
+						break;
 					}
-					marshall_free(rmobj);
-					marshall_free(row_dataobj);
-					zfree(row_data);
-					break;
+				} else {
+					/* Remove record as set item */
+					if (marshall_type_hasdescent(mergeobj->type)) {
+						if (mergeobj->child[0]) {
+							if (mergeobj->child[0]->name_len) {
+								if (!strcmp(mergeobj->child[0]->name, dataobj->child[i]->name)) {
+
+									/* Remove name to match */
+									mergeobj->child[0]->name = NULL;
+									mergeobj->child[0]->name_len = 0;
+									marshall_dump(mergeobj->child[0], 0);
+									marshall_dump(row_dataobj, 0);
+									if (marshall_equal(mergeobj->child[0], row_dataobj)) {
+										engine_delete(&control, &row_key);
+
+										if (row_meta.alias)
+											alias_delete(&control, &row_key);
+
+										marshall_t *rmobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+										rmobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), rmobj);
+										rmobj->type = MTYPE_QUID;
+										rmobj->name = dataobj->child[i]->name;
+										rmobj->name_len = dataobj->child[i]->name_len;
+										rmobj->data = dataobj->child[i]->data;
+										rmobj->data_len = QUID_LENGTH;
+										rmobj->size = 1;
+										marshall_dump(rmobj, 0);
+
+										bool alteration = FALSE;
+										marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
+										marshall_dump(filterobject, 0);
+
+										/* If anything changed write back the new list */
+										if (alteration) {
+											if (!filterobject->size) {
+												filterobject->type = MTYPE_NULL;
+												filterobject->size = 1;
+											}
+
+											void *dataslay = slay_put(&control, filterobject, &len, &nrs);
+											*items = nrs.items;
+											if (engine_update_data(&control, &key, dataslay, len) < 0) {
+												marshall_free(rmobj);
+												marshall_free(row_dataobj);
+												zfree(row_data);
+												continue;
+											}
+											zfree(dataslay);
+										}
+										marshall_free(rmobj);
+										marshall_free(row_dataobj);
+										zfree(row_data);
+										break;
+									}
+								}
+							}
+						}
+					}
 				}
+
 				marshall_free(row_dataobj);
 				zfree(row_data);
 			}
