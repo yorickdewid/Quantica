@@ -303,6 +303,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 				marshall->child[marshall->size]->type = val_dt;
 				marshall->child[marshall->size]->data = tree_zstrndup(val_data, val_len, marshall);
 				marshall->child[marshall->size]->data_len = val_len;
+				marshall->child[marshall->size]->size = 1;
 				marshall->size++;
 				if (val_data)
 					zfree(val_data);

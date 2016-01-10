@@ -530,7 +530,14 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 
 				for (unsigned int i = 0; i < descentobj->size; ++i) {
 					quid_t _key;
+					struct metadata _meta;
 					strtoquid(descentobj->child[i]->data, &_key);
+
+					engine_get(&control, &_key, &_meta);
+
+					if (_meta.alias)
+						alias_delete(&control, &_key);
+
 					engine_delete(&control, &_key);
 					error_clear();
 				}
@@ -1131,9 +1138,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	size_t _len;
 	size_t len = 0;
 	struct metadata meta;
-	marshall_t *filterobject = NULL;
 	slay_result_t nrs;
-	bool alteration = FALSE;
 	strtoquid(quid, &key);
 
 	if (!ready)
@@ -1147,8 +1152,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 	unsigned long long offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
-		case MD_TYPE_RECORD:
-		case MD_TYPE_GROUP: {
+		case MD_TYPE_RECORD: {
 			void *data = get_data_block(&control, offset, &_len);
 			if (!data) {
 				marshall_free(mergeobj);
@@ -1161,10 +1165,105 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				marshall_free(mergeobj);
 				return -1;
 			}
-
-			filterobject = marshall_separate(mergeobj, dataobj, &alteration);
 			zfree(data);
-			break;
+
+			bool alteration = FALSE;
+			marshall_t *filterobject = marshall_separate(mergeobj, dataobj, &alteration);
+
+			if (!alteration) {
+				error_throw("6b4f4d9c00fc", "Cannot separate structures");
+				marshall_free(mergeobj);
+				marshall_free(filterobject);
+				return -1;
+			}
+
+			void *dataslay = slay_put(&control, filterobject, &len, &nrs);
+			*items = nrs.items;
+			if (engine_update_data(&control, &key, dataslay, len) < 0) {
+				zfree(dataslay);
+				marshall_free(mergeobj);
+				marshall_free(filterobject);
+				return -1;
+			}
+
+			marshall_free(filterobject);
+			marshall_free(mergeobj);
+			zfree(dataslay);
+			return 0;
+		}
+		case MD_TYPE_GROUP: {
+			void *data = get_data_block(&control, offset, &_len);
+			if (!data) {
+				marshall_free(mergeobj);
+				return -1;
+			}
+
+			marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
+			if (!dataobj) {
+				zfree(data);
+				marshall_free(mergeobj);
+				return -1;
+			}
+			zfree(data);
+
+			for (unsigned int i = 0; i < dataobj->size; ++i) {
+				quid_t row_key;
+				size_t row_len;
+				struct metadata row_meta;
+				strtoquid(dataobj->child[i]->data, &row_key);
+
+				unsigned long long row_offset = engine_get(&control, &row_key, &row_meta);
+
+				void *row_data = get_data_block(&control, row_offset, &row_len);
+				if (!row_data) {
+					continue;
+				}
+
+				marshall_t *row_dataobj = slay_get(&control, row_data, NULL, TRUE);
+				if (!row_dataobj) {
+					zfree(row_data);
+					continue;
+				}
+
+				if (marshall_equal(mergeobj, row_dataobj)) {
+					engine_delete(&control, &row_key);
+
+					if (row_meta.alias)
+						alias_delete(&control, &row_key);
+
+					marshall_t *rmobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+					rmobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), rmobj);
+					rmobj->type = MTYPE_QUID;
+					rmobj->data = dataobj->child[i]->data;
+					rmobj->data_len = dataobj->child[i]->data_len;
+
+					bool alteration = FALSE;
+					marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
+
+					/* If anything changed write back the new list */
+					if (alteration) {
+						void *dataslay = slay_put(&control, filterobject, &len, &nrs);
+						*items = nrs.items;
+						if (engine_update_data(&control, &key, dataslay, len) < 0) {
+							marshall_free(rmobj);
+							marshall_free(row_dataobj);
+							zfree(row_data);
+							continue;
+						}
+						zfree(dataslay);
+					}
+					marshall_free(rmobj);
+					marshall_free(row_dataobj);
+					zfree(row_data);
+					break;
+				}
+				marshall_free(row_dataobj);
+				zfree(row_data);
+			}
+
+			marshall_free(dataobj);
+			marshall_free(mergeobj);
+			return 0;
 		}
 		case MD_TYPE_INDEX:
 		default:
@@ -1172,61 +1271,8 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 			return -1;
 	}
 
-	if (iserror()) {
-		marshall_free(mergeobj);
-		marshall_free(filterobject);
-		return -1;
-	}
-
-	if (!alteration) {
-		error_throw("6b4f4d9c00fc", "Cannot separate structures");
-		marshall_free(mergeobj);
-		marshall_free(filterobject);
-		return -1;
-	}
-
-	void *dataslay = slay_put(&control, filterobject, &len, &nrs);
-	*items = nrs.items;
-	if (engine_update_data(&control, &key, dataslay, len) < 0) {
-		zfree(dataslay);
-		marshall_free(mergeobj);
-		marshall_free(filterobject);
-		return -1;
-	}
-
-	if (meta.type == MD_TYPE_GROUP) {
-		void *descentdata = get_data_block(&control, offset, &_len);
-		if (!descentdata) {
-			zfree(dataslay);
-			marshall_free(mergeobj);
-			marshall_free(filterobject);
-			return -1;
-		}
-
-		marshall_t *descentobj = slay_get(&control, descentdata, NULL, FALSE);
-		if (!descentobj) {
-			zfree(dataslay);
-			zfree(descentdata);
-			marshall_free(mergeobj);
-			marshall_free(filterobject);
-			return -1;
-		}
-
-		for (unsigned int i = 0; i < descentobj->size; ++i) {
-			quid_t _key;
-			strtoquid(descentobj->child[i]->data, &_key);
-			engine_delete(&control, &_key);
-			error_clear();
-		}
-		marshall_free(descentobj);
-		zfree(descentdata);
-	}
-
-	zfree(dataslay);
-	marshall_free(mergeobj);
-	marshall_free(filterobject);
-
-	return 0;
+	error_throw("6b4f4d9c00fc", "Cannot separate structures");
+	return -1;
 }
 
 int db_record_get_meta(char *quid, bool force, struct record_status *status) {
