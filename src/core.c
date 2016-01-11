@@ -1241,6 +1241,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 						rmobj->type = MTYPE_QUID;
 						rmobj->data = dataobj->child[i]->data;
 						rmobj->data_len = QUID_LENGTH;
+						rmobj->size = 1;
 
 						bool alteration = FALSE;
 						marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
@@ -1328,6 +1329,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 			marshall_free(dataobj);
 			marshall_free(mergeobj);
+			error_clear();
 			return 0;
 		}
 		case MD_TYPE_INDEX:
