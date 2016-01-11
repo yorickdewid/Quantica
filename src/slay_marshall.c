@@ -35,6 +35,14 @@ static void *create_row(schema_t schema, uint64_t el, size_t data_len, size_t *l
 	return (void *)row;
 }
 
+static void *update_row(void *val, schema_t schema, unsigned int el) {
+	zassert(el >= 1);
+	struct row_slay *row = (struct row_slay *)val;
+	row->elements = el;
+	row->schema = schema;
+	return (void *)row;
+}
+
 static void *get_row(void *val, schema_t *schema, uint64_t *el) {
 	struct row_slay *row = (struct row_slay *)val;
 	*el = row->elements;
@@ -165,6 +173,10 @@ void *slay_put(base_t *base, marshall_t *marshall, size_t *len, slay_result_t *r
 		return slay;
 	}
 	return slay;
+}
+
+void slay_update_row(void *data, slay_result_t *rs) {
+	update_row(data, rs->schema, rs->items);
 }
 
 static marshall_t *get_child_record(base_t *base, char *quid, void *parent) {

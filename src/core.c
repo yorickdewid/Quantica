@@ -380,7 +380,6 @@ void *db_get(char *quid, size_t *len, bool descent, bool force) {
 				return NULL;
 
 			dataobj = slay_get(&control, data, NULL, descent);
-			marshall_dump(dataobj, 0);
 			if (!dataobj) {
 				zfree(data);
 				return NULL;
@@ -973,6 +972,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 	struct metadata meta;
 	marshall_t *newobject = NULL;
 	slay_result_t nrs;
+	schema_t schema;
 	strtoquid(quid, &key);
 
 	if (!ready)
@@ -1009,7 +1009,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 				return -1;
 			}
 
-			schema_t schema = slay_get_schema(data);
+			schema = slay_get_schema(data);
 			marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
 			if (!dataobj) {
 				zfree(data);
@@ -1120,6 +1120,8 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 
 	void *dataslay = slay_put(&control, newobject, &len, &nrs);
 	*items = nrs.items;
+	nrs.schema = schema;
+	slay_update_row(dataslay, &nrs);
 	if (engine_update_data(&control, &key, dataslay, len) < 0) {
 		zfree(dataslay);
 		marshall_free(mergeobj);
@@ -1208,7 +1210,6 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 			}
 			zfree(data);
 
-
 			for (unsigned int i = 0; i < dataobj->size; ++i) {
 				quid_t row_key;
 				size_t row_len;
@@ -1248,6 +1249,8 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 						if (alteration) {
 							void *dataslay = slay_put(&control, filterobject, &len, &nrs);
 							*items = nrs.items;
+							nrs.schema = schema;
+							slay_update_row(dataslay, &nrs);
 							if (engine_update_data(&control, &key, dataslay, len) < 0) {
 								marshall_free(rmobj);
 								marshall_free(row_dataobj);
@@ -1271,8 +1274,6 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 									/* Remove name to match */
 									mergeobj->child[0]->name = NULL;
 									mergeobj->child[0]->name_len = 0;
-									marshall_dump(mergeobj->child[0], 0);
-									marshall_dump(row_dataobj, 0);
 									if (marshall_equal(mergeobj->child[0], row_dataobj)) {
 										engine_delete(&control, &row_key);
 
@@ -1287,11 +1288,9 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 										rmobj->data = dataobj->child[i]->data;
 										rmobj->data_len = QUID_LENGTH;
 										rmobj->size = 1;
-										marshall_dump(rmobj, 0);
 
 										bool alteration = FALSE;
 										marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
-										marshall_dump(filterobject, 0);
 
 										/* If anything changed write back the new list */
 										if (alteration) {
@@ -1302,6 +1301,8 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 											void *dataslay = slay_put(&control, filterobject, &len, &nrs);
 											*items = nrs.items;
+											nrs.schema = schema;
+											slay_update_row(dataslay, &nrs);
 											if (engine_update_data(&control, &key, dataslay, len) < 0) {
 												marshall_free(rmobj);
 												marshall_free(row_dataobj);
