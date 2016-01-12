@@ -227,6 +227,7 @@ static void shift_left(marshall_t *marshall, int offset) {
 marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *parent) {
 	marshall_t *selection = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), parent);
 
+	/* Lineup all selectors */
 	vector_t *selectors = alloc_vector(element->size);
 	if (element->type == MTYPE_STRING) {
 		vector_append(selectors, (void *)element->data);
@@ -234,6 +235,25 @@ marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *par
 		for (unsigned int j = 0; j < element->size; ++j) {
 			vector_append(selectors, (void *)element->child[j]->data);
 		}
+	}
+
+	/* Match any name in top level */
+	for (unsigned int j = 0; j < selectors->size; ++j) {
+		if (marshall->name && !strcmp(marshall->name, (char *)(vector_at(selectors, j)))) {
+			selection->child = marshall->child;
+			selection->name = marshall->name;
+			selection->name_len = marshall->name_len;
+			selection->data = marshall->data;
+			selection->data_len = marshall->data_len;
+			selection->type = marshall->type;
+			selection->size = marshall->size;
+		}
+	}
+
+	/* Done when there are matches */
+	if (selection->size > 0) {
+		vector_free(selectors);
+		return selection;
 	}
 
 	if (marshall_type_hasdescent(marshall->type)) {
@@ -258,17 +278,6 @@ marshall_t *marshall_filter(marshall_t *element, marshall_t *marshall, void *par
 						selection->size++;
 					}
 				}
-			}
-		}
-	} else {
-		for (unsigned int j = 0; j < selectors->size; ++j) {
-			if (marshall->name && !strcmp(marshall->name, (char *)(vector_at(selectors, j)))) {
-				selection->name = marshall->name;
-				selection->name_len = marshall->name_len;
-				selection->data = marshall->data;
-				selection->data_len = marshall->data_len;
-				selection->type = marshall->type;
-				selection->size = 1;
 			}
 		}
 	}
