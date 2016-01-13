@@ -106,3 +106,31 @@ int base64_encode(char *encoded, const char *string, int len) {
 	*p++ = '\0';
 	return p - encoded;
 }
+
+void base64url_encode(char *encoded, int len) {
+	int t;
+
+	for (int i = t = 0; i < len; i++) {
+		switch (encoded[i]) {
+			case '+':
+				encoded[t] = '-';
+				break;
+			case '/':
+				encoded[t] = '_';
+				break;
+			case '=':
+				continue;
+			default:
+				break;
+		}
+
+		t++;
+	}
+
+	if (len > 1) {
+		if (encoded[t - 1] == '=')
+			encoded[t - 1] = '\0';
+	}
+
+	encoded[t] = '\0';
+}
