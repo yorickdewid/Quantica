@@ -134,3 +134,24 @@ void base64url_encode(char *encoded, int len) {
 
 	encoded[t] = '\0';
 }
+
+void base64url_decode(char *decoded, int len) {
+	int t;
+
+	for (int i = t = 0; i < len; i++) {
+		switch (decoded[i]) {
+			case '-':
+				decoded[t] = '+';
+				break;
+			case '_':
+				decoded[t] = '/';
+				break;
+			default:
+				break;
+		}
+
+		t++;
+	}
+
+	decoded[t] = '\0';
+}
