@@ -1217,7 +1217,6 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				strtoquid(dataobj->child[i]->data, &row_key);
 
 				unsigned long long row_offset = engine_get(&control, &row_key, &row_meta);
-
 				void *row_data = get_data_block(&control, row_offset, &row_len);
 				if (!row_data) {
 					continue;
@@ -1350,10 +1349,11 @@ int db_record_get_meta(char *quid, bool force, struct record_status *status) {
 	if (!ready)
 		return -1;
 
-	if (force)
+	if (force) {
 		engine_get_force(&control, &key, &meta);
-	else
+	} else {
 		engine_get(&control, &key, &meta);
+	}
 
 	status->syslock = meta.syslock;
 	status->exec = meta.exec;
@@ -1537,6 +1537,12 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	marshall_free(dataobj);
 
 	return buf;
+}
+
+int db_index_rebuild(char *quid, int *items) {
+	puts(quid);
+	*items = 1;
+	return 0;
 }
 
 /*

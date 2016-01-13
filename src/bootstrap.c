@@ -121,6 +121,9 @@ void bootstrap(base_t *base) {
 	if (register_error(base, E_FATAL, "ef4b4df470a1", "Storage damaged beyond autorecovery") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 
+	if (register_error(base, E_FATAL, "5e6f0673908d", "Core not initialized") < 0)
+		lprint("[erro] bootstrap: Insert error failed\n");
+
 	if (register_error(base, E_WARN, "de65321630e4", "Server is not ready") < 0)
 		lprint("[erro] bootstrap: Insert error failed\n");
 

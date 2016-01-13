@@ -965,14 +965,12 @@ static void engine_copy(base_t *base, base_t *new_base, unsigned long long table
 
 int engine_rebuild(base_t *base, base_t *new_base) {
 	if (!base->offset.zero) {
-		lprint("[erro] Core does not exist");
-		//TODO throw something
+		error_throw_fatal("5e6f0673908d", "Core not initialized");
 		return -1;
 	}
 
 	if (new_base->offset.zero) {
-		lprint("[erro] Core does exist");
-		//TODO throw something
+		error_throw_fatal("5e6f0673908d", "Core not initialized");
 		return -1;
 	}
 

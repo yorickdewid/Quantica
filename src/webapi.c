@@ -788,6 +788,21 @@ http_status_t api_index_group(char **response, http_request_t *req) {
 	return response_empty_error(response);
 }
 
+http_status_t api_index_rebuild(char **response, http_request_t *req) {
+	int items = 0;
+
+	char *quid = (char *)hashtable_get(req->data, "quid");
+	if (quid) {
+		db_index_rebuild(quid, &items);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+		snprintf(*response, RESPONSE_SIZE, "{\"items\":%d,\"description\":\"Index rebuild\",\"status\":\"SUCCEEDED\",\"success\":true}", items);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 http_status_t api_db_get_meta(char **response, http_request_t *req) {
 	char *quid = (char *)hashtable_get(req->data, "quid");
 	char *executable = get_param(req, "executable");
@@ -1037,6 +1052,7 @@ static const struct webroute route[] = {
 
 	/* Database index operations				*/
 	{"/index",			api_index_group,	TRUE,	"Show or set index on element"},
+	{"/rebuild",		api_index_rebuild,	TRUE,	"Rebuild the index"},
 	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
 
 	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},

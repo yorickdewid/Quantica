@@ -92,6 +92,7 @@ char *db_index_all();
 char *db_pager_all();
 void *db_alias_get_data(char *name, size_t *len, bool descent);
 
+int db_index_rebuild(char *quid, int *items);
 int db_index_create(char *group_quid, char *index_quid, int *items, const char *idxkey);
 
 #endif // CORE_H_INCLUDED
