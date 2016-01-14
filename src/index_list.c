@@ -171,6 +171,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 	return 0;
 }
 
+/* Get index from group */
 quid_t *index_list_get_index(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
@@ -255,7 +256,7 @@ marshall_t *index_list_get_element(base_t *base, const quid_t *c_quid) {
 	return marshall;
 }
 
-/* Return all indexed elements on group */
+/* Return all indexes on group */
 marshall_t *index_list_on_group(base_t *base, const quid_t *c_quid) {
 	size_t index_elements = index_list_size(base, c_quid);
 	if (!index_elements)
@@ -314,6 +315,7 @@ marshall_t *index_list_on_group(base_t *base, const quid_t *c_quid) {
 	return marshall;
 }
 
+/* Get offset from index */
 unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
@@ -337,6 +339,81 @@ unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_qui
 
 	error_throw("e553d927706a", "Index not found");
 	return 0;
+}
+
+/* Get element from index */
+char *index_list_get_index_element(base_t *base, const quid_t *c_quid) {
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].element_len && !list->items[i].offset)
+				continue;
+
+			if (!quidcmp(c_quid, &list->items[i].index)) {
+				char *element = get_element_name(base, from_be32(list->items[i].element_len), from_be64(list->items[i].element));
+				zfree(list);
+				return element;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("e553d927706a", "Index not found");
+	return 0;
+}
+
+/* Get group from index */
+quid_t *index_list_get_index_group(base_t *base, const quid_t *c_quid) {
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].element_len && !list->items[i].offset)
+				continue;
+
+			if (!quidcmp(c_quid, &list->items[i].index)) {
+				quid_t *group = (quid_t *)zmalloc(sizeof(quid_t));
+				memcpy(group, &list->items[i].group, sizeof(quid_t));
+				zfree(list);
+				return group;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("e553d927706a", "Index not found");
+	return 0;
+}
+
+int index_list_update_offset(base_t *base, const quid_t *index, unsigned long long index_offset) {
+	unsigned long long offset = base->offset.index_list;
+	while (offset) {
+		struct _engine_index_list *list = get_index_list(base, offset);
+		zassert(from_be16(list->size) <= INDEX_LIST_SIZE);
+
+		for (int i = 0; i < from_be16(list->size); ++i) {
+			if (!list->items[i].element_len && !list->items[i].offset)
+				continue;
+
+			if (!quidcmp(index, &list->items[i].index)) {
+				list->items[i].offset = to_be64(index_offset);
+				flush_index_list(base, list, offset);
+				return 0;
+			}
+		}
+		offset = list->link ? from_be64(list->link) : 0;
+		zfree(list);
+	}
+
+	error_throw("e553d927706a", "Index not found");
+	return -1;
 }
 
 int index_list_delete(base_t *base, const quid_t *index) {

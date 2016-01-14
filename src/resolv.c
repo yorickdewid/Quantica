@@ -16,14 +16,14 @@
 #ifdef RESOLV
 
 /* Retrieves the IP adress of a hostname */
-int resolve_host(char *hostname, char *ip) {
+int resolve_host(const char *hostname, char *ip) {
 	struct addrinfo hints, *servinfo = NULL;
 	int proto = 0;
 	int rv;
 
 	char *_htmp = (char *)zstrdup(hostname);
 	char *host = _htmp;
-	if (host[0] == '[' && host[4] == ']')
+	if (host[0] == '[' && host[strlen(host) - 1] == ']')
 		host = strdtrim(host);
 
 	memset(&hints, 0, sizeof(hints));

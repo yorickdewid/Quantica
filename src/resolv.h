@@ -2,7 +2,7 @@
 #define RESOLV_H_INCLUDED
 
 #ifdef RESOLV
-int resolve_host(char *hostname, char *ip);
+int resolve_host(const char *hostname, char *ip);
 #endif
 
 #endif // RESOLV_H_INCLUDED

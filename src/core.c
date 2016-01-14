@@ -789,6 +789,7 @@ int db_delete(char *quid, bool descent) {
 				zfree(data);
 			}
 
+			/* Loop over the indexes on this group */
 			quid_t *index = index_list_get_index(&control, &key);
 			while (index) {
 				alias_delete(&control, index);
@@ -1540,8 +1541,63 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 }
 
 int db_index_rebuild(char *quid, int *items) {
-	puts(quid);
-	*items = 1;
+	quid_t key;
+	index_result_t inrs;
+	struct metadata meta, group_meta;
+	strtoquid(quid, &key);
+	nullify(&inrs, sizeof(index_result_t));
+
+	engine_get(&control, &key, &meta);
+	if (meta.type != MD_TYPE_INDEX) {
+		error_throw("1e933eea602c", "Invalid record type");
+		return -1;
+	}
+
+	/* Index properties */
+	char *element = index_list_get_index_element(&control, &key);
+	quid_t *group = index_list_get_index_group(&control, &key);
+
+	size_t len;
+	unsigned long long offset = engine_get(&control, group, &group_meta);
+	void *data = get_data_block(&control, offset, &len);
+	if (!data) {
+		return -1;
+	}
+	zfree(group);
+
+	schema_t schema = slay_get_schema(data);
+	marshall_t *dataobj = slay_get(&control, data, NULL, FALSE);
+	if (!dataobj) {
+		zfree(data);
+		return -1;
+	}
+	zfree(data);
+
+	/* Determine index based on dataschema */
+	switch (schema) {
+		case SCHEMA_TABLE:
+			index_btree_create_table(&control, element, dataobj, &inrs);
+			break;
+		case SCHEMA_SET:
+			index_btree_create_set(&control, element, dataobj, &inrs);
+			break;
+		default:
+			error_throw("ece28bc980db", "Invalid schema");
+	}
+
+	*items = inrs.index_elements;
+	if (*items < 2) {
+		error_throw("3d2a88a4502b", "Too few items for index");
+		zfree(element);
+		marshall_free(dataobj);
+		return 0;
+	}
+
+	/* Update index item with new offset */
+	index_list_update_offset(&control, &key, inrs.offset);
+
+	zfree(element);
+	marshall_free(dataobj);
 	return 0;
 }
 
