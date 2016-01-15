@@ -114,23 +114,6 @@ char *jwt_encode(const unsigned char *key) {
 	payload->child[payload->size]->size = 1;
 	payload->size++;
 
-
-	/*payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_STRING;
-	payload->child[payload->size]->name = tree_zstrdup("name", payload);
-	payload->child[payload->size]->name_len = 4;
-	payload->child[payload->size]->data = tree_zstrdup("John Doe", payload);
-	payload->child[payload->size]->data_len = 8;
-	payload->child[payload->size]->size = 1;
-	payload->size++;
-
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_TRUE;
-	payload->child[payload->size]->name = tree_zstrdup("admin", payload);
-	payload->child[payload->size]->name_len = 5;
-	payload->child[payload->size]->size = 1;
-	payload->size++;*/
-
 	char *buf_header = marshall_serialize(header);
 	char *buf_payload = marshall_serialize(payload);
 	marshall_free(payload);

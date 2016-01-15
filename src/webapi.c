@@ -522,11 +522,11 @@ http_status_t api_db_put(char **response, http_request_t *req) {
 
 http_status_t api_db_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
-	bool resolve = TRUE;
+	bool _resolve = TRUE;
 	bool getforce = FALSE;
 
 	char *quid = (char *)hashtable_get(req->data, "quid");
-	char *noresolve = get_param(req, "noresolve");
+	char *resolve = get_param(req, "resolve");
 	char *selector = get_param(req, "select");
 	char *force = get_param(req, "force");
 	char *where = get_param(req, "where");
@@ -538,9 +538,9 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 				return response_internal_error(response);
 			}
 		} else {
-			if (noresolve) {
-				if (!strcmp(noresolve, "true")) {
-					resolve = FALSE;
+			if (resolve) {
+				if (!strcmp(resolve, "false")) {
+					_resolve = FALSE;
 				}
 			}
 			if (force) {
@@ -549,7 +549,7 @@ http_status_t api_db_get(char **response, http_request_t *req) {
 				}
 			}
 
-			data = db_get(quid, &len, resolve, getforce);
+			data = db_get(quid, &len, _resolve, getforce);
 			if (iserror()) {
 				return response_internal_error(response);
 			}
@@ -897,15 +897,15 @@ http_status_t api_alias_name(char **response, http_request_t *req) {
 
 http_status_t api_alias_get(char **response, http_request_t *req) {
 	size_t len = 0, resplen;
-	bool resolve = TRUE;
-	char *noresolve = get_param(req, "noresolve");
-	if (noresolve) {
-		if (!strcmp(noresolve, "true")) {
-			resolve = FALSE;
+	bool _resolve = TRUE;
+	char *resolve = get_param(req, "resolve");
+	if (resolve) {
+		if (!strcmp(resolve, "false")) {
+			_resolve = FALSE;
 		}
 	}
 
-	char *data = db_alias_get_data(req->uri, &len, resolve);
+	char *data = db_alias_get_data(req->uri, &len, _resolve);
 	if (iserror()) {
 		return response_internal_error(response);
 	}
@@ -1307,10 +1307,7 @@ void handle_request(int sd, fd_set * set) {
 		} else {
 			if (i == 0) {
 				raw_response(socket_stream, headers, "400 Bad Request");
-				fflush(socket_stream);
-				vector_free(queue);
-				vector_free(headers);
-				goto disconnect;
+				goto done;
 			}
 
 			colon[0] = '\0';
