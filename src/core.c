@@ -28,6 +28,7 @@
 #include "history.h"
 #include "index_list.h"
 #include "bootstrap.h"
+#include "jwt.h"
 #include "sql.h"
 #include "core.h"
 
@@ -211,6 +212,10 @@ char *crypto_base64_dec(const char *data) {
 	base64_decode(s, data);
 	s[decsz] = '\0';
 	return s;
+}
+
+char *auth_token(char *key) {
+	return jwt_encode(key);
 }
 
 unsigned long int stat_getkeys() {
@@ -1402,10 +1407,6 @@ char *db_index_on_group(char *quid) {
 		return NULL;
 
 	marshall_t *dataobj = index_list_on_group(&control, &key);
-	if (!dataobj) {
-		return NULL;
-	}
-
 	char *buf = marshall_serialize(dataobj);
 	marshall_free(dataobj);
 	return buf;

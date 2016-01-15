@@ -51,6 +51,9 @@ int crypto_hmac_sha512(char *s, const char *key, const char *data);
 sqlresult_t *exec_sqlquery(const char *query, size_t *len);
 char *crypto_base64_enc(const char *data);
 char *crypto_base64_dec(const char *data);
+
+char *auth_token(char *key);
+
 unsigned long int stat_getkeys();
 unsigned long int stat_getfreekeys();
 unsigned long int stat_getfreeblocks();

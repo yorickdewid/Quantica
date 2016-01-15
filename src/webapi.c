@@ -989,6 +989,29 @@ http_status_t api_page_all(char **response, http_request_t *req) {
 	return HTTP_OK;
 }
 
+http_status_t api_auth_token(char **response, http_request_t *req) {
+	size_t len = 0, resplen;
+
+	char *key = get_param(req, "key");
+	if (key) {
+		char *token = auth_token(key);
+		if (iserror()) {
+			return response_internal_error(response);
+		}
+
+		len = strlen(token);
+		resplen = RESPONSE_SIZE;
+		if (len > (RESPONSE_SIZE / 2)) {
+			resplen = RESPONSE_SIZE + len;
+			*response = zrealloc(*response, resplen);
+		}
+		snprintf(*response, resplen, "{\"token\":\"%s\",\"description\":\"Request token\",\"status\":\"SUCCEEDED\",\"success\":true}", token);
+		zfree(token);
+		return HTTP_OK;
+	}
+	return response_empty_error(response);
+}
+
 /*
  * Webrequest router
  */
@@ -1003,6 +1026,7 @@ static const struct webroute route[] = {
 	{"/shutdown",		api_shutdown,		FALSE,	"Shutting down the daemon"},
 	{"/vars",			api_variables,		FALSE, 	"List current config and settings"},
 	{"/help",			api_help,			FALSE,	"Show all API calls"},
+	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},
 
 	/* Encryption and encoding operations		*/
 	{"/sha1",			api_sha1,			FALSE, 	"SHA1 hash function"},
@@ -1055,7 +1079,9 @@ static const struct webroute route[] = {
 	{"/rebuild",		api_index_rebuild,	TRUE,	"Rebuild the index"},
 	{"/index",			api_index_all,		FALSE,	"Show all indexes and groups"},
 
-	{"/pager",			api_page_all,		FALSE,	"Show all storage pages"},
+	/* Authentication and authorization */
+	{"/auth/token",		api_auth_token,		FALSE,	"Aquire authentication token"},
+
 };
 
 http_status_t api_help(char **response, http_request_t *req) {
