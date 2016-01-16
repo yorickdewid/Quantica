@@ -48,7 +48,7 @@ marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name, size_t
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
 							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strismatch(obj->child[obj->size]->data, "-1234567890.")) {
-								if (strccnt(data, '.') == 1) {
+								if (strccnt(obj->child[obj->size]->data, '.') == 1) {
 									obj->child[obj->size]->type = MTYPE_FLOAT;
 								}
 							}
@@ -112,7 +112,7 @@ marshall_t *marshall_dict_decode(char *data, size_t data_len, char *name, size_t
 							obj->child[obj->size]->data = tree_zstrndup(data + t[i].start, t[i].end - t[i].start, obj);
 							obj->child[obj->size]->data_len = t[i].end - t[i].start;
 							if (strismatch(obj->child[obj->size]->data, "-1234567890.")) {
-								if (strccnt(data, '.') == 1) {
+								if (strccnt(obj->child[obj->size]->data, '.') == 1) {
 									obj->child[obj->size]->type = MTYPE_FLOAT;
 								}
 							}
