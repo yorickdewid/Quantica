@@ -36,7 +36,7 @@ static marshall_t *jwt_header() {
 	return marshall;
 }
 
-char *jwt_encode(const unsigned char *key) {
+char *jwt_encode(marshall_t *data, const unsigned char *key) {
 	quid_t jti_key;
 	quid_create(&jti_key);
 	char squid[QUID_LENGTH + 1];
@@ -45,79 +45,82 @@ char *jwt_encode(const unsigned char *key) {
 	/* JWT header */
 	marshall_t *header = jwt_header();
 
-	marshall_t *payload = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
-	payload->child = (marshall_t **)tree_zcalloc(7, sizeof(marshall_t *), payload);
-	payload->type = MTYPE_OBJECT;
+	marshall_t *body = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	body->child = (marshall_t **)tree_zcalloc(7 + data->size, sizeof(marshall_t *), body);
+	body->type = MTYPE_OBJECT;
 
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_STRING;
-	payload->child[payload->size]->name = tree_zstrdup("iss", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup(get_instance_name(), payload);
-	payload->child[payload->size]->data_len = strlen(get_instance_name());
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_STRING;
+	body->child[body->size]->name = tree_zstrdup("iss", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup(get_instance_name(), body);
+	body->child[body->size]->data_len = strlen(get_instance_name());
+	body->child[body->size]->size = 1;
+	body->size++;
 
 	char *issue_time = itoa(get_timestamp());
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_INT;
-	payload->child[payload->size]->name = tree_zstrdup("iat", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup(issue_time, payload);
-	payload->child[payload->size]->data_len = strlen(issue_time);
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_INT;
+	body->child[body->size]->name = tree_zstrdup("iat", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup(issue_time, body);
+	body->child[body->size]->data_len = strlen(issue_time);
+	body->child[body->size]->size = 1;
+	body->size++;
 
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_INT;
-	payload->child[payload->size]->name = tree_zstrdup("nbf", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup(issue_time, payload);
-	payload->child[payload->size]->data_len = strlen(issue_time);
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_INT;
+	body->child[body->size]->name = tree_zstrdup("nbf", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup(issue_time, body);
+	body->child[body->size]->data_len = strlen(issue_time);
+	body->child[body->size]->size = 1;
+	body->size++;
 
 	char *expiration_time = itoa(get_timestamp() + JWT_TOKEN_VALID);
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_INT;
-	payload->child[payload->size]->name = tree_zstrdup("exp", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup(expiration_time, payload);
-	payload->child[payload->size]->data_len = strlen(expiration_time);
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_INT;
+	body->child[body->size]->name = tree_zstrdup("exp", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup(expiration_time, body);
+	body->child[body->size]->data_len = strlen(expiration_time);
+	body->child[body->size]->size = 1;
+	body->size++;
 
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_STRING;
-	payload->child[payload->size]->name = tree_zstrdup("aud", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup("CLUSTER", payload);
-	payload->child[payload->size]->data_len = 8;
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_STRING;
+	body->child[body->size]->name = tree_zstrdup("aud", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup("CLUSTER", body);
+	body->child[body->size]->data_len = 8;
+	body->child[body->size]->size = 1;
+	body->size++;
 
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_STRING;
-	payload->child[payload->size]->name = tree_zstrdup("sub", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup("principal@CLUSTER", payload);
-	payload->child[payload->size]->data_len = 17;
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_STRING;
+	body->child[body->size]->name = tree_zstrdup("sub", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup("principal@CLUSTER", body);
+	body->child[body->size]->data_len = 17;
+	body->child[body->size]->size = 1;
+	body->size++;
 
-	payload->child[payload->size] = tree_zcalloc(1, sizeof(marshall_t), payload);
-	payload->child[payload->size]->type = MTYPE_QUID;
-	payload->child[payload->size]->name = tree_zstrdup("jti", payload);
-	payload->child[payload->size]->name_len = 3;
-	payload->child[payload->size]->data = tree_zstrdup(squid, payload);
-	payload->child[payload->size]->data_len = QUID_LENGTH;
-	payload->child[payload->size]->size = 1;
-	payload->size++;
+	body->child[body->size] = tree_zcalloc(1, sizeof(marshall_t), body);
+	body->child[body->size]->type = MTYPE_QUID;
+	body->child[body->size]->name = tree_zstrdup("jti", body);
+	body->child[body->size]->name_len = 3;
+	body->child[body->size]->data = tree_zstrdup(squid, body);
+	body->child[body->size]->data_len = QUID_LENGTH;
+	body->child[body->size]->size = 1;
+	body->size++;
+
+	marshall_t *payload = marshall_merge(data, body);
 
 	char *buf_header = marshall_serialize(header);
 	char *buf_payload = marshall_serialize(payload);
 	marshall_free(payload);
 	marshall_free(header);
+	marshall_free(data);
 
 	/* Encode header */
 	size_t enheadsz = base64_encode_len(strlen(buf_header));
@@ -166,3 +169,5 @@ char *jwt_encode(const unsigned char *key) {
 	// zfree(unsigned_parts);
 	return unsigned_parts;
 }
+
+//TODO verification

@@ -12,8 +12,6 @@
 #include "index.h"
 #include "zmalloc.h"
 
-#define DEFAULT_RESULT_SIZE		10
-
 struct _root_super {
 	__be64 root;
 	__be64 freelist;

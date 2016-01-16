@@ -21,6 +21,7 @@ typedef struct {
 
 int index_btree_create_table(base_t *base, const char *element, marshall_t *marshall, index_result_t *result);
 int index_btree_create_set(base_t *base, const char *element, marshall_t *marshall, index_result_t *result);
+marshall_t *index_get(base_t *base, unsigned long long offset, char *key);
 marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent);
 
 #endif // CORE_H_INCLUDED

@@ -215,7 +215,22 @@ char *crypto_base64_dec(const char *data) {
 }
 
 char *auth_token(char *key) {
-	return jwt_encode(key);
+	// Test payload {
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_OBJECT;
+
+	marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+	marshall->child[marshall->size]->type = MTYPE_QUID;
+	marshall->child[marshall->size]->name = tree_zstrdup("name", marshall);
+	marshall->child[marshall->size]->name_len = 4;
+	marshall->child[marshall->size]->data = tree_zstrdup(get_instance_key(), marshall);
+	marshall->child[marshall->size]->data_len = QUID_LENGTH;
+	marshall->child[marshall->size]->size = 1;
+	marshall->size++;
+	// }
+
+	return jwt_encode(marshall, (const unsigned char *)key);
 }
 
 unsigned long int stat_getkeys() {
@@ -656,6 +671,8 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 		if (copy_meta) {
 			marshall_t *index_element = index_list_get_element(&control, &key);
 			if (index_element) {
+
+				/* For every existing index create a new one */
 				for (unsigned int i = 0; i < index_element->size; ++i) {
 					index_result_t inrs;
 					struct metadata _meta;
@@ -931,6 +948,37 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 			marshall_free(dataobj);
 			return NULL;
 		}
+
+		/* Can indexes be used */
+		marshall_t *indexes = index_list_on_group(&control, &key);
+		if (indexes) {
+			quid_t index_key;
+			marshall_dump(indexes, 0);
+			marshall_dump(where_elementobj, 0);
+
+			if (where_elementobj->type == MTYPE_OBJECT) {
+				printf("Looking for index on %s\n", (char *)where_elementobj->child[0]->name);
+
+				if (!strcmp(where_elementobj->child[0]->name, indexes->child[0]->child[1]->data)) {
+					printf("Can use index %s\n", (char *)indexes->child[0]->child[0]->data);
+
+					strtoquid(indexes->child[0]->child[0]->data, &index_key);
+
+					printf("Feeding %s into index\n", (char *)where_elementobj->child[0]->data);
+
+					unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+					whereobj = index_get(&control, index_offset, where_elementobj->child[0]->data);
+
+					marshall_dump(whereobj, 0);
+				}
+
+			} else if (where_elementobj->type == MTYPE_ARRAY) {
+				for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+					printf("Looking for index on %s\n", (char *)where_elementobj->child[j]->child[0]->name);
+				}
+			}
+
+		} //
 
 		whereobj = marshall_condition(where_elementobj, dataobj);
 		marshall_free(where_elementobj);

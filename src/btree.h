@@ -8,6 +8,8 @@
 #define INDEX_SIZE 4
 #define INDEX_MSIZE (INDEX_SIZE/2)
 
+#define DEFAULT_RESULT_SIZE		10
+
 typedef struct base base_t;
 
 typedef enum {

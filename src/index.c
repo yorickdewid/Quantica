@@ -110,6 +110,52 @@ int index_btree_create_set(base_t *base, const char *element, marshall_t *marsha
 	return 0;
 }
 
+marshall_t *index_get(base_t *base, unsigned long long offset, char *key) {
+	btree_t index;
+	vector_t *result = alloc_vector(DEFAULT_RESULT_SIZE * 10);
+
+	btree_open(base, &index, offset);
+
+	btree_print(base, &index);
+
+	if (btree_get(base, &index, key, &result) != SUCCESS) {
+		return NULL;
+	}
+
+	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+	marshall->child = (marshall_t **)tree_zcalloc(result->size, sizeof(marshall_t *), marshall);
+	marshall->type = MTYPE_ARRAY;
+
+	for (unsigned int i = 0; i < result->size; ++i) {
+		unsigned long long *data_offset = (unsigned long long *)(vector_at(result, i));
+
+		size_t len;
+		char *data = get_data_block(base, *data_offset, &len);
+		if (!data) {
+			zfree(data_offset);
+			continue;
+		}
+
+		marshall_t *dataobj = slay_get(base, data, marshall, TRUE);
+		if (!dataobj) {
+			zfree(data);
+			zfree(data_offset);
+			continue;
+		}
+
+		marshall->child[marshall->size] = dataobj;
+		marshall->size++;
+
+		zfree(data);
+		zfree(data_offset);
+	}
+
+	vector_free(result);
+	btree_close(base, &index);
+
+	return marshall;
+}
+
 marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent) {
 	btree_t index;
 
@@ -135,6 +181,8 @@ marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descen
 		if (descent) {
 			marshall_t *dataobj = slay_get(base, data, marshall, TRUE);
 			if (!dataobj) {
+				zfree(kv->key);
+				zfree(kv);
 				zfree(data);
 				continue;
 			}
