@@ -953,36 +953,79 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 		marshall_t *indexes = index_list_on_group(&control, &key);
 		if (indexes) {
 			quid_t index_key;
-			marshall_dump(indexes, 0);
-			marshall_dump(where_elementobj, 0);
 
 			if (where_elementobj->type == MTYPE_OBJECT) {
-				printf("Looking for index on %s\n", (char *)where_elementobj->child[0]->name);
 
+				/* Does the indexed element match the condition */
 				if (!strcmp(where_elementobj->child[0]->name, indexes->child[0]->child[1]->data)) {
-					printf("Can use index %s\n", (char *)indexes->child[0]->child[0]->data);
-
 					strtoquid(indexes->child[0]->child[0]->data, &index_key);
-
-					printf("Feeding %s into index\n", (char *)where_elementobj->child[0]->data);
 
 					unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
 					whereobj = index_get(&control, index_offset, where_elementobj->child[0]->data);
 
-					marshall_dump(whereobj, 0);
+					/* We're done */
+					marshall_free(where_elementobj);
+					marshall_free(indexes);
+					goto where_done;
+				}
+			} else if (where_elementobj->type == MTYPE_ARRAY) {
+				unsigned int index_found = 0;
+
+				for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+					if (!strcmp(where_elementobj->child[j]->child[0]->name, indexes->child[0]->child[1]->data))
+						index_found++;
 				}
 
-			} else if (where_elementobj->type == MTYPE_ARRAY) {
-				for (unsigned int j = 0; j < where_elementobj->size; ++j) {
-					printf("Looking for index on %s\n", (char *)where_elementobj->child[j]->child[0]->name);
+				/* Do the found indexes satisfy all conditions */
+				if (where_elementobj->size == index_found) {
+					unsigned int item_count = 0;
+					marshall_t *rs[where_elementobj->size];
+
+					/* Gather results */
+					for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+						strtoquid(indexes->child[0]->child[0]->data, &index_key);
+
+						unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+						rs[j] = index_get(&control, index_offset, where_elementobj->child[j]->child[0]->data);
+					}
+
+					/* Count total items */
+					for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+						if (rs[j])
+							item_count += rs[j]->size;
+					}
+
+					marshall_t *x_whereobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
+					x_whereobj->child = (marshall_t **)tree_zcalloc(item_count, sizeof(marshall_t *), x_whereobj);
+					x_whereobj->type = MTYPE_ARRAY;
+
+					/* incremental append */
+					for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+						if (rs[j])
+							x_whereobj = marshall_merge(rs[j], x_whereobj);
+					}
+
+					whereobj = marshall_copy(x_whereobj, NULL);
+					for (unsigned int j = 0; j < where_elementobj->size; ++j) {
+						if (rs[j])
+							tree_zfree(rs[j]);
+					}
+
+					marshall_free(x_whereobj);
+					marshall_free(where_elementobj);
+					marshall_free(indexes);
+					goto where_done;
 				}
 			}
 
-		} //
+			marshall_free(indexes);
+		}
 
 		whereobj = marshall_condition(where_elementobj, dataobj);
 		marshall_free(where_elementobj);
 	}
+
+where_done:
 
 	/* Selector */
 	if (select_element) {

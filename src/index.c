@@ -116,8 +116,6 @@ marshall_t *index_get(base_t *base, unsigned long long offset, char *key) {
 
 	btree_open(base, &index, offset);
 
-	btree_print(base, &index);
-
 	if (btree_get(base, &index, key, &result) != SUCCESS) {
 		return NULL;
 	}

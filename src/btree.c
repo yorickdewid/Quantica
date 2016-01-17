@@ -177,23 +177,21 @@ status_t btree_get(base_t *base, btree_t *index, char *key, vector_t **result) {
 	node_t node;
 	long long offset = index->root;
 
-	*result = alloc_vector(DEFAULT_RESULT_SIZE);
-
 	while (offset != -1) {
 		get_node(base, index, offset, &node);
 		kv = node.items;
 		n = node.cnt;
 		i = get(key, kv, n);
 		for (int x = i; x < n; ++x) {
-			if (!strcmp(key, kv[x].key)) {
+			if (!strcmp(key, kv[x].key))
 				vector_append(*result, zlludup(&kv[x].valset, 1));
-			}
-
 		}
-		if ((*result)->size > 0)
-			return SUCCESS;
+
 		offset = node.ptr[i];
 	}
+
+	if ((*result)->size > 0)
+		return SUCCESS;
 
 	return NOTFOUND;
 }
