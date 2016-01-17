@@ -44,6 +44,7 @@ bool marshall_equal(marshall_t *object_1, marshall_t *object_2);
 marshall_t *marshall_separate(marshall_t *filterobject, marshall_t *marshall, bool *changed);
 marshall_t *marshall_copy(marshall_t *marshall, void *parent);
 #ifdef DEBUG
+void marshall_verify(const marshall_t *marshall);
 void marshall_dump(const marshall_t *marshall, int depth);
 #endif
 char *marshall_get_strtype(marshall_type_t type);

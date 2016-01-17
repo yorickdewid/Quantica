@@ -699,6 +699,32 @@ marshall_t *marshall_copy(marshall_t *marshall, void *parent) {
 }
 
 #ifdef DEBUG
+void marshall_verify(const marshall_t *marshall) {
+	if (!marshall) {
+		return;
+	}
+
+	if (!marshall->size)
+		puts("Invalid: size < 1");
+	if (marshall->name && !marshall->name_len)
+		puts("Invalid: name_len undeclared");
+	if (marshall->data && !marshall->data_len)
+		puts("Invalid: data_len undeclared");
+	if (marshall->name_len && !marshall->name)
+		puts("Invalid: name undeclared");
+	if (marshall->data_len && !marshall->data)
+		puts("Invalid: data undeclared");
+
+	if (marshall_type_hasdescent(marshall->type)) {
+		if (marshall->data)
+			puts("Invalid: data in descending type");
+
+		for (unsigned int i = 0; i < marshall->size; ++i) {
+			marshall_verify(marshall->child[i]);
+		}
+	}
+}
+
 void marshall_dump(const marshall_t *marshall, int depth) {
 	if (!marshall) {
 		printf("%*s%d (nil)\n", (depth * 4), " ", depth);
@@ -711,7 +737,7 @@ void marshall_dump(const marshall_t *marshall, int depth) {
 	printf("%*s%d data: %s[%zu]\n", (depth * 4), " ", depth, (char *)marshall->data, marshall->data_len);
 	printf("%*s%d size: %d\n", (depth * 4), " ", depth, marshall->size);
 
-	if (marshall->type == MTYPE_ARRAY || marshall->type == MTYPE_OBJECT) {
+	if (marshall_type_hasdescent(marshall->type)) {
 		for (unsigned int i = 0; i < marshall->size; ++i) {
 			printf("%*s --|\n", (depth * 4), " ");
 			marshall_dump(marshall->child[i], depth + 1);
