@@ -1127,6 +1127,32 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 					return -1;
 				}
 				zfree(newslay);
+
+				if (mergeobj->type == MTYPE_OBJECT) {
+
+					/* Add item to indexes on this group */
+					marshall_t *indexes = index_list_on_group(&control, &key);
+					if (indexes) {
+						quid_t index_key;
+
+						for (unsigned int i = 0; i < mergeobj->size; ++i) {
+
+							/* Does the indexed element match the condition */
+							if (!strcmp(mergeobj->child[i]->name, indexes->child[0]->child[1]->data)) {
+								struct metadata newkey_meta;
+
+								strtoquid(indexes->child[0]->child[0]->data, &index_key);
+								unsigned long long newkey_offset = engine_get(&control, &newkey, &newkey_meta);
+
+								unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+								index_add(&control, index_offset, mergeobj->child[i]->data, newkey_offset);
+							}
+						}
+
+						marshall_free(indexes);
+					}
+
+				}
 				marshall_free(mergeobj);
 
 				/* Append key to group */
@@ -1136,6 +1162,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 					marshall_free(dataobj);
 					return -1;
 				}
+
 				newobject = marshall_merge(mergeobj, dataobj);
 			} else {
 
