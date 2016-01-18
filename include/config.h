@@ -5,7 +5,7 @@
 #define INSTANCE_PREFIX	"QUANTZ"
 #define VERSION_MAJOR	0
 #define VERSION_MINOR	9
-#define VERSION_PATCH	28
+#define VERSION_PATCH	29
 #define LOGFILE			"quantica.log"
 
 #define CACHE_SLOTS	23

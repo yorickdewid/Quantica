@@ -174,6 +174,17 @@ int index_delete(base_t *base, unsigned long long offset, char *key) {
 	return 0;
 }
 
+size_t index_btree_count(base_t *base, unsigned long long offset) {
+	btree_t index;
+	btree_open(base, &index, offset);
+
+	vector_t *rskv = btree_get_all(base, &index);
+	size_t count = rskv->size;
+	vector_free(rskv);
+
+	return count;
+}
+
 marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent) {
 	btree_t index;
 

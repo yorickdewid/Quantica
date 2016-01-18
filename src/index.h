@@ -24,6 +24,7 @@ int index_btree_create_set(base_t *base, const char *element, marshall_t *marsha
 marshall_t *index_get(base_t *base, unsigned long long offset, char *key);
 int index_add(base_t *base, unsigned long long offset, char *key, unsigned long long valset);
 int index_delete(base_t *base, unsigned long long offset, char *key);
+size_t index_btree_count(base_t *base, unsigned long long offset);
 marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent);
 
 #endif // CORE_H_INCLUDED
