@@ -1354,17 +1354,40 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 
 				if (schema == SCHEMA_TABLE) {
 					if (marshall_equal(mergeobj, row_dataobj)) {
-						engine_delete(&control, &row_key);
-
-						if (row_meta.alias)
-							alias_delete(&control, &row_key);
-
 						marshall_t *rmobj = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 						rmobj->child = (marshall_t **)tree_zcalloc(1, sizeof(marshall_t *), rmobj);
 						rmobj->type = MTYPE_QUID;
 						rmobj->data = dataobj->child[i]->data;
 						rmobj->data_len = QUID_LENGTH;
 						rmobj->size = 1;
+
+						if (mergeobj->type == MTYPE_OBJECT) {
+
+							/* Add item to indexes on this group */
+							marshall_t *indexes = index_list_on_group(&control, &key);
+							if (indexes) {
+								quid_t index_key;
+
+								for (unsigned int j = 0; j < mergeobj->size; ++j) {
+
+									/* Does the indexed element match the condition */
+									if (!strcmp(mergeobj->child[j]->name, indexes->child[0]->child[1]->data)) {
+										strtoquid(indexes->child[0]->child[0]->data, &index_key);
+
+										unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+										index_delete(&control, index_offset, mergeobj->child[j]->data);
+									}
+								}
+
+								marshall_free(indexes);
+							}
+
+						}
+
+						engine_delete(&control, &row_key);
+
+						if (row_meta.alias)
+							alias_delete(&control, &row_key);
 
 						bool alteration = FALSE;
 						marshall_t *filterobject = marshall_separate(rmobj, dataobj, &alteration);
@@ -1465,7 +1488,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 	return -1;
 }
 
-int db_record_get_meta(char *quid, bool force, struct record_status *status) {
+int db_record_get_meta(char *quid, bool force, struct record_status * status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);
@@ -1497,7 +1520,7 @@ int db_record_get_meta(char *quid, bool force, struct record_status *status) {
 	return 0;
 }
 
-int db_record_set_meta(char *quid, struct record_status *status) {
+int db_record_set_meta(char *quid, struct record_status * status) {
 	quid_t key;
 	struct metadata meta;
 	strtoquid(quid, &key);

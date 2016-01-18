@@ -164,6 +164,16 @@ int index_add(base_t *base, unsigned long long offset, char *key, unsigned long 
 	return 0;
 }
 
+int index_delete(base_t *base, unsigned long long offset, char *key) {
+	btree_t index;
+
+	btree_open(base, &index, offset);
+	btree_delete(base, &index, key);
+	btree_close(base, &index);
+
+	return 0;
+}
+
 marshall_t *index_btree_all(base_t *base, unsigned long long offset, bool descent) {
 	btree_t index;
 
