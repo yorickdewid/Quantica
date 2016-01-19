@@ -216,7 +216,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 			//TODO ugly
 			if (val_data) {
 				val_data = (void *)zrealloc(val_data, val_len + 1);
-				((uint8_t *)val_data)[val_len] = '\0';
+				((char *)val_data)[val_len] = '\0';
 			}
 
 			if (val_dt == MTYPE_QUID && descent) {
@@ -252,7 +252,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 				//TODO ugly
 				if (val_data) {
 					val_data = (void *)zrealloc(val_data, val_len + 1);
-					((uint8_t *)val_data)[val_len] = '\0';
+					((char *)val_data)[val_len] = '\0';
 				}
 
 				if (val_dt == MTYPE_QUID && descent) {
@@ -291,7 +291,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 				//TODO ugly
 				if (val_data) {
 					val_data = (void *)zrealloc(val_data, val_len + 1);
-					((uint8_t *)val_data)[val_len] = '\0';
+					((char *)val_data)[val_len] = '\0';
 				}
 
 				if (val_dt == MTYPE_QUID && descent) {
@@ -336,7 +336,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 
 				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
-				((uint8_t *)val_data)[val_len] = '\0';
+				((char *)val_data)[val_len] = '\0';
 
 				if (descent) {
 					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
@@ -367,7 +367,7 @@ marshall_t *slay_get(base_t *base, void *data, void *parent, bool descent) {
 
 				//TODO ugly
 				val_data = (void *)zrealloc(val_data, val_len + 1);
-				((uint8_t *)val_data)[val_len] = '\0';
+				((char *)val_data)[val_len] = '\0';
 
 				if (descent) {
 					marshall->child[marshall->size] = get_child_record(base, val_data, marshall);
