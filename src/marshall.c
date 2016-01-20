@@ -100,12 +100,12 @@ marshall_type_t autoscalar(const char *data, size_t len) {
 	return MTYPE_STRING;
 }
 
-marshall_t *marshall_convert_suggest(char *data, char *hint) {
+marshall_t *marshall_convert_suggest(char *data, char *hint, char *hint_option) {
 	marshall_t *marshall = NULL;
 
 	if (!strcmp(hint, "csv")) {
 		if (csv_valid(data))
-			marshall = marshall_csv_decode(data);
+			marshall = marshall_csv_decode(data, hint_option);
 	}
 
 	return marshall;

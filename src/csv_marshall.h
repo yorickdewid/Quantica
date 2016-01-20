@@ -3,6 +3,6 @@
 
 #include "marshall.h"
 
-marshall_t *marshall_csv_decode(char *data);
+marshall_t *marshall_csv_decode(char *data, char *options);
 
 #endif // CSV_MARSHALL_H_INCLUDED

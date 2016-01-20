@@ -6,8 +6,9 @@
 #include "marshall.h"
 #include "csv.h"
 
-marshall_t *marshall_csv_decode(char *data) {
+marshall_t *marshall_csv_decode(char *data, char *options) {
 	int cnt = strccnt(data, '\n');
+	unused(options);
 
 	marshall_t *marshall = (marshall_t *)tree_zcalloc(1, sizeof(marshall_t), NULL);
 	marshall->child = (marshall_t **)tree_zcalloc(cnt, sizeof(marshall_t *), marshall);

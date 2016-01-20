@@ -327,7 +327,7 @@ char *key_decode(char *quid) {
 	return buf;
 }
 
-int db_put(char *quid, int *items, const void *data, size_t data_len, char *hint) {
+int db_put(char *quid, int *items, const void *data, size_t data_len, char *hint, char *hint_option) {
 	quid_t key;
 	size_t len = 0;
 	quid_create(&key);
@@ -338,7 +338,7 @@ int db_put(char *quid, int *items, const void *data, size_t data_len, char *hint
 		return -1;
 
 	if (hint) {
-		dataobj = marshall_convert_suggest((char *)data, hint);
+		dataobj = marshall_convert_suggest((char *)data, hint, hint_option);
 		if (dataobj)
 			goto db_store;
 	}
