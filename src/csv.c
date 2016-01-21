@@ -5,12 +5,12 @@
 #include <common.h>
 #include "csv.h"
 
-const char *csv_getfield(char *line, vector_t *vector) {
+const char *csv_getfield(csv_t *csv, char *line, vector_t *vector) {
 	char *oline = line;
 
 	int count = 0;
 	for (; *line; ++line) {
-		if (*line == CSV_DEFAULT_DELIMITER) {
+		if (*line == csv->delimiter) {
 			*line = '\0';
 			vector_append(vector, (void *)oline);
 
@@ -25,22 +25,22 @@ const char *csv_getfield(char *line, vector_t *vector) {
 	return NULL;
 }
 
-size_t csv_getfieldcount(const char *line) {
+size_t csv_getfieldcount(csv_t *csv, const char *line) {
 	size_t count = 0;
 	for (; *line; line++) {
-		if (*line == CSV_DEFAULT_DELIMITER)
+		if (*line == csv->delimiter)
 			count++;
 	}
 
 	return count;
 }
 
-bool csv_valid(const char *str) {
+bool csv_valid(csv_t *csv, const char *str) {
 	int cnt = strccnt(str, '\n');
 	if (!cnt)
 		return FALSE;
 
-	size_t fields = csv_getfieldcount(str);
+	size_t fields = csv_getfieldcount(csv, str);
 	if (!fields)
 		return FALSE;
 

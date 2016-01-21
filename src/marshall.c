@@ -100,12 +100,19 @@ marshall_type_t autoscalar(const char *data, size_t len) {
 	return MTYPE_STRING;
 }
 
-marshall_t *marshall_convert_suggest(char *data, char *hint, char *hint_option) {
+marshall_t *marshall_convert_suggest(char *data, char *hint, marshall_t *hint_option) {
 	marshall_t *marshall = NULL;
 
+	csv_t csvopt;
+	csvopt.delimiter = CSV_DEFAULT_DELIMITER;
+
 	if (!strcmp(hint, "csv")) {
-		if (csv_valid(data))
-			marshall = marshall_csv_decode(data, hint_option);
+		if (hint_option) {
+			marshall_csv_parse_options(&csvopt, hint_option);
+		}
+		if (csv_valid(&csvopt, data)) {
+			marshall = marshall_csv_decode(&csvopt, data);
+		}
 	}
 
 	return marshall;

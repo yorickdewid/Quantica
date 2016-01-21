@@ -30,7 +30,7 @@ typedef struct marshall {
 
 bool marshall_type_hasdata(marshall_type_t type);
 bool marshall_type_hasdescent(marshall_type_t type);
-marshall_t *marshall_convert_suggest(char *data, char *hint, char *hint_option);
+marshall_t *marshall_convert_suggest(char *data, char *hint, marshall_t *hint_option);
 marshall_t *marshall_convert_parent(char *data, size_t data_len, void *parent);
 marshall_t *marshall_convert(char *data, size_t data_len);
 unsigned int marshall_get_count(marshall_t *obj, int depth, unsigned _depth);

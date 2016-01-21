@@ -5,8 +5,12 @@
 
 #define CSV_DEFAULT_DELIMITER	';'
 
-const char *csv_getfield(char *line, vector_t *vector);
-size_t csv_getfieldcount(const char *line);
-bool csv_valid(const char *str);
+typedef struct {
+	char delimiter;
+} csv_t;
+
+const char *csv_getfield(csv_t *csv, char *line, vector_t *vector);
+size_t csv_getfieldcount(csv_t *csv, const char *line);
+bool csv_valid(csv_t *csv, const char *str);
 
 #endif // CSV_H_INCLUDED
