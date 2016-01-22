@@ -67,6 +67,5 @@ marshall_t *marshall_csv_decode(csv_t *csvopt, char *data) {
 	if (header_array)
 		vector_free(header_array);
 
-	marshall_dump(marshall, 0);
 	return marshall;
 }
