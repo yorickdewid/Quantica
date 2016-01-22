@@ -7,6 +7,7 @@
 
 typedef struct {
 	char delimiter;
+	bool header;
 } csv_t;
 
 const char *csv_getfield(csv_t *csv, char *line, vector_t *vector);

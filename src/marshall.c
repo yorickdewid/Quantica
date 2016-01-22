@@ -104,6 +104,7 @@ marshall_t *marshall_convert_suggest(char *data, char *hint, marshall_t *hint_op
 	marshall_t *marshall = NULL;
 
 	csv_t csvopt;
+	csvopt.header = FALSE;
 	csvopt.delimiter = CSV_DEFAULT_DELIMITER;
 
 	if (!strcmp(hint, "csv")) {
