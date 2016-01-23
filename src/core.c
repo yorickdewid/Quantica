@@ -676,7 +676,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	quidtostr(nquid, &nkey);
 	if (nrs.schema == SCHEMA_TABLE || nrs.schema == SCHEMA_SET) {
 		if (copy_meta) {
-			marshall_t *index_element = index_list_get_element(&control, &key);
+			marshall_t *index_element = index_list_get_element(&control, &key); /* TODO make kv list */
 			if (index_element) {
 
 				/* For every existing index create a new one */
@@ -717,8 +717,9 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 					/* Add index to alias list */
 					alias_add(&control, &inrs.index, index_quid, QUID_LENGTH);
 
+					/* TODO get index type */
 					/* Add index to index list */
-					index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, inrs.offset);
+					index_list_add(&control, &inrs.index, &nkey, index_element->child[i]->data, INDEX_BTREE, inrs.offset);
 
 					marshall_free(_descentobj);
 				}
@@ -1821,6 +1822,6 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	alias_add(&control, &nrs.index, index_quid, QUID_LENGTH);
 
 	/* Add index to index list */
-	index_list_add(&control, &nrs.index, &key, (char *)idxkey, nrs.offset);
+	index_list_add(&control, &nrs.index, &key, (char *)idxkey, INDEX_BTREE, nrs.offset);
 	return 0;
 }

@@ -20,9 +20,10 @@ struct _engine_index_list {
 	struct {
 		quid_t index;
 		quid_t group;
-		__be32 element_len;
 		__be64 offset;
 		__be64 element;
+		__be32 element_len;
+		uint8_t type;
 	} items[INDEX_LIST_SIZE];
 	__be16 size;
 	__be64 link;
@@ -99,7 +100,7 @@ static void flush_element_name(base_t *base, char *element, size_t element_len, 
 	}
 }
 
-int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, unsigned long long offset) {
+int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, index_type_t type, unsigned long long offset) {
 	/* Does list exist */
 	if (base->offset.index_list != 0) {
 		struct _engine_index_list *list = get_index_list(base, base->offset.index_list);
@@ -114,6 +115,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		list->items[from_be16(list->size)].element = to_be64(psz_offset);
 		list->items[from_be16(list->size)].element_len = to_be32(psz);
 		list->items[from_be16(list->size)].offset = to_be64(offset);
+		list->items[from_be16(list->size)].type = type;
 		list->size = incr_be16(list->size);
 
 		base->stats.index_list_size++;
@@ -154,6 +156,7 @@ int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char 
 		new_list->items[0].element = to_be64(psz_offset);
 		new_list->items[0].element_len = to_be32(psz);
 		new_list->items[0].offset = to_be64(offset);
+		new_list->items[0].type = type;
 		new_list->size = to_be16(1);
 
 		unsigned long long new_list_offset = zpalloc(base, sizeof(struct _engine_index_list));
@@ -281,9 +284,9 @@ marshall_t *index_list_on_group(base_t *base, const quid_t *c_quid) {
 				quidtostr(index_squid, &list->items[i].index);
 
 				marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-				marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(2, sizeof(marshall_t *), marshall);
+				marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(3, sizeof(marshall_t *), marshall);
 				marshall->child[marshall->size]->type = MTYPE_OBJECT;
-				marshall->child[marshall->size]->size = 2;
+				marshall->child[marshall->size]->size = 3;
 
 				/* Index */
 				char *group_name = alias_get_val(base, &list->items[i].group);
@@ -304,8 +307,16 @@ marshall_t *index_list_on_group(base_t *base, const quid_t *c_quid) {
 				marshall->child[marshall->size]->child[1]->name_len = 7;
 				marshall->child[marshall->size]->child[1]->data = tree_zstrdup(element, marshall);
 				marshall->child[marshall->size]->child[1]->data_len = from_be32(list->items[i].element_len);
-				marshall->size++;
 				zfree(element);
+
+				char *type = index_type(list->items[i].type);
+				marshall->child[marshall->size]->child[2] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+				marshall->child[marshall->size]->child[2]->type = MTYPE_STRING;
+				marshall->child[marshall->size]->child[2]->name = tree_zstrdup("type", marshall);
+				marshall->child[marshall->size]->child[2]->name_len = 4;
+				marshall->child[marshall->size]->child[2]->data = tree_zstrdup(type, marshall);
+				marshall->child[marshall->size]->child[2]->data_len = strlen(type);
+				marshall->size++;
 			}
 		}
 		offset = list->link ? from_be64(list->link) : 0;
@@ -470,11 +481,11 @@ marshall_t *index_list_all(base_t *base) {
 			quidtostr(group_squid, &list->items[i].group);
 
 			marshall->child[marshall->size] = tree_zcalloc(1, sizeof(marshall_t), marshall);
-			marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(2, sizeof(marshall_t *), marshall);
+			marshall->child[marshall->size]->child = (marshall_t **)tree_zcalloc(3, sizeof(marshall_t *), marshall);
 			marshall->child[marshall->size]->type = MTYPE_OBJECT;
 			marshall->child[marshall->size]->name = tree_zstrdup(index_squid, marshall);
 			marshall->child[marshall->size]->name_len = QUID_LENGTH;
-			marshall->child[marshall->size]->size = 2;
+			marshall->child[marshall->size]->size = 3;
 
 			/* Indexed group */
 			char *group_name = alias_get_val(base, &list->items[i].group);
@@ -495,8 +506,17 @@ marshall_t *index_list_all(base_t *base) {
 			marshall->child[marshall->size]->child[1]->name_len = 7;
 			marshall->child[marshall->size]->child[1]->data = tree_zstrdup(element, marshall);
 			marshall->child[marshall->size]->child[1]->data_len = from_be32(list->items[i].element_len);
-			marshall->size++;
 			zfree(element);
+
+			/* Index type */
+			char *type = index_type(list->items[i].type);
+			marshall->child[marshall->size]->child[2] = tree_zcalloc(1, sizeof(marshall_t), marshall);
+			marshall->child[marshall->size]->child[2]->type = MTYPE_STRING;
+			marshall->child[marshall->size]->child[2]->name = tree_zstrdup("type", marshall);
+			marshall->child[marshall->size]->child[2]->name_len = 4;
+			marshall->child[marshall->size]->child[2]->data = tree_zstrdup(type, marshall);
+			marshall->child[marshall->size]->child[2]->data_len = strlen(type);
+			marshall->size++;
 		}
 		offset = list->link ? from_be64(list->link) : 0;
 		zfree(list);
@@ -550,10 +570,22 @@ void index_list_rebuild(base_t *base, base_t *new_base) {
 			marshall_free(index_obj);
 			zfree(index_data);
 
-			index_list_add(new_base, &list->items[i].index, &list->items[i].group, element, nrs.offset);
+			index_list_add(new_base, &list->items[i].index, &list->items[i].group, element, list->items[i].type, nrs.offset);
 			zfree(element);
 		}
 		offset = list->link ? from_be64(list->link) : 0;
 		zfree(list);
 	}
 }
+
+char *index_type(index_type_t type) {
+	switch (type) {
+		case INDEX_BTREE:
+			return "BTREE";
+		case INDEX_HASH:
+			return "HASH";
+		default:
+			return "NULL";
+	}
+}
+
