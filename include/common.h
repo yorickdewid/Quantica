@@ -46,7 +46,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 typedef _Bool bool;
 
 char from_hex(char ch);
-int8_t strisbool(char *str);
+bool strisbool(char *str);
 char *strtolower(char *str);
 char *strtoupper(char *str);
 bool strisdigit(char *str);
@@ -65,6 +65,10 @@ char *strndup(const char *str, size_t n);
 char *stresc(char *src, size_t *_len);
 char *strsep(char ** stringp, const char *delim);
 int zprintf(const char *fmt, ...);
+
+#ifdef DEBUG
+void hexdump(char *desc, void *addr, int len);
+#endif
 
 int file_access_exists(const char *path);
 int file_exists(const char *path);
