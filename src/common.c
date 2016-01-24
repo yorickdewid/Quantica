@@ -11,7 +11,7 @@ char from_hex(char ch) {
 	return isdigit(ch) ? ch - '0' : tolower(ch) - 'a' + 10;
 }
 
-int8_t strisbool(char *str) {
+bool strisbool(char *str) {
 	if (!strcmp(str, "true") || !strcmp(str, "TRUE"))
 		return TRUE;
 	if (!strcmp(str, "false") || !strcmp(str, "FALSE"))
