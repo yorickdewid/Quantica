@@ -166,8 +166,56 @@ char *jwt_encode(marshall_t *data, const unsigned char *key) {
 	strcat(unsigned_parts, ensig);
 
 	zfree(ensig);
-	// zfree(unsigned_parts);
 	return unsigned_parts;
 }
 
-//TODO verification
+marshall_t *jwt_decode(char *token, const unsigned char *key) {
+	int dots = strccnt(token, '.');
+	if (dots != 2) {
+		//TODO throw invalid
+		return NULL;
+	}
+
+	char *header = strtok(token, ".");
+	char *payload = strtok(NULL, ".");
+	char *signature = strtok(NULL, ".");
+
+	char *signed_parts = (char *)zcalloc(strlen(header) + strlen(payload) + 2, sizeof(char));
+	strncpy(signed_parts, header, strlen(header));
+	strcat(signed_parts, ".");
+	strcat(signed_parts, payload);
+
+	/* Sign parts */
+	unsigned char mac[SHA256_DIGEST_SIZE];
+	hmac_sha256(key, strlen((const char *)key), (unsigned char *)signed_parts, strlen(signed_parts), mac, SHA256_DIGEST_SIZE);
+
+	size_t ensigsz = base64_encode_len(SHA256_DIGEST_SIZE);
+	char *ensig = (char *)zmalloc(ensigsz + 1);
+	base64_encode(ensig, (const char*)mac, SHA256_DIGEST_SIZE);
+	ensig[ensigsz] = '\0';
+
+	base64url_encode(ensig, ensigsz);
+	if (strcmp(ensig, signature)) {
+		//TODO throw invalid
+		return NULL;
+	}
+
+	base64url_decode(payload, strlen(payload));
+	size_t enpayldsz = base64_decode_len(payload);
+	char *enpayld = (char *)zmalloc(enpayldsz + 1);
+	base64_decode(enpayld, payload);
+
+	puts(enpayld);
+	marshall_t *data = marshall_convert(enpayld, enpayldsz);
+	for (unsigned int i = 0; i < data->size; ++i) {
+		if (!strcmp(data->child[i]->name, "exp")) {
+			long long expiration_time = atoll((char *)data->child[i]->data);
+			if (get_timestamp() > expiration_time) {
+				//TODO throw expired
+				return NULL;
+			}
+		}
+	}
+
+	return data;
+}

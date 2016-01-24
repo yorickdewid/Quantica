@@ -46,7 +46,7 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 typedef _Bool bool;
 
 char from_hex(char ch);
-bool strisbool(char *str);
+int8_t strisbool(char *str);
 char *strtolower(char *str);
 char *strtoupper(char *str);
 bool strisdigit(char *str);
