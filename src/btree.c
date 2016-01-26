@@ -18,7 +18,7 @@ struct _root_super {
 	char unique_keys;
 };
 
-static void get_node(base_t *base, btree_t *index, unsigned long long offset, node_t *pnode) {
+static void get_node(base_t *base, btree_t *index, uint64_t offset, node_t *pnode) {
 	if ((long long)offset == index->root) {
 		*pnode = index->rootnode;
 		return;
@@ -35,7 +35,7 @@ static void get_node(base_t *base, btree_t *index, unsigned long long offset, no
 	}
 }
 
-static void flush_node(base_t *base, btree_t *index, unsigned long long offset, node_t *pnode) {
+static void flush_node(base_t *base, btree_t *index, uint64_t offset, node_t *pnode) {
 	if ((long long)offset == index->root)
 		index->rootnode = *pnode;
 
@@ -81,7 +81,7 @@ static void storage_read(base_t *base, btree_t *index) {
 	struct _root_super super;
 	nullify(&super, sizeof(struct _root_super));
 
-	unsigned long long offset = index->offset;
+	uint64_t offset = index->offset;
 	int fd = pager_get_fd(base, &offset);
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("a7df40ba3075", "Failed to read disk");
@@ -106,7 +106,7 @@ static void storage_write(base_t *base, btree_t *index) {
 	super.freelist = to_be64(index->freelist);
 	super.unique_keys = index->unique_keys;
 
-	unsigned long long offset = index->offset;
+	uint64_t offset = index->offset;
 	int fd = pager_get_fd(base, &offset);
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");

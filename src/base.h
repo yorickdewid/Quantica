@@ -68,16 +68,16 @@ typedef struct base {
 } base_t;
 
 struct _base {
-	char instance_name[INSTANCE_LENGTH];
+	__be8 instance_name[INSTANCE_LENGTH];
 	quid_t instance_key;
-	char magic[MAGIC_LENGTH];
-	char lock;
-	char exitstatus;
+	__be8 magic[MAGIC_LENGTH];
+	__be8 lock;
+	__be8 exitstatus;
 	__be16 version;
 	struct {
 		__be32 sequence;
 		__be64 offset;
-		char size;
+		__be8 size;
 	} pager;
 	struct {
 		__be64 zero;

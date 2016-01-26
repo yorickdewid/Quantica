@@ -144,7 +144,7 @@ static void open_page(quid_short_t *page_key, pager_t *core, unsigned long long 
 	core->pages[core->count++] = page;
 }
 
-unsigned long long pager_alloc(base_t *base, size_t len) {
+uint64_t pager_alloc(base_t *base, size_t len) {
 	zassert(len > 0);
 
 	bool flush = FALSE;
@@ -168,7 +168,7 @@ unsigned long long pager_alloc(base_t *base, size_t len) {
 	return offset;
 }
 
-int pager_get_fd(const base_t *base, unsigned long long *offset) {
+int pager_get_fd(const base_t *base, uint64_t *offset) {
 	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(*offset / page_size);
 
@@ -177,7 +177,7 @@ int pager_get_fd(const base_t *base, unsigned long long *offset) {
 	return base->core->pages[page]->fd;
 }
 
-unsigned int pager_get_sequence(base_t *base, unsigned long long offset) {
+unsigned int pager_get_sequence(base_t *base, uint64_t offset) {
 	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
 	unsigned long long page = floor(offset / page_size);
 

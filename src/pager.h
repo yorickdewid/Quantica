@@ -24,9 +24,9 @@ typedef struct pager {
 	page_t **pages;
 } pager_t;
 
-unsigned long long pager_alloc(base_t *base, size_t len);
-int pager_get_fd(const base_t *base, unsigned long long *offset);
-unsigned int pager_get_sequence(base_t *base, unsigned long long offset);
+uint64_t pager_alloc(base_t *base, size_t len);
+int pager_get_fd(const base_t *base, uint64_t *offset);
+unsigned int pager_get_sequence(base_t *base, uint64_t offset);
 void pager_init(base_t *base);
 void pager_sync(base_t *base);
 void pager_close(base_t *base);

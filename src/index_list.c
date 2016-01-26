@@ -29,7 +29,7 @@ struct _engine_index_list {
 	__be64 link;
 } __attribute__((packed));
 
-static struct _engine_index_list *get_index_list(base_t *base, unsigned long long offset) {
+static struct _engine_index_list *get_index_list(base_t *base, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	struct _engine_index_list *list = (struct _engine_index_list *)zmalloc(sizeof(struct _engine_index_list));
@@ -51,7 +51,7 @@ static struct _engine_index_list *get_index_list(base_t *base, unsigned long lon
 	return list;
 }
 
-static void flush_index_list(base_t *base, struct _engine_index_list *list, unsigned long long offset) {
+static void flush_index_list(base_t *base, struct _engine_index_list *list, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -65,7 +65,7 @@ static void flush_index_list(base_t *base, struct _engine_index_list *list, unsi
 	zfree(list);
 }
 
-static char *get_element_name(base_t *base, size_t element_len, unsigned long long offset) {
+static char *get_element_name(base_t *base, size_t element_len, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	char *element = (char *)zcalloc(element_len + 1, sizeof(char));
@@ -87,7 +87,7 @@ static char *get_element_name(base_t *base, size_t element_len, unsigned long lo
 	return element;
 }
 
-static void flush_element_name(base_t *base, char *element, size_t element_len, unsigned long long offset) {
+static void flush_element_name(base_t *base, char *element, size_t element_len, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -100,7 +100,7 @@ static void flush_element_name(base_t *base, char *element, size_t element_len, 
 	}
 }
 
-int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, index_type_t type, unsigned long long offset) {
+int index_list_add(base_t *base, const quid_t *index, const quid_t *group, char *element, index_type_t type, uint64_t offset) {
 	/* Does list exist */
 	if (base->offset.index_list != 0) {
 		struct _engine_index_list *list = get_index_list(base, base->offset.index_list);
@@ -327,7 +327,7 @@ marshall_t *index_list_on_group(base_t *base, const quid_t *c_quid) {
 }
 
 /* Get offset from index */
-unsigned long long index_list_get_index_offset(base_t *base, const quid_t *c_quid) {
+uint64_t index_list_get_index_offset(base_t *base, const quid_t *c_quid) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);
@@ -403,7 +403,7 @@ quid_t *index_list_get_index_group(base_t *base, const quid_t *c_quid) {
 	return 0;
 }
 
-int index_list_update_offset(base_t *base, const quid_t *index, unsigned long long index_offset) {
+int index_list_update_offset(base_t *base, const quid_t *index, uint64_t index_offset) {
 	unsigned long long offset = base->offset.index_list;
 	while (offset) {
 		struct _engine_index_list *list = get_index_list(base, offset);

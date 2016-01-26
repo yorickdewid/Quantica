@@ -22,7 +22,7 @@ struct _history_list {
 } __attribute__((packed));
 
 /* Read list structure from offset */
-static struct _history_list *get_history_list(base_t *base, unsigned long long offset) {
+static struct _history_list *get_history_list(base_t *base, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	struct _history_list *list = (struct _history_list *)zcalloc(1, sizeof(struct _history_list));
@@ -44,7 +44,7 @@ static struct _history_list *get_history_list(base_t *base, unsigned long long o
 	return list;
 }
 
-static void flush_history_list(base_t *base, struct _history_list *list, unsigned long long offset) {
+static void flush_history_list(base_t *base, struct _history_list *list, uint64_t offset) {
 	int fd = pager_get_fd(base, &offset);
 
 	if (lseek(fd, offset, SEEK_SET) < 0) {

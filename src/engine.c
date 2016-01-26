@@ -54,6 +54,7 @@ struct {
 	enum key_type type;
 	bool dataheap;
 } keytype_info[] = {
+
 	/* No data */
 	{MD_TYPE_INDEX,		FALSE},
 	{MD_TYPE_RAW,		FALSE},
@@ -78,7 +79,7 @@ bool engine_keytype_hasdata(enum key_type type) {
 	return FALSE;
 }
 
-static struct _engine_table *get_table(const base_t *base, unsigned long long offset) {
+static struct _engine_table *get_table(const base_t *base, uint64_t offset) {
 	zassert(offset != 0);
 
 	/* take from cache */
@@ -110,7 +111,7 @@ static struct _engine_table *get_table(const base_t *base, unsigned long long of
 }
 
 /* Free a table or put it into the cache */
-static void put_table(engine_t *engine, struct _engine_table *table, unsigned long long offset) {
+static void put_table(engine_t *engine, struct _engine_table *table, uint64_t offset) {
 	zassert(offset != 0);
 
 	/* overwrite cache */
@@ -123,7 +124,7 @@ static void put_table(engine_t *engine, struct _engine_table *table, unsigned lo
 }
 
 /* Write a table and free it */
-static void flush_table(base_t *base, struct _engine_table *table, unsigned long long offset) {
+static void flush_table(base_t *base, struct _engine_table *table, uint64_t offset) {
 	zassert(offset != 0);
 
 	int fd = pager_get_fd(base, &offset);
@@ -143,7 +144,7 @@ static int engine_open(base_t *base) {
 	struct _engine_super super;
 	struct _engine_dbsuper dbsuper;
 
-	unsigned long long offset = base->offset.zero;
+	uint64_t offset = base->offset.zero;
 	int fd = pager_get_fd(base, &offset);
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
@@ -158,7 +159,7 @@ static int engine_open(base_t *base) {
 	base->engine->free_top = from_be64(super.free_top);
 	zassert(from_be64(super.version) == VERSION_MAJOR);
 
-	unsigned long long offseth = base->offset.heap;
+	uint64_t offseth = base->offset.heap;
 	int fdh = pager_get_fd(base, &offseth);
 	if (lseek(fd, offseth, SEEK_SET) < 0) {
 		error_throw_fatal("1fd531fa70c1", "Failed to write disk");
@@ -254,7 +255,7 @@ static unsigned long long alloc_dbchunk(base_t *base, size_t len) {
 }
 
 /* Mark a chunk as unused in the database file */
-static void free_index_chunk(base_t *base, unsigned long long offset) {
+static void free_index_chunk(base_t *base, uint64_t offset) {
 	zassert(offset > 0);
 	struct _engine_table *table = get_table(base, offset);
 
@@ -271,7 +272,7 @@ static void free_index_chunk(base_t *base, unsigned long long offset) {
 	base->stats.zero_free_size++;
 }
 
-static void free_dbchunk(base_t *base, unsigned long long offset) {
+static void free_dbchunk(base_t *base, uint64_t offset) {
 	struct _blob_info info;
 
 	int fd = pager_get_fd(base, &offset);
@@ -317,7 +318,7 @@ static void free_dbchunk(base_t *base, unsigned long long offset) {
 static void flush_super(base_t *base) {
 	struct _engine_super super;
 	memset(&super, 0, sizeof(struct _engine_super));
-	unsigned long long offset = base->offset.zero;
+	uint64_t offset = base->offset.zero;
 	int fd = pager_get_fd(base, &offset);
 
 	super.version = to_be64(VERSION_MAJOR);
@@ -337,7 +338,7 @@ static void flush_super(base_t *base) {
 static void flush_dbsuper(base_t *base) {
 	struct _engine_dbsuper dbsuper;
 	memset(&dbsuper, 0, sizeof(struct _engine_dbsuper));
-	unsigned long long offset = base->offset.heap;
+	uint64_t offset = base->offset.heap;
 	int fd = pager_get_fd(base, &offset);
 
 	dbsuper.version = to_be64(VERSION_MAJOR);
@@ -363,7 +364,7 @@ static unsigned long long insert_data(base_t *base, const void *data, size_t len
 	info.len = to_be32(len);
 	info.free = 0;
 
-	unsigned long long offset = alloc_dbchunk(base, len);
+	uint64_t offset = alloc_dbchunk(base, len);
 	info.next = to_be64(base->engine->last_block);
 	base->engine->last_block = offset;
 
@@ -764,7 +765,7 @@ static unsigned long long lookup_key(base_t *base, unsigned long long table_offs
 	return 0;
 }
 
-static void *get_data(base_t *base, unsigned long long offset, size_t *len) {
+static void *get_data(base_t *base, uint64_t offset, size_t *len) {
 	struct _blob_info info;
 
 	int fd = pager_get_fd(base, &offset);

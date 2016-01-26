@@ -211,8 +211,8 @@ void base_sync(base_t *base) {
 	super.stats.heap_free_size = to_be64(base->stats.heap_free_size);
 	super.stats.alias_size = to_be64(base->stats.alias_size);
 	super.stats.index_list_size = to_be64(base->stats.index_list_size);
-	strlcpy(super.instance_name, base->instance_name, INSTANCE_LENGTH);
-	strlcpy(super.magic, BASE_MAGIC, MAGIC_LENGTH);
+	strlcpy((char *)super.instance_name, base->instance_name, INSTANCE_LENGTH);
+	strlcpy((char *)super.magic, BASE_MAGIC, MAGIC_LENGTH);
 
 	if (lseek(base->fd, 0, SEEK_SET) < 0) {
 		lprint("[erro] Failed to read " BASECONTROL "\n");
@@ -267,10 +267,10 @@ void base_init(base_t *base, engine_t *engine) {
 		base->stats.alias_size = from_be64(super.stats.alias_size);
 		base->stats.index_list_size = from_be64(super.stats.index_list_size);
 		super.instance_name[INSTANCE_LENGTH - 1] = '\0';
-		strlcpy(base->instance_name, super.instance_name, INSTANCE_LENGTH);
+		strlcpy(base->instance_name, (char *)super.instance_name, INSTANCE_LENGTH);
 
 		zassert(from_be16(super.version) == VERSION_MAJOR);
-		zassert(!strcmp(super.magic, BASE_MAGIC));
+		zassert(!strcmp((char *)super.magic, BASE_MAGIC));
 		if (super.exitstatus != EXSTAT_SUCCESS) {
 			if (diag_exerr(base)) {
 				exit_status = EXSTAT_CHECKPOINT;
