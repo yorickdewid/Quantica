@@ -96,7 +96,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 			}
 
 			new_list->link = to_be64(base->offset.alias);
-			unsigned long long new_list_offset = zpalloc(base, sizeof(struct _alias_list));
+			uint64_t new_list_offset = zpalloc(base, sizeof(struct _alias_list));
 			flush_alias_list(base, new_list, new_list_offset);
 			base->offset.alias = new_list_offset;
 		} else {
@@ -116,7 +116,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 		new_list->items[0].len = to_be32(len);
 		new_list->items[0].hash = to_be32(hash);
 
-		unsigned long long new_list_offset = zpalloc(base, sizeof(struct _alias_list));
+		uint64_t new_list_offset = zpalloc(base, sizeof(struct _alias_list));
 		flush_alias_list(base, new_list, new_list_offset);
 
 		base->offset.alias = new_list_offset;
@@ -132,7 +132,7 @@ int alias_add(base_t *base, const quid_t *c_quid, const char *c_name, size_t len
 }
 
 char *alias_get_val(base_t *base, const quid_t *c_quid) {
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
@@ -161,7 +161,7 @@ char *alias_get_val(base_t *base, const quid_t *c_quid) {
 
 int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
 	unsigned int hash = jen_hash((unsigned char *)name, len);
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
@@ -186,7 +186,7 @@ int alias_get_key(base_t *base, quid_t *key, const char *name, size_t len) {
 
 int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t len) {
 	unsigned int hash = jen_hash((unsigned char *)name, len);
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
@@ -213,7 +213,7 @@ int alias_update(base_t *base, const quid_t *c_quid, const char *name, size_t le
 }
 
 int alias_delete(base_t *base, const quid_t *c_quid) {
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
@@ -247,7 +247,7 @@ marshall_t *alias_all(base_t *base) {
 	marshall->child = (marshall_t **)tree_zcalloc(base->stats.alias_size, sizeof(marshall_t *), marshall);
 	marshall->type = MTYPE_OBJECT;
 
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, offset);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);
@@ -281,7 +281,7 @@ marshall_t *alias_all(base_t *base) {
 }
 
 void alias_rebuild(base_t *base, base_t *new_base) {
-	unsigned long long offset = base->offset.alias;
+	uint64_t offset = base->offset.alias;
 	while (offset) {
 		struct _alias_list *list = get_alias_list(base, base->offset.alias);
 		zassert(from_be16(list->size) <= ALIAS_LIST_SIZE);

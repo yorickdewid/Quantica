@@ -23,7 +23,7 @@ typedef enum {
 typedef struct {
 	char key[64];
 	unsigned char key_size;
-	unsigned long long int valset;
+	uint64_t valset;
 } item_t;
 
 typedef struct {
@@ -36,7 +36,7 @@ typedef struct {
 	long long root;
 	long long freelist;
 	node_t rootnode;
-	unsigned long long offset;
+	uint64_t offset;
 	bool unique_keys;
 } btree_t;
 
@@ -50,8 +50,8 @@ void btree_print(base_t *base, btree_t *index);
 #endif
 
 void btree_set_unique(btree_t *index, bool unique);
-unsigned long long btree_create(base_t *base, btree_t *index);
-void btree_open(base_t *base, btree_t *index, unsigned long long offset);
+uint64_t btree_create(base_t *base, btree_t *index);
+void btree_open(base_t *base, btree_t *index, uint64_t offset);
 void btree_close(base_t *base, btree_t *index);
 
 #endif // INDEX_H_INCLUDED

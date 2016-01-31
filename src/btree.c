@@ -127,7 +127,7 @@ void btree_set_unique(btree_t *index, bool unique) {
 	index->unique_keys = unique;
 }
 
-unsigned long long btree_create(base_t *base, btree_t *index) {
+uint64_t btree_create(base_t *base, btree_t *index) {
 	nullify(index, sizeof(btree_t));
 	index->root = -1;
 	index->freelist = -1;
@@ -138,7 +138,7 @@ unsigned long long btree_create(base_t *base, btree_t *index) {
 	return index->offset;
 }
 
-void btree_open(base_t *base, btree_t *index, unsigned long long offset) {
+void btree_open(base_t *base, btree_t *index, uint64_t offset) {
 	nullify(index, sizeof(btree_t));
 	index->root = -1;
 	index->freelist = -1;
@@ -184,7 +184,7 @@ status_t btree_get(base_t *base, btree_t *index, char *key, vector_t **result) {
 		i = get(key, kv, n);
 		for (int x = i; x < n; ++x) {
 			if (!strcmp(key, kv[x].key))
-				vector_append(*result, zlludup(&kv[x].valset, 1));
+				vector_append(*result, zlludup((unsigned long long *)&kv[x].valset, 1));
 		}
 
 		offset = node.ptr[i];
@@ -537,7 +537,7 @@ static void print_traversal(base_t *base, btree_t *index, long long offset) {
 		n = node.cnt;
 		printf("%*s", position, "");
 		for (i = 0; i < n; i++)
-			printf(" %.*s[%d][%llu]", kv[i].key_size, kv[i].key, kv[i].key_size, kv[i].valset);
+			printf(" %.*s[%d][%lu]", kv[i].key_size, kv[i].key, kv[i].key_size, kv[i].valset);
 		putchar('\n');
 		for (i = 0; i <= n; i++)
 			print_traversal(base, index, node.ptr[i]);

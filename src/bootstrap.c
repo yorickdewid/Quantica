@@ -69,7 +69,7 @@ void bootstrap(base_t *base) {
 
 	/* Verify bootstrap signature */
 	size_t len;
-	unsigned long long offset = engine_get(base, &key, &meta);
+	uint64_t offset = engine_get(base, &key, &meta);
 	if (offset && !iserror()) {
 		void *rdata = get_data_block(base, offset, &len);
 		if (rdata && !memcmp(rdata, BS_MAGIC, strlen(BS_MAGIC))) {

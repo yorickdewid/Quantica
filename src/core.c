@@ -398,7 +398,7 @@ void *db_get(char *quid, size_t *len, bool descent, bool force) {
 	if (!ready)
 		return NULL;
 
-	unsigned long long offset = force ? engine_get_force(&control, &key, &meta) : engine_get(&control, &key, &meta);
+	uint64_t offset = force ? engine_get_force(&control, &key, &meta) : engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -414,7 +414,7 @@ void *db_get(char *quid, size_t *len, bool descent, bool force) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			uint64_t index_offset = index_list_get_index_offset(&control, &key);
 			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
@@ -442,7 +442,7 @@ char *db_get_type(char *quid) {
 		return NULL;
 
 	size_t len;
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
@@ -466,7 +466,7 @@ char *db_get_schema(char *quid) {
 		return NULL;
 
 	size_t len;
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (!engine_keytype_hasdata(meta.type)) {
 		error_throw("2f05699f70fa", "Key does not contain data");
 		return NULL;
@@ -507,7 +507,7 @@ char *db_get_version(char *quid, char *element) {
 		return NULL;
 	}
 
-	unsigned long long offset = history_get_version_offset(&control, &key, atoi(element)) ;
+	uint64_t offset = history_get_version_offset(&control, &key, atoi(element)) ;
 	if (iserror()) {
 		return NULL;
 	}
@@ -541,7 +541,7 @@ int db_update(char *quid, int *items, bool descent, const void *data, size_t dat
 		return -1;
 	}
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -636,7 +636,7 @@ int db_duplicate(char *quid, char *nquid, int *items, bool copy_meta) {
 	if (!ready)
 		return -1;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP:
@@ -755,7 +755,7 @@ int db_count_group(char *quid) {
 	if (!ready)
 		return -1;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			void *data = get_data_block(&control, offset, &_len);
@@ -771,7 +771,7 @@ int db_count_group(char *quid) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			uint64_t index_offset = index_list_get_index_offset(&control, &key);
 			dataobj = index_btree_all(&control, index_offset, FALSE);
 			break;
 		}
@@ -795,7 +795,7 @@ int db_delete(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -856,7 +856,7 @@ int db_purge(char *quid, bool descent) {
 	if (!ready)
 		return -1;
 
-	unsigned long long offset = engine_get_force(&control, &key, &meta);
+	uint64_t offset = engine_get_force(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_GROUP: {
 			if (descent) {
@@ -921,7 +921,7 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 	if (!ready)
 		return NULL;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -937,7 +937,7 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			uint64_t index_offset = index_list_get_index_offset(&control, &key);
 			dataobj = index_btree_all(&control, index_offset, TRUE);
 			break;
 		}
@@ -968,7 +968,7 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 				if (!strcmp(where_elementobj->child[0]->name, indexes->child[0]->child[1]->data)) {
 					strtoquid(indexes->child[0]->child[0]->data, &index_key);
 
-					unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+					uint64_t index_offset = index_list_get_index_offset(&control, &index_key);
 					whereobj = index_get(&control, index_offset, where_elementobj->child[0]->data);
 
 					/* We're done */
@@ -993,7 +993,7 @@ void *db_select(char *quid, const char *select_element, const char *where_elemen
 					for (unsigned int j = 0; j < where_elementobj->size; ++j) {
 						strtoquid(indexes->child[0]->child[0]->data, &index_key);
 
-						unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+						uint64_t index_offset = index_list_get_index_offset(&control, &index_key);
 						rs[j] = index_get(&control, index_offset, where_elementobj->child[j]->child[0]->data);
 					}
 
@@ -1088,7 +1088,7 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 		return -1;
 	}
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD: {
 			void *data = get_data_block(&control, offset, &_len);
@@ -1150,9 +1150,9 @@ int db_item_add(char *quid, int *items, const void *ndata, size_t ndata_len) {
 								struct metadata newkey_meta;
 
 								strtoquid(indexes->child[0]->child[0]->data, &index_key);
-								unsigned long long newkey_offset = engine_get(&control, &newkey, &newkey_meta);
+								uint64_t newkey_offset = engine_get(&control, &newkey, &newkey_meta);
 
-								unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+								uint64_t index_offset = index_list_get_index_offset(&control, &index_key);
 								index_add(&control, index_offset, mergeobj->child[i]->data, newkey_offset);
 							}
 						}
@@ -1285,7 +1285,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 		return -1;
 	}
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD: {
 			void *data = get_data_block(&control, offset, &_len);
@@ -1348,7 +1348,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 				struct metadata row_meta;
 				strtoquid(dataobj->child[i]->data, &row_key);
 
-				unsigned long long row_offset = engine_get(&control, &row_key, &row_meta);
+				uint64_t row_offset = engine_get(&control, &row_key, &row_meta);
 				void *row_data = get_data_block(&control, row_offset, &row_len);
 				if (!row_data) {
 					continue;
@@ -1382,7 +1382,7 @@ int db_item_remove(char *quid, int *items, const void *ndata, size_t ndata_len) 
 									if (!strcmp(mergeobj->child[j]->name, indexes->child[0]->child[1]->data)) {
 										strtoquid(indexes->child[0]->child[0]->data, &index_key);
 
-										unsigned long long index_offset = index_list_get_index_offset(&control, &index_key);
+										uint64_t index_offset = index_list_get_index_offset(&control, &index_key);
 										index_delete(&control, index_offset, mergeobj->child[j]->data);
 									}
 								}
@@ -1655,7 +1655,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 	if (alias_get_key(&control, &key, name, strlen(name)) < 0)
 		return NULL;
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	switch (meta.type) {
 		case MD_TYPE_RECORD:
 		case MD_TYPE_GROUP: {
@@ -1671,7 +1671,7 @@ void *db_alias_get_data(char *name, size_t *len, bool descent) {
 			break;
 		}
 		case MD_TYPE_INDEX: {
-			unsigned long long index_offset = index_list_get_index_offset(&control, &key);
+			uint64_t index_offset = index_list_get_index_offset(&control, &key);
 			dataobj = index_btree_all(&control, index_offset, descent);
 			break;
 		}
@@ -1708,7 +1708,7 @@ int db_index_rebuild(char *quid, int *items) {
 	quid_t *group = index_list_get_index_group(&control, &key);
 
 	size_t len;
-	unsigned long long offset = engine_get(&control, group, &group_meta);
+	uint64_t offset = engine_get(&control, group, &group_meta);
 	void *data = get_data_block(&control, offset, &len);
 	if (!data) {
 		return -1;
@@ -1768,7 +1768,7 @@ int db_index_create(char *group_quid, char *index_quid, int *items, const char *
 	quid_create(&nrs.index);
 	quidtostr(index_quid, &nrs.index);
 
-	unsigned long long offset = engine_get(&control, &key, &meta);
+	uint64_t offset = engine_get(&control, &key, &meta);
 	if (meta.type != MD_TYPE_GROUP) {
 		error_throw("1e933eea602c", "Invalid record type");
 		return -1;

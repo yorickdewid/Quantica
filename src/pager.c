@@ -52,7 +52,7 @@ static void flush_page(page_t *page) {
 	}
 }
 
-static unsigned long long page_crc_sum(page_t *page) {
+static uint64_t page_crc_sum(page_t *page) {
 	uint64_t crc64sum;
 	if (!crc_file(page->fd, &crc64sum)) {
 		lprint("[erro] Failed to calculate CRC\n");
@@ -149,7 +149,7 @@ uint64_t pager_alloc(base_t *base, size_t len) {
 
 	bool flush = FALSE;
 	unsigned long long page_size = BASE_PAGE_SIZE << base->pager.size;
-	unsigned long long offset = base->pager.offset;
+	uint64_t offset = base->pager.offset;
 
 	/* Create new page */
 	if ((offset % page_size) + len >= page_size) {
