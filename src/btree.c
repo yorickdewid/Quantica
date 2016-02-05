@@ -537,7 +537,7 @@ static void print_traversal(base_t *base, btree_t *index, long long offset) {
 		n = node.cnt;
 		printf("%*s", position, "");
 		for (i = 0; i < n; i++)
-			printf(" %.*s[%d][%lu]", kv[i].key_size, kv[i].key, kv[i].key_size, kv[i].valset);
+			printf(" %.*s[%d][%llu]", kv[i].key_size, kv[i].key, kv[i].key_size, (unsigned long long)kv[i].valset);
 		putchar('\n');
 		for (i = 0; i <= n; i++)
 			print_traversal(base, index, node.ptr[i]);
